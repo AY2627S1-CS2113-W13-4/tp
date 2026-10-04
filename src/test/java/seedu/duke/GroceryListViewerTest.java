@@ -85,12 +85,12 @@ class GroceryListViewerTest {
         GroceryItem rice = new GroceryItem("Rice", new BigDecimal("200.00"), "g");
         GroceryItem beans = new GroceryItem("Beans", new BigDecimal("50"), "g");
         List<GroceryItem> groceries = new ArrayList<>(List.of(rice, beans));
-        List<GroceryItem> original = List.copyOf(groceries);
+        List<GroceryItem> originalGroceries = List.copyOf(groceries);
 
         String firstDisplay = viewer.view(groceries);
 
         assertEquals(firstDisplay, viewer.view(groceries));
-        assertEquals(original, groceries);
+        assertEquals(originalGroceries, groceries);
         assertEquals(new BigDecimal("200.00"), rice.getQuantity());
     }
 

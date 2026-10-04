@@ -15,7 +15,7 @@ import seedu.duke.MealPlanViewer.MealSummary;
  * Checks the view-plan display, day selection, nutrition totals, and invalid input handling.
  */
 class MealPlanViewerTest {
-    private static final String FIRST_DAY_DISPLAY = String.join(System.lineSeparator(),
+    private static final String DAY_ONE_DISPLAY = String.join(System.lineSeparator(),
             "================ Day 1 ================",
             "Meal 1: Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)",
             "Meal 2: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)",
@@ -23,7 +23,7 @@ class MealPlanViewerTest {
             "--------------------------------------",
             "Daily Totals: 1650 kcal | Protein: 127g | Carbs: 150g | Fats: 55g",
             "======================================");
-    private static final String SECOND_DAY_DISPLAY = String.join(System.lineSeparator(),
+    private static final String DAY_TWO_DISPLAY = String.join(System.lineSeparator(),
             "================ Day 2 ================",
             "Meal 1: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)",
             "Meal 2: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)",
@@ -37,7 +37,7 @@ class MealPlanViewerTest {
     /**
      * Creates two days with different totals and a repeated meal on day 2.
      */
-    private List<List<MealSummary>> createPlan() {
+    private List<List<MealSummary>> createMealsByDay() {
         MealSummary oatmeal = new MealSummary("Protein Oatmeal", 450, 35, 60, 8);
         MealSummary chicken = new MealSummary("Chicken and Rice", 650, 50, 70, 15);
         MealSummary salmon = new MealSummary("Salmon Salad", 550, 42, 20, 32);
@@ -46,33 +46,34 @@ class MealPlanViewerTest {
 
     @Test
     void view_singleDayPlan_matchesSpecifiedOutput() {
-        assertEquals(FIRST_DAY_DISPLAY, viewer.view(List.of(createPlan().get(0))));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(List.of(createMealsByDay().get(0))));
     }
 
     @Test
     void view_multipleDays_displaysEachDayWithIndependentTotals() {
-        String expected = FIRST_DAY_DISPLAY + System.lineSeparator() + System.lineSeparator() + SECOND_DAY_DISPLAY;
+        String expected = DAY_ONE_DISPLAY + System.lineSeparator() + System.lineSeparator()
+                + DAY_TWO_DISPLAY;
 
-        assertEquals(expected, viewer.view(createPlan()));
+        assertEquals(expected, viewer.view(createMealsByDay()));
     }
 
     @Test
     void view_firstDay_displaysOnlyFirstDay() {
-        assertEquals(FIRST_DAY_DISPLAY, viewer.view(createPlan(), 1));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(createMealsByDay(), 1));
     }
 
     @Test
     void view_lastDay_preservesDayNumberAndCountsRepeatedMeals() {
-        assertEquals(SECOND_DAY_DISPLAY, viewer.view(createPlan(), 2));
+        assertEquals(DAY_TWO_DISPLAY, viewer.view(createMealsByDay(), 2));
     }
 
     @Test
     void view_dayOutsidePlan_throwsIllegalArgumentException() {
-        List<List<MealSummary>> plan = createPlan();
+        List<List<MealSummary>> mealsByDay = createMealsByDay();
 
-        assertThrows(IllegalArgumentException.class, () -> viewer.view(plan, -1));
-        assertThrows(IllegalArgumentException.class, () -> viewer.view(plan, 0));
-        assertThrows(IllegalArgumentException.class, () -> viewer.view(plan, 3));
+        assertThrows(IllegalArgumentException.class, () -> viewer.view(mealsByDay, -1));
+        assertThrows(IllegalArgumentException.class, () -> viewer.view(mealsByDay, 0));
+        assertThrows(IllegalArgumentException.class, () -> viewer.view(mealsByDay, 3));
     }
 
     @Test
@@ -90,10 +91,10 @@ class MealPlanViewerTest {
                 "--------------------------------------",
                 "Daily Totals: 0 kcal | Protein: 0g | Carbs: 0g | Fats: 0g",
                 "======================================");
-        List<List<MealSummary>> plan = List.of(List.of());
+        List<List<MealSummary>> mealsByDay = List.of(List.of());
 
-        assertEquals(expected, viewer.view(plan));
-        assertEquals(expected, viewer.view(plan, 1));
+        assertEquals(expected, viewer.view(mealsByDay));
+        assertEquals(expected, viewer.view(mealsByDay, 1));
     }
 
     @Test
@@ -105,7 +106,8 @@ class MealPlanViewerTest {
                 "Meal 1: Large meal (2147483647 kcal | P: 2147483647g, C: 2147483647g, F: 2147483647g)",
                 "Meal 2: Large meal (2147483647 kcal | P: 2147483647g, C: 2147483647g, F: 2147483647g)",
                 "--------------------------------------",
-                "Daily Totals: 4294967294 kcal | Protein: 4294967294g | Carbs: 4294967294g | Fats: 4294967294g",
+                "Daily Totals: 4294967294 kcal | Protein: 4294967294g"
+                        + " | Carbs: 4294967294g | Fats: 4294967294g",
                 "======================================");
 
         assertEquals(expected, viewer.view(List.of(List.of(meal, meal))));
@@ -113,17 +115,17 @@ class MealPlanViewerTest {
 
     @Test
     void view_repeatedCalls_doesNotChangePlan() {
-        List<List<MealSummary>> original = createPlan();
-        List<List<MealSummary>> plan = new ArrayList<>();
-        for (List<MealSummary> day : original) {
-            plan.add(new ArrayList<>(day));
+        List<List<MealSummary>> originalMealsByDay = createMealsByDay();
+        List<List<MealSummary>> mealsByDay = new ArrayList<>();
+        for (List<MealSummary> meals : originalMealsByDay) {
+            mealsByDay.add(new ArrayList<>(meals));
         }
 
-        String firstDisplay = viewer.view(plan);
-        viewer.view(plan, 2);
+        String firstDisplay = viewer.view(mealsByDay);
+        viewer.view(mealsByDay, 2);
 
-        assertEquals(firstDisplay, viewer.view(plan));
-        assertEquals(original, plan);
+        assertEquals(firstDisplay, viewer.view(mealsByDay));
+        assertEquals(originalMealsByDay, mealsByDay);
     }
 
     @Test
@@ -135,19 +137,19 @@ class MealPlanViewerTest {
     @Test
     void view_nullDay_throwsNullPointerException() {
         // Arrays.asList permits null so the viewer's validation is exercised.
-        List<List<MealSummary>> plan = Arrays.asList(createPlan().get(0), null);
+        List<List<MealSummary>> mealsByDay = Arrays.asList(createMealsByDay().get(0), null);
 
-        assertThrows(NullPointerException.class, () -> viewer.view(plan));
-        assertThrows(NullPointerException.class, () -> viewer.view(plan, 2));
+        assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
+        assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 2));
     }
 
     @Test
     void view_nullMeal_throwsNullPointerException() {
-        List<MealSummary> day = Arrays.asList(new MealSummary("Rice", 200, 4, 45, 1), null);
-        List<List<MealSummary>> plan = List.of(day);
+        List<MealSummary> meals = Arrays.asList(new MealSummary("Rice", 200, 4, 45, 1), null);
+        List<List<MealSummary>> mealsByDay = List.of(meals);
 
-        assertThrows(NullPointerException.class, () -> viewer.view(plan));
-        assertThrows(NullPointerException.class, () -> viewer.view(plan, 1));
+        assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
+        assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 1));
     }
 
     @Test
