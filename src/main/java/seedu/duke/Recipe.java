@@ -56,18 +56,30 @@ public class Recipe {
         return name;
     }
 
+    /**
+     * Returns the recipe's calories in kilocalories.
+     */
     public int getCalories() {
         return calories;
     }
 
+    /**
+     * Returns the recipe's protein in kilocalories.
+     */
     public int getProtein() {
         return protein;
     }
 
+    /**
+     * Returns the recipe's carbs in grams.
+     */
     public int getCarbs() {
         return carbs;
     }
 
+    /**
+     * Returns the recipe's fats in grams.
+     */
     public int getFats() {
         return fats;
     }
