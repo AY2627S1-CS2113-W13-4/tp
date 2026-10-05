@@ -16,19 +16,19 @@ public class Parser {
      * Describes the required recipe fields and repeated ingredient syntax.
      */
     public static final String ADD_RECIPE_USAGE =
-            "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
-                    + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+        "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
+                + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
 
     private static final String ADD_RECIPE_COMMAND = "add-recipe";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
     // Prefixes must occur at the start of the arguments or after whitespace.
     private static final Pattern PREFIX_PATTERN =
-            Pattern.compile("(?<!\\S)([A-Za-z][A-Za-z0-9_-]*)/");
+        Pattern.compile("(?<!\\S)([A-Za-z][A-Za-z0-9_-]*)/");
 
     // Ingredient quantities may be decimal, while units contain letters.
     private static final Pattern INGREDIENT_PATTERN =
-            Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
+        Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
 
     /**
      * Parses input without modifying the recipe book.
@@ -89,11 +89,11 @@ public class Parser {
         }
 
         Recipe recipe = new Recipe(fields.get("n"),
-                parseNutrition(fields.get("cal"), "Calories"),
-                parseNutrition(fields.get("p"), "Protein"),
-                parseNutrition(fields.get("c"), "Carbs"),
-                parseNutrition(fields.get("f"), "Fats"),
-                ingredients);
+            parseNutrition(fields.get("cal"), "Calories"),
+            parseNutrition(fields.get("p"), "Protein"),
+            parseNutrition(fields.get("c"), "Carbs"),
+            parseNutrition(fields.get("f"), "Fats"),
+            ingredients);
         return new AddRecipeCommand(recipe);
     }
 
@@ -106,7 +106,7 @@ public class Parser {
      * @param ingredients The ingredients collected so far.
      */
     private void readArgument(String prefix, String value, Map<String, String> fields,
-                              List<GroceryItem> ingredients) {
+             List<GroceryItem> ingredients) {
         if (value.isBlank()) {
             throw new IllegalArgumentException("Value must not be blank: " + prefix + "/");
         }

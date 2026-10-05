@@ -26,7 +26,7 @@ class DukeTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
         try (PrintStream capturedOutput =
-                     new PrintStream(output, true, StandardCharsets.UTF_8)) {
+                 new PrintStream(output, true, StandardCharsets.UTF_8)) {
             System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
             System.setOut(capturedOutput);
 

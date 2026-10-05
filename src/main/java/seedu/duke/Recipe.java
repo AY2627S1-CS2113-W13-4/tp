@@ -64,7 +64,7 @@ public class Recipe {
     }
 
     /**
-     * Returns the recipe's protein in kilocalories.
+     * Returns the recipe's protein in grams.
      */
     public int getProtein() {
         return protein;

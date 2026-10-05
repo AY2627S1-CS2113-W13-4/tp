@@ -39,10 +39,10 @@ class RecipeTest {
                 () -> new Recipe("Rice", 650, 50, 70, 15, List.of()));
 
         int[][] invalidNutrition = {
-                {-1, 50, 70, 15},
-                {650, -1, 70, 15},
-                {650, 50, -1, 15},
-                {650, 50, 70, -1}
+            {-1, 50, 70, 15},
+            {650, -1, 70, 15},
+            {650, 50, -1, 15},
+            {650, 50, 70, -1}
         };
         for (int[] values : invalidNutrition) {
             assertThrows(IllegalArgumentException.class,
