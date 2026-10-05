@@ -22,7 +22,7 @@ public class Recipe {
      * @throws NullPointerException if the name, ingredient list, or an item is null
      */
     public Recipe(String name, int calories, int protein, int carbs, int fats,
-                  List<GroceryItem> ingredients) {
+            List<GroceryItem> ingredients) {
         this.name = Objects.requireNonNull(name, "name").trim();
         if (this.name.isBlank()) {
             throw new IllegalArgumentException("Recipe name must not be blank.");
@@ -49,6 +49,9 @@ public class Recipe {
         this.ingredients = List.copyOf(ingredients);
     }
 
+    /**
+     * Returns the recipe name.
+     */
     public String getName() {
         return name;
     }
@@ -69,7 +72,14 @@ public class Recipe {
         return fats;
     }
 
+    /**
+     * Returns the recipe's read-only ingredient list.
+     *
+     * @return The ingredients in their original order.
+     */
     public List<GroceryItem> getIngredients() {
         return ingredients;
     }
 }
+
+

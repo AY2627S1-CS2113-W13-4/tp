@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,4 +74,16 @@ class RecipeTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> recipe.getIngredients().clear());
     }
+
+    @Test
+    void constructor_nullInputs_throwsNullPointerException() {
+        assertThrows(NullPointerException.class,
+                () -> new Recipe(null, 200, 4, 45, 1, List.of(rice())));
+        assertThrows(NullPointerException.class,
+                () -> new Recipe("Rice", 200, 4, 45, 1, null));
+        assertThrows(NullPointerException.class,
+                () -> new Recipe("Rice", 200, 4, 45, 1,
+                        Arrays.asList(rice(), null)));
+    }
 }
+
