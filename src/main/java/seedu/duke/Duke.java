@@ -2,20 +2,38 @@ package seedu.duke;
 
 import java.util.Scanner;
 
+/**
+ * Runs the MishMash command-line application.
+ */
 public class Duke {
     /**
-     * Main entry-point for the java.duke.Duke application.
+     * Reads and executes commands until the user exits or input ends.
+     *
+     * @param args Command-line arguments, which are not used.
      */
     public static void main(String[] args) {
-        String banner = " ____        _        \n"
-                + "|  _ \\ _   _| | _____ \n"
-                + "| | | | | | | |/ / _ \\\n"
-                + "| |_| | |_| |   <  __/\n"
-                + "|____/ \\__,_|_|\\_\\___|\n";
-        System.out.println(banner);
-        System.out.println("What is your name?");
+        RecipeBook recipeBook = new RecipeBook();
+        Parser parser = new Parser();
 
-        Scanner in = new Scanner(System.in);
-        System.out.println("Hello " + in.nextLine());
+        System.out.println("Welcome to MishMash!");
+        System.out.println("Add a recipe with 'add-recipe', or type 'bye' to exit.");
+
+        try (Scanner scanner = new Scanner(System.in)) {
+            while (scanner.hasNextLine()) {
+                String input = scanner.nextLine().trim();
+                if (input.equals("bye")) {
+                    System.out.println("Goodbye!");
+                    break;
+                }
+
+                try {
+                    Command command = parser.parseCommand(input);
+                    System.out.println(command.execute(recipeBook));
+                } catch (MishMashException e) {
+                    System.out.println("Error: " + e.getMessage());
+                }
+            }
+        }
     }
 }
+
