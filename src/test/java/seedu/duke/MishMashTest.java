@@ -13,10 +13,12 @@ import org.junit.jupiter.api.Test;
 /**
  * Checks CLI output and recovery after an invalid command.
  */
-class DukeTest {
+
+class MishMashTest {
     @Test
     void main_invalidThenValid_displaysExpectedOutput() {
         String input = String.join(System.lineSeparator(),
+                "Duke",
                 "add-recipe",
                 "add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g",
                 "bye") + System.lineSeparator();
@@ -36,7 +38,27 @@ class DukeTest {
             System.setOut(originalOutput);
         }
 
-        String expected = String.join(System.lineSeparator(),
+        String banner = """
+                  __  __ _     _     __  __           _
+                 |  \\/  (_)___| |__ |  \\/  | __ _ ___| |__
+                 | |\\/| | / __| '_ \\| |\\/| |/ _` / __| '_ \\
+                 | |  | | \\__ \\ | | | |  | | (_| \\__ \\ | | |
+                 |_|  |_|_|___/_| |_|_|  |_|\\__,_|___/_| |_|
+
+                              .-~~~~~~~~~-.
+                           .-' . .. .. . '-.
+                          / . .. .. .. .. . \\
+                         /___________________\\
+                         \\                   /
+                          \\                 /
+                           \\_______________/
+                                \\_____/
+                """;
+
+        String expected = banner + System.lineSeparator()
+                + String.join(System.lineSeparator(),
+                "What is your name?",
+                "Hello Duke",
                 "Welcome to MishMash!",
                 "Add a recipe with 'add-recipe', or type 'bye' to exit.",
                 "Error: Expected prefixed recipe arguments.",
