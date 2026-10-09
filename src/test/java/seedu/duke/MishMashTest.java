@@ -32,7 +32,7 @@ class MishMashTest {
             System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
             System.setOut(capturedOutput);
 
-            Duke.main(new String[0]);
+            MishMash.main(new String[0]);
         } finally {
             System.setIn(originalInput);
             System.setOut(originalOutput);
