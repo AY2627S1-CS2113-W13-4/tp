@@ -1,0 +1,149 @@
+# case name	expected error fragment	command
+bare command	Expected prefixed	add-recipe
+bare command with spaces	Expected prefixed	  add-recipe   
+unprefixed arguments	Expected prefixed	add-recipe Rice 200 4 45 1 Rice:150g
+text before first prefix	Expected prefixed	add-recipe extra n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g
+missing n	Missing required field: n/	add-recipe  cal/200 p/4 c/45 f/1 i/Rice:150g
+empty n	Value must not be blank: n/	add-recipe n/ cal/200 p/4 c/45 f/1 i/Rice:150g
+spaces-only n	Value must not be blank: n/	add-recipe n/    cal/200 p/4 c/45 f/1 i/Rice:150g
+duplicate n	Repeated field: n/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g n/Rice
+uppercase n	Unknown field:	add-recipe N/Rice cal/200 p/4 c/45 f/1 i/Rice:150g
+missing slash n	Expected prefixed recipe arguments.	add-recipe n Rice cal/200 p/4 c/45 f/1 i/Rice:150g
+missing cal	Missing required field: cal/	add-recipe n/Rice  p/4 c/45 f/1 i/Rice:150g
+empty cal	Value must not be blank: cal/	add-recipe n/Rice cal/ p/4 c/45 f/1 i/Rice:150g
+spaces-only cal	Value must not be blank: cal/	add-recipe n/Rice cal/    p/4 c/45 f/1 i/Rice:150g
+duplicate cal	Repeated field: cal/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g cal/200
+uppercase cal	Unknown field:	add-recipe n/Rice CAL/200 p/4 c/45 f/1 i/Rice:150g
+missing slash cal	Missing required field:	add-recipe n/Rice cal 200 p/4 c/45 f/1 i/Rice:150g
+missing p	Missing required field: p/	add-recipe n/Rice cal/200  c/45 f/1 i/Rice:150g
+empty p	Value must not be blank: p/	add-recipe n/Rice cal/200 p/ c/45 f/1 i/Rice:150g
+spaces-only p	Value must not be blank: p/	add-recipe n/Rice cal/200 p/    c/45 f/1 i/Rice:150g
+duplicate p	Repeated field: p/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g p/4
+uppercase p	Unknown field:	add-recipe n/Rice cal/200 P/4 c/45 f/1 i/Rice:150g
+missing slash p	Missing required field:	add-recipe n/Rice cal/200 p 4 c/45 f/1 i/Rice:150g
+missing c	Missing required field: c/	add-recipe n/Rice cal/200 p/4  f/1 i/Rice:150g
+empty c	Value must not be blank: c/	add-recipe n/Rice cal/200 p/4 c/ f/1 i/Rice:150g
+spaces-only c	Value must not be blank: c/	add-recipe n/Rice cal/200 p/4 c/    f/1 i/Rice:150g
+duplicate c	Repeated field: c/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g c/45
+uppercase c	Unknown field:	add-recipe n/Rice cal/200 p/4 C/45 f/1 i/Rice:150g
+missing slash c	Missing required field:	add-recipe n/Rice cal/200 p/4 c 45 f/1 i/Rice:150g
+missing f	Missing required field: f/	add-recipe n/Rice cal/200 p/4 c/45  i/Rice:150g
+empty f	Value must not be blank: f/	add-recipe n/Rice cal/200 p/4 c/45 f/ i/Rice:150g
+spaces-only f	Value must not be blank: f/	add-recipe n/Rice cal/200 p/4 c/45 f/    i/Rice:150g
+duplicate f	Repeated field: f/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g f/1
+uppercase f	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 F/1 i/Rice:150g
+missing slash f	Missing required field:	add-recipe n/Rice cal/200 p/4 c/45 f 1 i/Rice:150g
+missing i	ingredient is required	add-recipe n/Rice cal/200 p/4 c/45 f/1 
+empty i	Value must not be blank: i/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/
+spaces-only i	Value must not be blank: i/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/   
+uppercase i	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 I/Rice:150g
+missing slash i	ingredient is required	add-recipe n/Rice cal/200 p/4 c/45 f/1 i Rice:150g
+cal invalid -1	Calories must be a non-negative integer.	add-recipe n/Rice cal/-1 p/4 c/45 f/1 i/Rice:150g
+cal invalid +1	Calories must be a non-negative integer.	add-recipe n/Rice cal/+1 p/4 c/45 f/1 i/Rice:150g
+cal invalid 1.5	Calories must be a non-negative integer.	add-recipe n/Rice cal/1.5 p/4 c/45 f/1 i/Rice:150g
+cal invalid 1e3	Calories must be a non-negative integer.	add-recipe n/Rice cal/1e3 p/4 c/45 f/1 i/Rice:150g
+cal invalid NaN	Calories must be a non-negative integer.	add-recipe n/Rice cal/NaN p/4 c/45 f/1 i/Rice:150g
+cal invalid Infinity	Calories must be a non-negative integer.	add-recipe n/Rice cal/Infinity p/4 c/45 f/1 i/Rice:150g
+cal invalid one	Calories must be a non-negative integer.	add-recipe n/Rice cal/one p/4 c/45 f/1 i/Rice:150g
+cal invalid 1,000	Calories must be a non-negative integer.	add-recipe n/Rice cal/1,000 p/4 c/45 f/1 i/Rice:150g
+cal invalid 1_000	Calories must be a non-negative integer.	add-recipe n/Rice cal/1_000 p/4 c/45 f/1 i/Rice:150g
+cal invalid 10g	Calories must be a non-negative integer.	add-recipe n/Rice cal/10g p/4 c/45 f/1 i/Rice:150g
+cal invalid 1 2	Calories must be a non-negative integer.	add-recipe n/Rice cal/1 2 p/4 c/45 f/1 i/Rice:150g
+cal invalid 0x10	Calories must be a non-negative integer.	add-recipe n/Rice cal/0x10 p/4 c/45 f/1 i/Rice:150g
+cal invalid ١	Calories must be a non-negative integer.	add-recipe n/Rice cal/١ p/4 c/45 f/1 i/Rice:150g
+cal overflow 2147483648	Calories must not exceed	add-recipe n/Rice cal/2147483648 p/4 c/45 f/1 i/Rice:150g
+cal overflow 9999999999999999999999999999999999999999999	Calories must not exceed	add-recipe n/Rice cal/9999999999999999999999999999999999999999999 p/4 c/45 f/1 i/Rice:150g
+p invalid -1	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/-1 c/45 f/1 i/Rice:150g
+p invalid +1	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/+1 c/45 f/1 i/Rice:150g
+p invalid 1.5	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/1.5 c/45 f/1 i/Rice:150g
+p invalid 1e3	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/1e3 c/45 f/1 i/Rice:150g
+p invalid NaN	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/NaN c/45 f/1 i/Rice:150g
+p invalid Infinity	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/Infinity c/45 f/1 i/Rice:150g
+p invalid one	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/one c/45 f/1 i/Rice:150g
+p invalid 1,000	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/1,000 c/45 f/1 i/Rice:150g
+p invalid 1_000	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/1_000 c/45 f/1 i/Rice:150g
+p invalid 10g	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/10g c/45 f/1 i/Rice:150g
+p invalid 1 2	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/1 2 c/45 f/1 i/Rice:150g
+p invalid 0x10	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/0x10 c/45 f/1 i/Rice:150g
+p invalid ١	Protein must be a non-negative integer.	add-recipe n/Rice cal/200 p/١ c/45 f/1 i/Rice:150g
+p overflow 2147483648	Protein must not exceed	add-recipe n/Rice cal/200 p/2147483648 c/45 f/1 i/Rice:150g
+p overflow 9999999999999999999999999999999999999999999	Protein must not exceed	add-recipe n/Rice cal/200 p/9999999999999999999999999999999999999999999 c/45 f/1 i/Rice:150g
+c invalid -1	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/-1 f/1 i/Rice:150g
+c invalid +1	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/+1 f/1 i/Rice:150g
+c invalid 1.5	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/1.5 f/1 i/Rice:150g
+c invalid 1e3	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/1e3 f/1 i/Rice:150g
+c invalid NaN	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/NaN f/1 i/Rice:150g
+c invalid Infinity	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/Infinity f/1 i/Rice:150g
+c invalid one	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/one f/1 i/Rice:150g
+c invalid 1,000	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/1,000 f/1 i/Rice:150g
+c invalid 1_000	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/1_000 f/1 i/Rice:150g
+c invalid 10g	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/10g f/1 i/Rice:150g
+c invalid 1 2	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/1 2 f/1 i/Rice:150g
+c invalid 0x10	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/0x10 f/1 i/Rice:150g
+c invalid ١	Carbs must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/١ f/1 i/Rice:150g
+c overflow 2147483648	Carbs must not exceed	add-recipe n/Rice cal/200 p/4 c/2147483648 f/1 i/Rice:150g
+c overflow 9999999999999999999999999999999999999999999	Carbs must not exceed	add-recipe n/Rice cal/200 p/4 c/9999999999999999999999999999999999999999999 f/1 i/Rice:150g
+f invalid -1	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/-1 i/Rice:150g
+f invalid +1	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/+1 i/Rice:150g
+f invalid 1.5	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/1.5 i/Rice:150g
+f invalid 1e3	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/1e3 i/Rice:150g
+f invalid NaN	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/NaN i/Rice:150g
+f invalid Infinity	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/Infinity i/Rice:150g
+f invalid one	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/one i/Rice:150g
+f invalid 1,000	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/1,000 i/Rice:150g
+f invalid 1_000	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/1_000 i/Rice:150g
+f invalid 10g	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/10g i/Rice:150g
+f invalid 1 2	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/1 2 i/Rice:150g
+f invalid 0x10	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/0x10 i/Rice:150g
+f invalid ١	Fats must be a non-negative integer.	add-recipe n/Rice cal/200 p/4 c/45 f/١ i/Rice:150g
+f overflow 2147483648	Fats must not exceed	add-recipe n/Rice cal/200 p/4 c/45 f/2147483648 i/Rice:150g
+f overflow 9999999999999999999999999999999999999999999	Fats must not exceed	add-recipe n/Rice cal/200 p/4 c/45 f/9999999999999999999999999999999999999999999 i/Rice:150g
+unknown prefix x	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g x/value
+unknown prefix name	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g name/value
+unknown prefix calories	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g calories/value
+unknown prefix ingredient	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g ingredient/value
+unknown prefix 1	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g 1/value
+unknown prefix _	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g _/value
+unknown prefix -	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g -/value
+unknown prefix n-	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g n-/value
+unknown prefix n_	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g n_/value
+unknown prefix N	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g N/value
+unknown prefix CAL	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g CAL/value
+malformed ingredient Rice	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice
+malformed ingredient Rice:	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:
+malformed ingredient Rice:10	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10
+malformed ingredient :10g	Ingredient name must not be blank	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/:10g
+malformed ingredient Rice:abcg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:abcg
+malformed ingredient Rice:-1g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:-1g
+malformed ingredient Rice:+1g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:+1g
+malformed ingredient Rice:.5g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:.5g
+malformed ingredient Rice:1.g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.g
+malformed ingredient Rice:1.2.3g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.2.3g
+malformed ingredient Rice:1e3g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1e3g
+malformed ingredient Rice:1,000g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1,000g
+malformed ingredient Rice:10g extra	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g extra
+malformed ingredient Rice:10g:20g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g:20g
+malformed ingredient Rice::10g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice::10g
+malformed ingredient Rice:10g,Rice:20g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g,Rice:20g
+malformed ingredient Rice:10g;Oil:2ml	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g;Oil:2ml
+malformed ingredient Rice:10g Oil:2ml	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g Oil:2ml
+malformed ingredient Rice:10g2	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g2
+malformed ingredient Rice:10%	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10%
+malformed ingredient Rice:NaNg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:NaNg
+malformed ingredient Rice:Infinityg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:Infinityg
+zero ingredient Rice:0g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:0g
+zero ingredient Rice:0.0g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:0.0g
+zero ingredient Rice:000.000g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:000.000g
+blank ingredient name	Ingredient name must not be blank	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/   :10g
+slash in recipe name Rice cal/200	Unexpected '/'	add-recipe n/Ricecal/200 p/4 c/45 f/1 i/Rice:150g
+slash in recipe name Rice/Other	Unexpected '/'	add-recipe n/Rice/Other cal/200 p/4 c/45 f/1 i/Rice:150g
+slash in ingredient Rice/Oil:10g	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice/Oil:10g
+slash in ingredient Rice:10g/ml	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g/ml
+slash in ingredient Rice:10g/i/Oil:2ml	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g/i/Oil:2ml
+joined n/Rice cal/200	Unexpected '/'	add-recipe n/Ricecal/200 p/4 c/45 f/1 i/Rice:150g
+joined cal/200 p/4	Unexpected '/'	add-recipe n/Rice cal/200p/4 c/45 f/1 i/Rice:150g
+joined p/4 c/45	Unexpected '/'	add-recipe n/Rice cal/200 p/4c/45 f/1 i/Rice:150g
+joined c/45 f/1	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45f/1 i/Rice:150g
+joined f/1 i/Rice:150g	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45 f/1i/Rice:150g
+empty final ingredient	Value must not be blank: i/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g i/
+invalid second ingredient	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g i/Broken
