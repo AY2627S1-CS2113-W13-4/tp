@@ -22,9 +22,9 @@ public class Parser {
     private static final String ADD_RECIPE_COMMAND = "add-recipe";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
-    // Prefixes must occur at the start of the arguments or after whitespace.
+    // Recognise unknown prefixes too, so they cannot become part of a name.
     private static final Pattern PREFIX_PATTERN =
-        Pattern.compile("(?<!\\S)([A-Za-z][A-Za-z0-9_-]*)/");
+        Pattern.compile("(?<!\\S)([^\\s/]+)/");
 
     // Ingredient quantities may be decimal, while units contain letters.
     private static final Pattern INGREDIENT_PATTERN =
@@ -87,6 +87,9 @@ public class Parser {
                 throw new IllegalArgumentException("Missing required field: " + required + "/");
             }
         }
+        if (ingredients.isEmpty()) {
+            throw new IllegalArgumentException("At least one ingredient is required. Use i/NAME:QUANTITY_UNIT.");
+        }
 
         Recipe recipe = new Recipe(fields.get("n"),
             parseNutrition(fields.get("cal"), "Calories"),
@@ -109,6 +112,10 @@ public class Parser {
              List<GroceryItem> ingredients) {
         if (value.isBlank()) {
             throw new IllegalArgumentException("Value must not be blank: " + prefix + "/");
+        }
+        if (value.contains("/")) {
+            throw new IllegalArgumentException("Unexpected '/': separate fields with spaces and use each prefix once."
+                    + " Use i/ for each ingredient; names and units must not contain '/'.");
         }
         if (prefix.equals("i")) {
             ingredients.add(parseIngredient(value));
@@ -149,6 +156,9 @@ public class Parser {
      * @return The parsed ingredient.
      */
     private GroceryItem parseIngredient(String value) {
+        if (value.startsWith(":")) {
+            throw new IllegalArgumentException("Ingredient name must not be blank.");
+        }
         Matcher matcher = INGREDIENT_PATTERN.matcher(value);
         if (!matcher.matches()) {
             throw new IllegalArgumentException(
@@ -160,7 +170,11 @@ public class Parser {
             throw new IllegalArgumentException("Ingredient quantity must be greater than zero.");
         }
 
+        if (matcher.group(1).isBlank()) {
+            throw new IllegalArgumentException("Ingredient name must not be blank.");
+        }
         return new GroceryItem(matcher.group(1), quantity, matcher.group(3));
     }
 }
+
 
