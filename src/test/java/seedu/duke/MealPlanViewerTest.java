@@ -58,6 +58,29 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_daysWithDifferentMealCounts_restartsNumberingAndCalculatesTotals() {
+        List<List<MealSummary>> mealsByDay = List.of(
+                List.of(new MealSummary("Rice", 200, 4, 45, 1),
+                        new MealSummary("Beans", 300, 20, 40, 5)),
+                List.of(new MealSummary("Salmon", 550, 42, 20, 32)));
+        String expected = String.join(System.lineSeparator(),
+                "================ Day 1 ================",
+                "Meal 1: Rice (200 kcal | P: 4g, C: 45g, F: 1g)",
+                "Meal 2: Beans (300 kcal | P: 20g, C: 40g, F: 5g)",
+                "--------------------------------------",
+                "Daily Totals: 500 kcal | Protein: 24g | Carbs: 85g | Fats: 6g",
+                "======================================",
+                "",
+                "================ Day 2 ================",
+                "Meal 1: Salmon (550 kcal | P: 42g, C: 20g, F: 32g)",
+                "--------------------------------------",
+                "Daily Totals: 550 kcal | Protein: 42g | Carbs: 20g | Fats: 32g",
+                "======================================");
+
+        assertEquals(expected, viewer.view(mealsByDay));
+    }
+
+    @Test
     void view_firstDay_displaysOnlyFirstDay() {
         assertEquals(DAY_ONE_DISPLAY, viewer.view(createMealsByDay(), 1));
     }
@@ -196,6 +219,19 @@ class MealPlanViewerTest {
 
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 1));
+    }
+
+    @Test
+    void view_validPlanAfterRejectedInput_displaysOnlyValidMealsAndTotals() {
+        // A meal is formatted before the null entry interrupts the failed call.
+        List<List<MealSummary>> invalidPlan = List.of(
+                Arrays.asList(new MealSummary("Incomplete meal", 999, 90, 80, 70), null));
+        List<List<MealSummary>> validPlan = List.of(createMealsByDay().get(0));
+
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidPlan));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(validPlan));
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidPlan, 1));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(validPlan, 1));
     }
 
     @Test

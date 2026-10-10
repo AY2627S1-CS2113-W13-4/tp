@@ -140,4 +140,20 @@ class GroceryListViewerTest {
 
         assertThrows(NullPointerException.class, () -> viewer.view(groceries));
     }
+
+    @Test
+    void view_validListAfterRejectedInput_displaysOnlyValidItemsAndCount() {
+        // An item is formatted before the null entry interrupts the failed call.
+        List<GroceryItem> invalidList = Arrays.asList(
+                new GroceryItem("Rice", new BigDecimal("200"), "g"), null);
+        List<GroceryItem> validList = List.of(new GroceryItem("Beans", new BigDecimal("50"), "g"));
+        String expected = String.join(System.lineSeparator(),
+                "================ Grocery List ================",
+                "[ ] Beans: 50g",
+                "=============================================",
+                "Total items to purchase: 1");
+
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidList));
+        assertEquals(expected, viewer.view(validList));
+    }
 }
