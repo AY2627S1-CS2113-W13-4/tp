@@ -68,6 +68,52 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_middleDay_displaysOnlySelectedDay() {
+        List<List<MealSummary>> originalDays = createMealsByDay();
+        List<List<MealSummary>> mealsByDay = List.of(originalDays.get(0), originalDays.get(1),
+                List.of(new MealSummary("Beans", 300, 20, 40, 5)));
+
+        assertEquals(DAY_TWO_DISPLAY, viewer.view(mealsByDay, 2));
+    }
+
+    @Test
+    void view_emptyDayBetweenMeals_preservesDayNumbers() {
+        List<List<MealSummary>> originalDays = createMealsByDay();
+        List<List<MealSummary>> mealsByDay = List.of(originalDays.get(0), List.of(), originalDays.get(1));
+        String emptyDayDisplay = String.join(System.lineSeparator(),
+                "================ Day 2 ================",
+                "--------------------------------------",
+                "Daily Totals: 0 kcal | Protein: 0g | Carbs: 0g | Fats: 0g",
+                "======================================");
+        // The former second day's meals now belong to day 3, with the same nutrition totals.
+        String thirdDayDisplay = DAY_TWO_DISPLAY.replace("Day 2", "Day 3");
+        String expected = String.join(System.lineSeparator() + System.lineSeparator(),
+                DAY_ONE_DISPLAY, emptyDayDisplay, thirdDayDisplay);
+
+        assertEquals(expected, viewer.view(mealsByDay));
+        assertEquals(emptyDayDisplay, viewer.view(mealsByDay, 2));
+        assertEquals(thirdDayDisplay, viewer.view(mealsByDay, 3));
+    }
+
+    @Test
+    void view_differentPlans_displaysOnlyLatestInput() {
+        viewer.view(createMealsByDay());
+        viewer.view(createMealsByDay(), 2);
+        List<List<MealSummary>> replacementPlan =
+                List.of(List.of(new MealSummary("Beans", 300, 20, 40, 5)));
+        String expected = String.join(System.lineSeparator(),
+                "================ Day 1 ================",
+                "Meal 1: Beans (300 kcal | P: 20g, C: 40g, F: 5g)",
+                "--------------------------------------",
+                "Daily Totals: 300 kcal | Protein: 20g | Carbs: 40g | Fats: 5g",
+                "======================================");
+
+        assertEquals(expected, viewer.view(replacementPlan));
+        assertEquals(expected, viewer.view(replacementPlan, 1));
+        assertEquals("No active meal plan. Use 'generate-plan' first.", viewer.view(List.of()));
+    }
+
+    @Test
     void view_dayOutsidePlan_throwsIllegalArgumentException() {
         List<List<MealSummary>> mealsByDay = createMealsByDay();
 

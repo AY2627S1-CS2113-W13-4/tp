@@ -64,6 +64,39 @@ class GroceryListViewerTest {
     }
 
     @Test
+    void view_smallDecimalQuantity_preservesDisplayedPrecision() {
+        List<GroceryItem> groceries =
+                List.of(new GroceryItem("Saffron", new BigDecimal("0.00000100"), "g"));
+        String expected = String.join(System.lineSeparator(),
+                "================ Grocery List ================",
+                "[ ] Saffron: 0.000001g",
+                "=============================================",
+                "Total items to purchase: 1");
+
+        assertEquals(expected, viewer.view(groceries));
+    }
+
+    @Test
+    void view_differentLists_displaysOnlyLatestInputAndCount() {
+        viewer.view(List.of(new GroceryItem("Rice", new BigDecimal("200"), "g"),
+                new GroceryItem("Oil", new BigDecimal("10"), "ml")));
+        List<GroceryItem> replacementList =
+                List.of(new GroceryItem("Beans", new BigDecimal("50"), "g"));
+        String expected = String.join(System.lineSeparator(),
+                "================ Grocery List ================",
+                "[ ] Beans: 50g",
+                "=============================================",
+                "Total items to purchase: 1");
+
+        assertEquals(expected, viewer.view(replacementList));
+        String emptyDisplay = String.join(System.lineSeparator(),
+                "================ Grocery List ================",
+                "=============================================",
+                "Total items to purchase: 0");
+        assertEquals(emptyDisplay, viewer.view(List.of()));
+    }
+
+    @Test
     void view_sameIngredientWithDifferentUnits_preservesEntriesAndOrder() {
         List<GroceryItem> groceries = List.of(
                 new GroceryItem("Rice", new BigDecimal("1.50"), "cups"),
