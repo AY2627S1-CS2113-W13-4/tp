@@ -213,6 +213,14 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_validDayWithAnotherNullDay_displaysOnlySelectedDay() {
+        // Viewing one day only needs the selected day's meals to be valid.
+        List<List<MealSummary>> mealsByDay = Arrays.asList(createMealsByDay().get(0), null);
+
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(mealsByDay, 1));
+    }
+
+    @Test
     void view_nullMeal_throwsNullPointerException() {
         List<MealSummary> meals = Arrays.asList(new MealSummary("Rice", 200, 4, 45, 1), null);
         List<List<MealSummary>> mealsByDay = List.of(meals);

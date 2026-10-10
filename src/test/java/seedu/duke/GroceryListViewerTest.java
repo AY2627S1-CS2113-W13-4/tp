@@ -114,6 +114,23 @@ class GroceryListViewerTest {
     }
 
     @Test
+    void view_sameIngredientWithSameUnit_preservesSeparateEntriesAndCount() {
+        List<GroceryItem> groceries = List.of(
+                new GroceryItem("Rice", new BigDecimal("100"), "g"),
+                new GroceryItem("Beans", new BigDecimal("50"), "g"),
+                new GroceryItem("Rice", new BigDecimal("200"), "g"));
+        String expected = String.join(System.lineSeparator(),
+                "================ Grocery List ================",
+                "[ ] Rice: 100g",
+                "[ ] Beans: 50g",
+                "[ ] Rice: 200g",
+                "=============================================",
+                "Total items to purchase: 3");
+
+        assertEquals(expected, viewer.view(groceries));
+    }
+
+    @Test
     void view_repeatedCalls_doesNotChangeInput() {
         GroceryItem rice = new GroceryItem("Rice", new BigDecimal("200.00"), "g");
         GroceryItem beans = new GroceryItem("Beans", new BigDecimal("50"), "g");
