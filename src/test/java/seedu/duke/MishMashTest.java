@@ -68,6 +68,32 @@ class MishMashTest {
         assertEquals(0, output.split("New recipe added!", -1).length - 1, output);
     }
 
+    @Test
+    void main_viewingWithoutGeneratedData_displaysPromptsAndContinues() {
+        String output = runCli(String.join(System.lineSeparator(),
+                "Tester", "view-plan", "view-plan d/2", "view-list", "bye"));
+
+        assertEquals(2, output.split("No active meal plan.", -1).length - 1, output);
+        assertTrue(output.contains("No grocery list generated. Use 'generate-list' first."), output);
+        assertEquals(0, output.split("Error: ", -1).length - 1, output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_invalidViewingArguments_recoversWithRelevantUsage() {
+        String output = runCli(String.join(System.lineSeparator(), "Tester",
+                "view-list extra", "view-plan d/0", "view-list",
+                AddRecipeEdgeCaseTest.VALID_COMMAND, "bye"));
+
+        assertEquals(2, output.split("Error: ", -1).length - 1, output);
+        assertEquals(1, output.split("Format: view-list", -1).length - 1, output);
+        assertEquals(1, output.split("Format: view-plan", -1).length - 1, output);
+        assertEquals(0, output.split("Format: add-recipe", -1).length - 1, output);
+        assertTrue(output.contains("No grocery list generated. Use 'generate-list' first."), output);
+        assertTrue(output.contains("New recipe added!"), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
     /**
      * Runs a CLI session and restores the global streams even if execution fails.
      *
@@ -134,7 +160,7 @@ class MishMashTest {
                 "What is your name?",
                 "Hello Duke",
                 "Welcome to MishMash!",
-                "Add a recipe with 'add-recipe', or type 'bye' to exit.",
+                "Use 'add-recipe', 'view-plan', or 'view-list', or type 'bye' to exit.",
                 "Error: Expected prefixed recipe arguments.",
                 Parser.ADD_RECIPE_USAGE,
                 "Please enter another command, or type 'bye' to exit.",

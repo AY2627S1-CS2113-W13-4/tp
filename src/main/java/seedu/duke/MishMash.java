@@ -19,7 +19,7 @@ public class MishMash {
             MishMash.greet(scanner);
 
             System.out.println("Welcome to MishMash!");
-            System.out.println("Add a recipe with 'add-recipe', or type 'bye' to exit.");
+            System.out.println("Use 'add-recipe', 'view-plan', or 'view-list', or type 'bye' to exit.");
 
             while (scanner.hasNextLine()) {
                 String input = scanner.nextLine().trim();
@@ -33,8 +33,8 @@ public class MishMash {
                     System.out.println(command.execute(recipeBook));
                 } catch (MishMashException e) {
                     System.out.println("Error: " + e.getMessage());
-                    if (!e.getMessage().contains(Parser.ADD_RECIPE_USAGE)) {
-                        System.out.println(Parser.ADD_RECIPE_USAGE);
+                    if (!e.getMessage().contains("Format: ")) {
+                        System.out.println(Parser.COMMAND_USAGE);
                     }
                     System.out.println("Please enter another command, or type 'bye' to exit.");
                 }
