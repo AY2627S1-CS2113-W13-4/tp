@@ -5,8 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import seedu.duke.MealPlanViewer.MealSummary;
 
 /**
  * Converts raw user input into a validated command.
@@ -19,6 +24,15 @@ public class Parser {
         "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
                 + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
 
+    public static final String VIEW_PLAN_USAGE = "Format: view-plan [d/DAY_NUMBER]";
+    public static final String VIEW_LIST_USAGE = "Format: view-list";
+
+    /**
+     * Lists supported syntax for empty or unknown input.
+     */
+    public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
+            ADD_RECIPE_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+
     private static final String ADD_RECIPE_COMMAND = "add-recipe";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
@@ -30,8 +44,41 @@ public class Parser {
     private static final Pattern INGREDIENT_PATTERN =
         Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
 
+    private static final Pattern DAY_PATTERN = Pattern.compile("d/\\s*([0-9]+)");
+
     /**
-     * Parses input without modifying the recipe book.
+     * Supplies the active plan at command execution, allowing generation to connect its own data later.
+     */
+    private final Supplier<List<List<MealSummary>>> mealPlanSource;
+
+    /**
+     * Supplies the generated list without making viewing responsible for generation or storage.
+     */
+    private final Supplier<Optional<List<GroceryItem>>> groceryListSource;
+
+    /**
+     * Creates a parser with no generated data connected yet.
+     */
+    public Parser() {
+        this(() -> List.of(), () -> Optional.empty());
+    }
+
+    /**
+     * Connects viewing commands to the caller's existing data through functions called during execution.
+     * An empty plan means no active plan; an empty Optional means no grocery list has been generated.
+     *
+     * @param mealPlanSource A function returning the active plan's meals grouped by day.
+     * @param groceryListSource A function returning the generated grocery list, if available.
+     * @throws NullPointerException If either source is null.
+     */
+    public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
+            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+        this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
+        this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
+    }
+
+    /**
+     * Parses input without modifying application data or calling the generated-data sources.
      *
      * @param input The raw command entered by the user.
      * @return The validated command.
@@ -43,16 +90,49 @@ public class Parser {
         }
 
         String[] parts = input.trim().split("\\s+", 2);
+        String arguments = parts.length == 2 ? parts[1] : "";
+        if (parts[0].equals("view-list")) {
+            if (!arguments.isBlank()) {
+                throw new MishMashException("view-list does not accept arguments."
+                        + System.lineSeparator() + VIEW_LIST_USAGE);
+            }
+            return new ViewListCommand(groceryListSource);
+        }
+        if (parts[0].equals("view-plan")) {
+            return parseViewPlan(arguments);
+        }
         if (!parts[0].equals(ADD_RECIPE_COMMAND)) {
             throw new MishMashException("Unknown command: " + parts[0]);
         }
-
-        String arguments = parts.length == 2 ? parts[1] : "";
         try {
             return parseAddRecipe(arguments);
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + ADD_RECIPE_USAGE);
+        }
+    }
+
+    /**
+     * Parses an optional day while leaving checks against the active plan to command execution.
+     *
+     * @param arguments The text after view-plan.
+     * @return A command for all days or one positive day number.
+     * @throws MishMashException If the day syntax or value is invalid.
+     */
+    private Command parseViewPlan(String arguments) throws MishMashException {
+        if (arguments.isBlank()) {
+            return new ViewPlanCommand(mealPlanSource);
+        }
+        Matcher matcher = DAY_PATTERN.matcher(arguments.trim());
+        if (!matcher.matches()) {
+            throw new MishMashException("Use one optional d/ argument with a positive integer."
+                    + System.lineSeparator() + VIEW_PLAN_USAGE);
+        }
+        try {
+            return new ViewPlanCommand(mealPlanSource, Integer.parseInt(matcher.group(1)));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException("Day number must be a positive integer from 1 to "
+                    + Integer.MAX_VALUE + "." + System.lineSeparator() + VIEW_PLAN_USAGE);
         }
     }
 

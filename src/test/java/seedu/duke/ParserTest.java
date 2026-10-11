@@ -1,15 +1,21 @@
 package seedu.duke;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.duke.MealPlanViewer.MealSummary;
+
 /**
- * Checks recipe parsing and rejection of invalid commands.
+ * Checks recipe and viewing-command parsing, including rejection of invalid arguments.
  */
 class ParserTest {
     private static final String VALID_COMMAND =
@@ -120,6 +126,88 @@ class ParserTest {
         assertThrows(MishMashException.class, () -> parser.parseCommand(""));
         assertThrows(MishMashException.class, () -> parser.parseCommand(null));
         assertThrows(MishMashException.class, () -> parser.parseCommand("unknown"));
+    }
+
+    @Test
+    void parseCommand_viewingCommands_createsCorrectCommandTypes() throws MishMashException {
+        assertInstanceOf(ViewPlanCommand.class, parser.parseCommand("view-plan"));
+        assertInstanceOf(ViewPlanCommand.class, parser.parseCommand("view-plan d/2"));
+        assertInstanceOf(ViewListCommand.class, parser.parseCommand("view-list"));
+    }
+
+    @Test
+    void parseCommand_viewPlanWhitespace_preservesSelectedDay() throws MishMashException {
+        Parser connectedParser = new Parser(() -> List.of(
+                List.of(new MealSummary("Rice", 200, 4, 45, 1)),
+                List.of(new MealSummary("Beans", 300, 20, 40, 5))), () -> Optional.empty());
+
+        String display = connectedParser.parseCommand(" \tview-plan\t d/ 002 \t").execute(new RecipeBook());
+
+        assertTrue(display.startsWith("================ Day 2 ================"));
+        assertTrue(display.contains("Meal 1: Beans"));
+        assertEquals(-1, display.indexOf("Rice"));
+    }
+
+    @Test
+    void parseCommand_invalidViewPlanArguments_includesUsage() {
+        String[] invalidArguments = {"2", "d/", "d/0", "d/-1", "d/+1", "d/1.5", "d/abc",
+            "d/2147483648", "d/1 d/2", "d/1 extra", "x/1", "D/1", "d/1 cal/200"};
+
+        for (String arguments : invalidArguments) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand("view-plan " + arguments), arguments);
+            assertTrue(exception.getMessage().contains(Parser.VIEW_PLAN_USAGE), arguments);
+        }
+    }
+
+    @Test
+    void parseCommand_viewListArguments_includesUsage() {
+        for (String arguments : List.of("extra", "d/1", "i/Rice:200g")) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand("view-list " + arguments));
+            assertTrue(exception.getMessage().contains(Parser.VIEW_LIST_USAGE));
+        }
+    }
+
+    @Test
+    void parseCommand_viewingCommands_readsDataOnlyWhenExecuted() throws MishMashException {
+        AtomicInteger sourceReads = new AtomicInteger();
+        Parser connectedParser = new Parser(() -> {
+            sourceReads.incrementAndGet();
+            return List.of();
+        }, () -> {
+            sourceReads.incrementAndGet();
+            return Optional.of(List.of());
+        });
+
+        Command allDays = connectedParser.parseCommand("view-plan");
+        Command selectedDay = connectedParser.parseCommand("view-plan d/1");
+        Command groceries = connectedParser.parseCommand(" \tview-list \t");
+        assertThrows(MishMashException.class, () -> connectedParser.parseCommand("view-plan d/0"));
+        assertThrows(MishMashException.class, () -> connectedParser.parseCommand("view-list extra"));
+        assertEquals(0, sourceReads.get());
+
+        allDays.execute(new RecipeBook());
+        selectedDay.execute(new RecipeBook());
+        assertTrue(groceries.execute(new RecipeBook()).endsWith("Total items to purchase: 0"));
+        assertEquals(3, sourceReads.get());
+    }
+
+    @Test
+    void parseCommand_largeDay_checksActivePlanDuringExecution() throws MishMashException {
+        Parser connectedParser = new Parser(() -> List.of(List.of(new MealSummary("Rice", 200, 4, 45, 1))),
+                () -> Optional.empty());
+        Command command = connectedParser.parseCommand("view-plan d/2147483647");
+
+        MishMashException exception = assertThrows(MishMashException.class, () -> command.execute(new RecipeBook()));
+
+        assertTrue(exception.getMessage().contains("Day number must be between 1 and 1."));
+    }
+
+    @Test
+    void constructor_nullDataSource_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> new Parser(null, () -> Optional.empty()));
+        assertThrows(NullPointerException.class, () -> new Parser(() -> List.of(), null));
     }
 }
 
