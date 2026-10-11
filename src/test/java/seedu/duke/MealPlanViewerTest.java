@@ -23,14 +23,16 @@ class MealPlanViewerTest {
             "--------------------------------------",
             "Daily Totals: 1650 kcal | Protein: 127g | Carbs: 150g | Fats: 55g",
             "======================================");
-    private static final String DAY_TWO_DISPLAY = String.join(System.lineSeparator(),
-            "================ Day 2 ================",
+    private static final String DAY_TWO_BODY = String.join(System.lineSeparator(),
             "Meal 1: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)",
             "Meal 2: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)",
             "Meal 3: Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)",
             "--------------------------------------",
             "Daily Totals: 1750 kcal | Protein: 135g | Carbs: 200g | Fats: 38g",
             "======================================");
+
+    private static final String DAY_TWO_DISPLAY =
+            "================ Day 2 ================" + System.lineSeparator() + DAY_TWO_BODY;
 
     private final MealPlanViewer viewer = new MealPlanViewer();
 
@@ -58,6 +60,29 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_daysWithDifferentMealCounts_restartsNumberingAndCalculatesTotals() {
+        List<List<MealSummary>> mealsByDay = List.of(
+                List.of(new MealSummary("Rice", 200, 4, 45, 1),
+                        new MealSummary("Beans", 300, 20, 40, 5)),
+                List.of(new MealSummary("Salmon", 550, 42, 20, 32)));
+        String expected = String.join(System.lineSeparator(),
+                "================ Day 1 ================",
+                "Meal 1: Rice (200 kcal | P: 4g, C: 45g, F: 1g)",
+                "Meal 2: Beans (300 kcal | P: 20g, C: 40g, F: 5g)",
+                "--------------------------------------",
+                "Daily Totals: 500 kcal | Protein: 24g | Carbs: 85g | Fats: 6g",
+                "======================================",
+                "",
+                "================ Day 2 ================",
+                "Meal 1: Salmon (550 kcal | P: 42g, C: 20g, F: 32g)",
+                "--------------------------------------",
+                "Daily Totals: 550 kcal | Protein: 42g | Carbs: 20g | Fats: 32g",
+                "======================================");
+
+        assertEquals(expected, viewer.view(mealsByDay));
+    }
+
+    @Test
     void view_firstDay_displaysOnlyFirstDay() {
         assertEquals(DAY_ONE_DISPLAY, viewer.view(createMealsByDay(), 1));
     }
@@ -65,6 +90,54 @@ class MealPlanViewerTest {
     @Test
     void view_lastDay_preservesDayNumberAndCountsRepeatedMeals() {
         assertEquals(DAY_TWO_DISPLAY, viewer.view(createMealsByDay(), 2));
+    }
+
+    @Test
+    void view_middleDay_displaysOnlySelectedDay() {
+        List<List<MealSummary>> originalMealsByDay = createMealsByDay();
+        List<List<MealSummary>> mealsByDay = List.of(originalMealsByDay.get(0), originalMealsByDay.get(1),
+                List.of(new MealSummary("Beans", 300, 20, 40, 5)));
+
+        assertEquals(DAY_TWO_DISPLAY, viewer.view(mealsByDay, 2));
+    }
+
+    @Test
+    void view_emptyDayBetweenMeals_preservesDayNumbers() {
+        List<List<MealSummary>> originalMealsByDay = createMealsByDay();
+        List<List<MealSummary>> mealsByDay =
+                List.of(originalMealsByDay.get(0), List.of(), originalMealsByDay.get(1));
+        String emptyDayDisplay = String.join(System.lineSeparator(),
+                "================ Day 2 ================",
+                "--------------------------------------",
+                "Daily Totals: 0 kcal | Protein: 0g | Carbs: 0g | Fats: 0g",
+                "======================================");
+        // The former second day's meals now belong to day 3, with the same nutrition totals.
+        String thirdDayDisplay =
+                "================ Day 3 ================" + System.lineSeparator() + DAY_TWO_BODY;
+        String expected = String.join(System.lineSeparator() + System.lineSeparator(),
+                DAY_ONE_DISPLAY, emptyDayDisplay, thirdDayDisplay);
+
+        assertEquals(expected, viewer.view(mealsByDay));
+        assertEquals(emptyDayDisplay, viewer.view(mealsByDay, 2));
+        assertEquals(thirdDayDisplay, viewer.view(mealsByDay, 3));
+    }
+
+    @Test
+    void view_differentPlans_displaysOnlyLatestInput() {
+        viewer.view(createMealsByDay());
+        viewer.view(createMealsByDay(), 2);
+        List<List<MealSummary>> replacementMealsByDay =
+                List.of(List.of(new MealSummary("Beans", 300, 20, 40, 5)));
+        String expected = String.join(System.lineSeparator(),
+                "================ Day 1 ================",
+                "Meal 1: Beans (300 kcal | P: 20g, C: 40g, F: 5g)",
+                "--------------------------------------",
+                "Daily Totals: 300 kcal | Protein: 20g | Carbs: 40g | Fats: 5g",
+                "======================================");
+
+        assertEquals(expected, viewer.view(replacementMealsByDay));
+        assertEquals(expected, viewer.view(replacementMealsByDay, 1));
+        assertEquals("No active meal plan. Use 'generate-plan' first.", viewer.view(List.of()));
     }
 
     @Test
@@ -144,12 +217,33 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_validDayWithAnotherNullDay_displaysOnlySelectedDay() {
+        // Viewing one day only needs the selected day's meals to be valid.
+        List<List<MealSummary>> mealsByDay = Arrays.asList(createMealsByDay().get(0), null);
+
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(mealsByDay, 1));
+    }
+
+    @Test
     void view_nullMeal_throwsNullPointerException() {
         List<MealSummary> meals = Arrays.asList(new MealSummary("Rice", 200, 4, 45, 1), null);
         List<List<MealSummary>> mealsByDay = List.of(meals);
 
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 1));
+    }
+
+    @Test
+    void view_validPlanAfterRejectedInput_displaysOnlyValidMealsAndTotals() {
+        // A meal is formatted before the null entry interrupts the failed call.
+        List<List<MealSummary>> invalidMealsByDay = List.of(
+                Arrays.asList(new MealSummary("Incomplete meal", 999, 90, 80, 70), null));
+        List<List<MealSummary>> validMealsByDay = List.of(createMealsByDay().get(0));
+
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidMealsByDay));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(validMealsByDay));
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidMealsByDay, 1));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(validMealsByDay, 1));
     }
 
     @Test

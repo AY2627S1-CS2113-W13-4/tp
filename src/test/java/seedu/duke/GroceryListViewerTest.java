@@ -26,27 +26,21 @@ class GroceryListViewerTest {
                 new GroceryItem("Whey Protein", new BigDecimal("60"), "g"),
                 new GroceryItem("Salmon Fillet", new BigDecimal("200"), "g"),
                 new GroceryItem("Mixed Greens", new BigDecimal("150"), "g"));
-        String expected = String.join(System.lineSeparator(),
-                "================ Grocery List ================",
+        String expected = createExpectedDisplay(7,
                 "[ ] Chicken Breast: 400g",
                 "[ ] White Rice: 300g",
                 "[ ] Olive Oil: 20ml",
                 "[ ] Rolled Oats: 100g",
                 "[ ] Whey Protein: 60g",
                 "[ ] Salmon Fillet: 200g",
-                "[ ] Mixed Greens: 150g",
-                "=============================================",
-                "Total items to purchase: 7");
+                "[ ] Mixed Greens: 150g");
 
         assertEquals(expected, viewer.view(groceries));
     }
 
     @Test
     void view_emptyList_displaysZeroItems() {
-        String expected = String.join(System.lineSeparator(),
-                "================ Grocery List ================",
-                "=============================================",
-                "Total items to purchase: 0");
+        String expected = createExpectedDisplay(0);
 
         assertEquals(expected, viewer.view(List.of()));
     }
@@ -54,13 +48,34 @@ class GroceryListViewerTest {
     @Test
     void view_singleItem_displaysPlainQuantityAndOneItem() {
         List<GroceryItem> groceries = List.of(new GroceryItem("Rice", new BigDecimal("1000.00"), "g"));
-        String expected = String.join(System.lineSeparator(),
-                "================ Grocery List ================",
-                "[ ] Rice: 1000g",
-                "=============================================",
-                "Total items to purchase: 1");
+        String expected = createExpectedDisplay(1,
+                "[ ] Rice: 1000g");
 
         assertEquals(expected, viewer.view(groceries));
+    }
+
+    @Test
+    void view_smallDecimalQuantity_preservesDisplayedPrecision() {
+        List<GroceryItem> groceries =
+                List.of(new GroceryItem("Saffron", new BigDecimal("0.00000100"), "g"));
+        String expected = createExpectedDisplay(1,
+                "[ ] Saffron: 0.000001g");
+
+        assertEquals(expected, viewer.view(groceries));
+    }
+
+    @Test
+    void view_differentLists_displaysOnlyLatestInputAndCount() {
+        viewer.view(List.of(new GroceryItem("Rice", new BigDecimal("200"), "g"),
+                new GroceryItem("Oil", new BigDecimal("10"), "ml")));
+        List<GroceryItem> replacementGroceries =
+                List.of(new GroceryItem("Beans", new BigDecimal("50"), "g"));
+        String expected = createExpectedDisplay(1,
+                "[ ] Beans: 50g");
+
+        assertEquals(expected, viewer.view(replacementGroceries));
+        String emptyDisplay = createExpectedDisplay(0);
+        assertEquals(emptyDisplay, viewer.view(List.of()));
     }
 
     @Test
@@ -69,13 +84,24 @@ class GroceryListViewerTest {
                 new GroceryItem("Rice", new BigDecimal("1.50"), "cups"),
                 new GroceryItem("Rice", new BigDecimal("200"), "g"),
                 new GroceryItem("Beans", BigDecimal.ZERO, "g"));
-        String expected = String.join(System.lineSeparator(),
-                "================ Grocery List ================",
+        String expected = createExpectedDisplay(3,
                 "[ ] Rice: 1.5cups",
                 "[ ] Rice: 200g",
-                "[ ] Beans: 0g",
-                "=============================================",
-                "Total items to purchase: 3");
+                "[ ] Beans: 0g");
+
+        assertEquals(expected, viewer.view(groceries));
+    }
+
+    @Test
+    void view_sameIngredientWithSameUnit_preservesSeparateEntriesAndCount() {
+        List<GroceryItem> groceries = List.of(
+                new GroceryItem("Rice", new BigDecimal("100"), "g"),
+                new GroceryItem("Beans", new BigDecimal("50"), "g"),
+                new GroceryItem("Rice", new BigDecimal("200"), "g"));
+        String expected = createExpectedDisplay(3,
+                "[ ] Rice: 100g",
+                "[ ] Beans: 50g",
+                "[ ] Rice: 200g");
 
         assertEquals(expected, viewer.view(groceries));
     }
@@ -106,5 +132,34 @@ class GroceryListViewerTest {
                 new GroceryItem("Rice", BigDecimal.ONE, "g"), null);
 
         assertThrows(NullPointerException.class, () -> viewer.view(groceries));
+    }
+
+    @Test
+    void view_validListAfterRejectedInput_displaysOnlyValidItemsAndCount() {
+        // An item is formatted before the null entry interrupts the failed call.
+        List<GroceryItem> invalidGroceries = Arrays.asList(
+                new GroceryItem("Rice", new BigDecimal("200"), "g"), null);
+        List<GroceryItem> validGroceries = List.of(new GroceryItem("Beans", new BigDecimal("50"), "g"));
+        String expected = createExpectedDisplay(1,
+                "[ ] Beans: 50g");
+
+        assertThrows(NullPointerException.class, () -> viewer.view(invalidGroceries));
+        assertEquals(expected, viewer.view(validGroceries));
+    }
+
+    /**
+     * Joins the expected display frame with literal item lines and an explicitly expected count.
+     *
+     * @param expectedItemCount The expected number of supplied entries.
+     * @param itemLines The expected item text in display order.
+     * @return The complete expected grocery display.
+     */
+    private String createExpectedDisplay(int expectedItemCount, String... itemLines) {
+        List<String> lines = new ArrayList<>();
+        lines.add("================ Grocery List ================");
+        lines.addAll(List.of(itemLines));
+        lines.add("=============================================");
+        lines.add("Total items to purchase: " + expectedItemCount);
+        return String.join(System.lineSeparator(), lines);
     }
 }
