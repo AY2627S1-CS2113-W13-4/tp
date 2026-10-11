@@ -7,14 +7,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Combines recipe ingredients into a grocery list for planned meals. */
+/**
+ * Combines recipe ingredients into a grocery list for planned meals.
+ */
 public class GroceryListGenerator {
     /**
      * Combines quantities for ingredients with the same name and unit.
      * The input should contain the ingredients from every recipe in the active meal plan.
+     * Names and units are matched exactly, and the input list and its items are left unchanged.
      *
      * @param ingredients ingredients required by the planned meals
-     * @return combined grocery items in the order each ingredient first appears
+     * @return an unmodifiable list of combined grocery items in the order each ingredient first appears
+     * @throws NullPointerException if the input list or any ingredient is null
      */
     public List<GroceryItem> generate(List<GroceryItem> ingredients) {
         Objects.requireNonNull(ingredients, "ingredients");
@@ -33,7 +37,9 @@ public class GroceryListGenerator {
         return List.copyOf(groceryList);
     }
 
-    /** Identifies an ingredient by its name and unit so incompatible units stay separate. */
+    /**
+     * Identifies an ingredient by its name and unit so incompatible units stay separate.
+     */
     private record ItemKey(String name, String unit) {
     }
 }
