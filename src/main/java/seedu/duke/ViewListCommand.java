@@ -10,6 +10,13 @@ import java.util.function.Supplier;
  */
 public class ViewListCommand implements Command {
     /**
+     * Describes the command's syntax without arguments.
+     */
+    public static final String USAGE = "Format: view-list";
+
+    private static final String NO_LIST_MESSAGE = "No grocery list generated. Use 'generate-list' first.";
+
+    /**
      * Reads the current list when the command executes; an empty Optional means no list has been generated.
      */
     private final Supplier<Optional<List<GroceryItem>>> groceryListSource;
@@ -25,11 +32,17 @@ public class ViewListCommand implements Command {
         this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
     }
 
+    /**
+     * Displays the latest supplied groceries, including a present list with zero items.
+     *
+     * @param recipeBook The shared command context; viewing does not read or modify recipes.
+     * @return The formatted list or a prompt when no list has been generated.
+     */
     @Override
     public String execute(RecipeBook recipeBook) {
         Optional<List<GroceryItem>> groceries = groceryListSource.get();
         if (groceries.isEmpty()) {
-            return "No grocery list generated. Use 'generate-list' first.";
+            return NO_LIST_MESSAGE;
         }
         return new GroceryListViewer().view(groceries.get());
     }

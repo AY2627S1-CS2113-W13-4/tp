@@ -11,6 +11,11 @@ import seedu.duke.MealPlanViewer.MealSummary;
  */
 public class ViewPlanCommand implements Command {
     /**
+     * Describes the command's optional day argument.
+     */
+    public static final String USAGE = "Format: view-plan [d/DAY_NUMBER]";
+
+    /**
      * Reads the current plan at execution time; an empty list means there is no active plan.
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
@@ -27,7 +32,7 @@ public class ViewPlanCommand implements Command {
      */
     public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource) {
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
-        this.dayNumber = null;
+        dayNumber = null;
     }
 
     /**
@@ -45,6 +50,13 @@ public class ViewPlanCommand implements Command {
         this.dayNumber = dayNumber;
     }
 
+    /**
+     * Displays the latest supplied plan, checking the selected day against its current size.
+     *
+     * @param recipeBook The shared command context; viewing does not read or modify recipes.
+     * @return The formatted plan or a prompt when no plan is available.
+     * @throws MishMashException If the selected day exceeds the active plan's size.
+     */
     @Override
     public String execute(RecipeBook recipeBook) throws MishMashException {
         List<List<MealSummary>> mealsByDay = mealPlanSource.get();
@@ -54,7 +66,7 @@ public class ViewPlanCommand implements Command {
         }
         if (dayNumber > mealsByDay.size()) {
             throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + "."
-                    + System.lineSeparator() + Parser.VIEW_PLAN_USAGE);
+                    + System.lineSeparator() + USAGE);
         }
         return viewer.view(mealsByDay, dayNumber);
     }

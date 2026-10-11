@@ -1,6 +1,7 @@
 package seedu.duke;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,18 +21,18 @@ import seedu.duke.MealPlanViewer.MealSummary;
 class ParserTest {
     private static final String VALID_COMMAND =
             "add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15"
-                + " i/Chicken Breast:200g i/White Rice:150g";
+            + " i/Chicken Breast:200g i/White Rice:150g";
 
     private final Parser parser = new Parser();
 
     @Test
     void parseCommand_validInput_preservesRecipeFields() throws MishMashException {
-        RecipeBook book = new RecipeBook();
+        RecipeBook recipeBook = new RecipeBook();
 
-        parser.parseCommand(VALID_COMMAND).execute(book);
+        parser.parseCommand(VALID_COMMAND).execute(recipeBook);
 
-        assertEquals(1, book.getRecipes().size());
-        Recipe recipe = book.getRecipes().get(0);
+        assertEquals(1, recipeBook.getRecipes().size());
+        Recipe recipe = recipeBook.getRecipes().get(0);
         assertEquals("Chicken and Rice", recipe.getName());
         assertEquals(650, recipe.getCalories());
         assertEquals(50, recipe.getProtein());
@@ -45,14 +46,14 @@ class ParserTest {
 
     @Test
     void parseCommand_reorderedFields_acceptsDecimalIngredient() throws MishMashException {
-        RecipeBook book = new RecipeBook();
+        RecipeBook recipeBook = new RecipeBook();
 
         parser.parseCommand("add-recipe i/Olive Oil:2.5ml f/2 c/0 p/0 cal/20 n/Oil")
-                .execute(book);
+                .execute(recipeBook);
 
-        assertEquals("Oil", book.getRecipes().get(0).getName());
+        assertEquals("Oil", recipeBook.getRecipes().get(0).getName());
         assertEquals(new BigDecimal("2.5"),
-                book.getRecipes().get(0).getIngredients().get(0).getQuantity());
+                recipeBook.getRecipes().get(0).getIngredients().get(0).getQuantity());
     }
 
     @Test
@@ -105,20 +106,20 @@ class ParserTest {
 
     @Test
     void parseCommand_invalidBetweenValid_preservesRecipeBook() throws MishMashException {
-        RecipeBook book = new RecipeBook();
-        parser.parseCommand(VALID_COMMAND).execute(book);
+        RecipeBook recipeBook = new RecipeBook();
+        parser.parseCommand(VALID_COMMAND).execute(recipeBook);
 
         assertThrows(MishMashException.class,
-                () -> parser.parseCommand(VALID_COMMAND + " i/Broken").execute(book));
+                () -> parser.parseCommand(VALID_COMMAND + " i/Broken").execute(recipeBook));
 
-        assertEquals(1, book.getRecipes().size());
+        assertEquals(1, recipeBook.getRecipes().size());
 
         parser.parseCommand(VALID_COMMAND.replace("Chicken and Rice", "Second recipe"))
-                .execute(book);
+                .execute(recipeBook);
 
-        assertEquals(2, book.getRecipes().size());
-        assertEquals("Chicken and Rice", book.getRecipes().get(0).getName());
-        assertEquals("Second recipe", book.getRecipes().get(1).getName());
+        assertEquals(2, recipeBook.getRecipes().size());
+        assertEquals("Chicken and Rice", recipeBook.getRecipes().get(0).getName());
+        assertEquals("Second recipe", recipeBook.getRecipes().get(1).getName());
     }
 
     @Test
@@ -145,7 +146,7 @@ class ParserTest {
 
         assertTrue(display.startsWith("================ Day 2 ================"));
         assertTrue(display.contains("Meal 1: Beans"));
-        assertEquals(-1, display.indexOf("Rice"));
+        assertFalse(display.contains("Rice"));
     }
 
     @Test
@@ -171,26 +172,26 @@ class ParserTest {
 
     @Test
     void parseCommand_viewingCommands_readsDataOnlyWhenExecuted() throws MishMashException {
-        AtomicInteger sourceReads = new AtomicInteger();
+        AtomicInteger sourceReadCount = new AtomicInteger();
         Parser connectedParser = new Parser(() -> {
-            sourceReads.incrementAndGet();
+            sourceReadCount.incrementAndGet();
             return List.of();
         }, () -> {
-            sourceReads.incrementAndGet();
+            sourceReadCount.incrementAndGet();
             return Optional.of(List.of());
         });
 
-        Command allDays = connectedParser.parseCommand("view-plan");
-        Command selectedDay = connectedParser.parseCommand("view-plan d/1");
-        Command groceries = connectedParser.parseCommand(" \tview-list \t");
+        Command allDaysCommand = connectedParser.parseCommand("view-plan");
+        Command selectedDayCommand = connectedParser.parseCommand("view-plan d/1");
+        Command groceryCommand = connectedParser.parseCommand(" \tview-list \t");
         assertThrows(MishMashException.class, () -> connectedParser.parseCommand("view-plan d/0"));
         assertThrows(MishMashException.class, () -> connectedParser.parseCommand("view-list extra"));
-        assertEquals(0, sourceReads.get());
+        assertEquals(0, sourceReadCount.get());
 
-        allDays.execute(new RecipeBook());
-        selectedDay.execute(new RecipeBook());
-        assertTrue(groceries.execute(new RecipeBook()).endsWith("Total items to purchase: 0"));
-        assertEquals(3, sourceReads.get());
+        allDaysCommand.execute(new RecipeBook());
+        selectedDayCommand.execute(new RecipeBook());
+        assertTrue(groceryCommand.execute(new RecipeBook()).endsWith("Total items to purchase: 0"));
+        assertEquals(3, sourceReadCount.get());
     }
 
     @Test
@@ -199,7 +200,8 @@ class ParserTest {
                 () -> Optional.empty());
         Command command = connectedParser.parseCommand("view-plan d/2147483647");
 
-        MishMashException exception = assertThrows(MishMashException.class, () -> command.execute(new RecipeBook()));
+        MishMashException exception = assertThrows(MishMashException.class,
+                () -> command.execute(new RecipeBook()));
 
         assertTrue(exception.getMessage().contains("Day number must be between 1 and 1."));
     }
@@ -210,4 +212,3 @@ class ParserTest {
         assertThrows(NullPointerException.class, () -> new Parser(() -> List.of(), null));
     }
 }
-
