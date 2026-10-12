@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,8 +19,16 @@ public class Parser {
     public static final String ADD_RECIPE_USAGE =
         "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
                 + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+    /**
+     * Describes how to choose the recipe to delete.
+     */
+    public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
     private static final String ADD_RECIPE_COMMAND = "add-recipe";
+    private static final String DELETE_RECIPE_COMMAND = "delete-recipe";
+    // Shown when the command word itself is missing or unknown, so the user sees every command.
+    private static final String ALL_COMMANDS_USAGE =
+            ADD_RECIPE_USAGE + System.lineSeparator() + DELETE_RECIPE_USAGE;
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
     // Recognise unknown prefixes too, so they cannot become part of a name.
@@ -39,21 +48,65 @@ public class Parser {
      */
     public Command parseCommand(String input) throws MishMashException {
         if (input == null || input.isBlank()) {
-            throw new MishMashException("Enter a command.");
+            throw new MishMashException("Enter a command." + System.lineSeparator() + ALL_COMMANDS_USAGE);
         }
 
         String[] parts = input.trim().split("\\s+", 2);
-        if (!parts[0].equals(ADD_RECIPE_COMMAND)) {
-            throw new MishMashException("Unknown command: " + parts[0]);
+        String arguments = parts.length == 2 ? parts[1] : "";
+
+        switch (parts[0]) {
+        case ADD_RECIPE_COMMAND:
+            return parseWithUsage(ADD_RECIPE_USAGE, () -> parseAddRecipe(arguments));
+        case DELETE_RECIPE_COMMAND:
+            return parseWithUsage(DELETE_RECIPE_USAGE, () -> parseDeleteRecipe(arguments));
+        default:
+            throw new MishMashException("Unknown command: " + parts[0]
+                    + System.lineSeparator() + ALL_COMMANDS_USAGE);
+        }
+    }
+
+    /**
+     * Runs a command-specific parser and attaches that command's usage to any argument error,
+     * so the user is shown the format of the command they actually typed.
+     *
+     * @param usage The format description of the command being parsed.
+     * @param parse The parser for the command's arguments; it reports problems with IllegalArgumentException.
+     * @return The validated command.
+     * @throws MishMashException If the arguments are invalid.
+     */
+    private Command parseWithUsage(String usage, Supplier<Command> parse) throws MishMashException {
+        try {
+            return parse.get();
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage() + System.lineSeparator() + usage);
+        }
+    }
+
+    /**
+     * Reads the single recipe index that follows {@code delete-recipe}.
+     *
+     * @param arguments The arguments following the command word.
+     * @return The command that deletes the recipe at that position.
+     */
+    private Command parseDeleteRecipe(String arguments) {
+        if (arguments.isBlank()) {
+            throw new IllegalArgumentException("Recipe index is required.");
+        }
+        // Digits only: this also rejects signs, decimals, and extra words such as "1 2".
+        if (!arguments.matches("[0-9]+")) {
+            throw new IllegalArgumentException("Recipe index must be a single positive whole number.");
         }
 
-        String arguments = parts.length == 2 ? parts[1] : "";
+        int index;
         try {
-            return parseAddRecipe(arguments);
-        } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + ADD_RECIPE_USAGE);
+            index = Integer.parseInt(arguments);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Recipe index must not exceed " + Integer.MAX_VALUE + ".");
         }
+        if (index < 1) {
+            throw new IllegalArgumentException("Recipe index must be at least 1.");
+        }
+        return new DeleteRecipeCommand(index);
     }
 
     /**
