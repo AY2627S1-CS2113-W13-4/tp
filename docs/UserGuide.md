@@ -70,13 +70,13 @@ Click a task to jump directly to its instructions. Commands marked **pending** a
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Pending; add at least three recipes. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
-| [Generate groceries](#generating-a-grocery-list) | `generate-list` | Pending; generate a meal plan first. |
+| [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |
 | [Exit](#exiting-mishmash) | `bye` | Session data will be cleared. |
 
 ### The Meal Prep Workflow
 
-Once the generation commands are available, use this sequence:
+Use this sequence to generate meals and their groceries:
 
 1. **Add at least three recipes** with `add-recipe`.
 2. **Generate meals** with `generate-plan d/3`.
@@ -263,9 +263,7 @@ The application remains open. Enter `view-plan d/2` to select a valid day. If th
 
 ## Generating a Grocery List
 
-<!-- OWNER: Justin. Ingredient combining exists; confirm the command and viewing connection. Cover exact names and units, decimals, different units, replacement, missing plan, and unexpected arguments. -->
-
-**Purpose:** {Explain how the active plan's ingredients are combined.}
+Combines the ingredients of every meal in the active plan into one shopping list.
 
 **Format:**
 
@@ -273,23 +271,56 @@ The application remains open. Enter `view-plan d/2` to select a valid day. If th
 generate-list
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+**Before You Start:** Add at least three recipes and successfully run `generate-plan d/1`
+(or choose another supported number of days).
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:**
 
-**Result:** {Show the actual output from the application.}
+```text
+generate-list
+```
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+**Result:**
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+```text
+Grocery list generated. Use 'view-list' to view it.
+```
+
+**Rules:**
+
+- This command takes no arguments and uses every day of the current meal plan.
+- Each recipe contributes its ingredients every time it appears, including on different days.
+- Quantities are combined only when both ingredient names and units match exactly after trimming.
+  For example, `Rice:0.1g` and `Rice:0.2g` become `Rice:0.3g`, while `Rice:1kg` stays separate.
+  `Rice` and `rice` are also separate. Units are not converted.
+- Items follow their first appearance in the meal plan. Generation leaves recipes and planned meals unchanged.
+- Running `generate-list` again replaces the stored grocery list instead of accumulating previous totals.
+- A successful replacement meal plan clears the old grocery list. A failed plan generation preserves it.
+- The list is kept only for the current session. Use `view-list` to inspect it.
+
+**Errors and recovery:**
+
+Without an active meal plan, the command displays:
+
+```text
+No active meal plan. Use 'generate-plan' first.
+```
+
+Generate a plan and then retry `generate-list`. Unexpected arguments such as `generate-list d/1` display:
+
+```text
+Error: generate-list does not accept arguments.
+Format: generate-list
+Please enter another command, or type 'bye' to exit.
+```
+
+Retry without arguments. Invalid syntax does not change an existing grocery list.
 
 ## Viewing a Grocery List
 
-<!-- OWNER: Samantha. Completed viewing documentation. Recheck availability after grocery generation is integrated. -->
-
 Displays the grocery list that has already been generated, including each ingredient's quantity and unit. Viewing does not generate or update the list.
 
-**Before You Start:** Generate a meal plan and then run `generate-list`. Your build must support grocery-list generation connected to viewing.
+**Before You Start:** Generate a meal plan and then run `generate-list`.
 
 **Format:**
 
