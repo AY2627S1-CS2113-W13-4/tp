@@ -13,7 +13,8 @@ public class MishMash {
      */
     public static void main(String[] args) {
         RecipeBook recipeBook = new RecipeBook();
-        Parser parser = new Parser();
+        Model model = new Model();
+        Parser parser = new Parser(model);
 
         try (Scanner scanner = new Scanner(System.in)) {
             MishMash.greet(scanner);
@@ -33,7 +34,8 @@ public class MishMash {
                     System.out.println(command.execute(recipeBook));
                 } catch (MishMashException e) {
                     System.out.println("Error: " + e.getMessage());
-                    if (!e.getMessage().contains(Parser.ADD_RECIPE_USAGE)) {
+                    if (!e.getMessage().contains(Parser.ADD_RECIPE_USAGE)
+                            && !input.matches("(?:generate-list|view-list)(?:\\s.*)?")) {
                         System.out.println(Parser.ADD_RECIPE_USAGE);
                     }
                     System.out.println("Please enter another command, or type 'bye' to exit.");

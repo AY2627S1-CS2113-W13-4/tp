@@ -1,7 +1,7 @@
 package seedu.duke;
 
 /**
- * Represents an action that operates on the recipe book.
+ * Represents an action that operates on application data.
  */
 public interface Command {
     /**
@@ -9,6 +9,7 @@ public interface Command {
      *
      * @param recipeBook The recipe book to update.
      * @return The feedback to display to the user.
+     * @throws MishMashException If the required application data is unavailable.
      */
-    String execute(RecipeBook recipeBook);
+    String execute(RecipeBook recipeBook) throws MishMashException;
 }

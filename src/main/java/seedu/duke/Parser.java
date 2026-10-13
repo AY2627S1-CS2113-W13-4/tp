@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +21,7 @@ public class Parser {
         "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
                 + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
 
+    private static final Logger LOGGER = Logger.getLogger(Parser.class.getName());
     private static final String ADD_RECIPE_COMMAND = "add-recipe";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
@@ -29,6 +32,25 @@ public class Parser {
     // Ingredient quantities may be decimal, while units contain letters.
     private static final Pattern INGREDIENT_PATTERN =
         Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
+
+    private final Model model;
+
+    /**
+     * Creates a parser with an empty session model.
+     */
+    public Parser() {
+        this(new Model());
+    }
+
+    /**
+     * Creates a parser sharing the model updated by the meal-plan generator.
+     *
+     * @param model The shared meal plan and grocery-list state.
+     * @throws NullPointerException If the model is null.
+     */
+    public Parser(Model model) {
+        this.model = Objects.requireNonNull(model, "model");
+    }
 
     /**
      * Parses input without modifying the recipe book.
@@ -43,11 +65,20 @@ public class Parser {
         }
 
         String[] parts = input.trim().split("\\s+", 2);
+        String arguments = parts.length == 2 ? parts[1] : "";
+        if (parts[0].equals("generate-list") || parts[0].equals("view-list")) {
+            if (!arguments.isBlank()) {
+                LOGGER.warning("Grocery command rejected: unexpected arguments.");
+                throw new MishMashException("This command takes no arguments."
+                        + System.lineSeparator() + "Format: " + parts[0]);
+            }
+            return parts[0].equals("generate-list")
+                    ? new GenerateListCommand(model) : new ViewListCommand(model);
+        }
         if (!parts[0].equals(ADD_RECIPE_COMMAND)) {
             throw new MishMashException("Unknown command: " + parts[0]);
         }
 
-        String arguments = parts.length == 2 ? parts[1] : "";
         try {
             return parseAddRecipe(arguments);
         } catch (IllegalArgumentException e) {

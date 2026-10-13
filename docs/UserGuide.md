@@ -29,6 +29,22 @@ Example of usage:
 
 `todo n/Refactor the User Guide to remove passive voice d/13/04/2020`
 
+### Generating and viewing groceries
+
+`generate-list` combines the ingredients of every meal in the active meal plan.
+Repeated recipes contribute their ingredients each time they appear. Ingredients with exactly
+matching names and units are combined; different units remain separate without conversion.
+
+`view-list` displays the stored result with unchecked markers and the total number of item entries.
+Both commands take no arguments. Generate the list before viewing it. Replacing the meal plan
+clears the old grocery list, so run `generate-list` again afterwards. Lists last for the current session.
+
+**Integration status:** The grocery commands are wired, but `generate-plan` is not yet implemented
+in this checkout. They become usable with planned meals when the meal-plan generator supplies its result.
+Until then, `generate-list` reports that there is no active meal plan.
+
+Diagnostic logs go to standard error, separate from the normal command output.
+
 ## FAQ
 
 **Q**: How do I transfer my data to another computer? 

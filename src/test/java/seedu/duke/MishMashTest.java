@@ -21,6 +21,19 @@ import org.junit.jupiter.api.TestFactory;
  */
 
 class MishMashTest {
+    @Test
+    void main_groceryCommandsWithoutPlan_recoversWithoutRecipeUsage() {
+        String output = runCli(String.join(System.lineSeparator(),
+                "Tester", "generate-list", "view-list extra", "view-list", "bye"));
+
+        assertTrue(output.contains("No active meal plan. Use 'generate-plan' first."), output);
+        assertTrue(output.contains("Format: view-list"), output);
+        assertTrue(output.contains("No grocery list generated. Use 'generate-list' first."), output);
+        assertEquals(3, output.split("Error: ", -1).length - 1, output);
+        assertEquals(0, output.split("Format: add-recipe", -1).length - 1, output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
     @TestFactory
     Stream<DynamicTest> main_invalidRecipe_recoversForNextCommand() throws IOException {
         return AddRecipeEdgeCaseTest.invalidCases().stream().map(testCase ->
