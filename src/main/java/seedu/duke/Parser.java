@@ -38,7 +38,7 @@ public class Parser {
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, GENERATE_PLAN_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
 
     private static final String COMMAND_ADD_RECIPE = "add-recipe";
     private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
