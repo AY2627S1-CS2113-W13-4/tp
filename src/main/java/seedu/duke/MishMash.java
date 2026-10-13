@@ -35,7 +35,8 @@ public class MishMash {
         try (Scanner scanner = new Scanner(System.in)) {
             greet(scanner);
             System.out.println("Welcome to MishMash!");
-            System.out.println("Use 'add-recipe', 'view-plan', or 'view-list', or type 'bye' to exit.");
+            System.out.println("Use 'add-recipe', 'generate-plan', 'view-plan', or 'view-list',"
+                    + " or type 'bye' to exit.");
             readCommands(scanner, parser, recipeBook);
         }
     }
