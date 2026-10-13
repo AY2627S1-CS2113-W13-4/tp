@@ -2,6 +2,7 @@ package seedu.duke;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -64,5 +65,14 @@ class AddRecipeCommandTest {
         AddRecipeCommand command = new AddRecipeCommand(createRecipe());
 
         assertThrows(NullPointerException.class, () -> command.execute(null));
+    }
+
+    @Test
+    void confirmationPrompt_addRecipe_asksNothing() throws MishMashException {
+        AddRecipeCommand command = new AddRecipeCommand(createRecipe());
+        RecipeBook book = new RecipeBook();
+
+        assertFalse(command.confirmationPrompt(book).isPresent());
+        assertEquals(0, book.getRecipes().size());
     }
 }

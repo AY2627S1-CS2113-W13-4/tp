@@ -153,7 +153,6 @@ class ParserTest {
     void parseCommand_invalidViewPlanArguments_includesUsage() {
         String[] invalidArguments = {"2", "d/", "d/0", "d/-1", "d/+1", "d/1.5", "d/abc",
             "d/2147483648", "d/1 d/2", "d/1 extra", "x/1", "D/1", "d/1 cal/200"};
-
         for (String arguments : invalidArguments) {
             MishMashException exception = assertThrows(MishMashException.class,
                     () -> parser.parseCommand("view-plan " + arguments), arguments);
@@ -210,5 +209,125 @@ class ParserTest {
     void constructor_nullDataSource_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new Parser(null, () -> Optional.empty()));
         assertThrows(NullPointerException.class, () -> new Parser(() -> List.of(), null));
+    }
+
+    @Test
+    void parseCommand_validDeleteIndex_deletesThatRecipeWhenExecuted() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        String result = parser.parseCommand("delete-recipe 2").execute(book);
+
+        assertEquals("Recipe deleted!" + System.lineSeparator() + "Second recipe"
+                + System.lineSeparator() + "Recipes remaining: 1", result);
+        assertEquals(1, book.getRecipes().size());
+        assertEquals("Chicken and Rice", book.getRecipes().get(0).getName());
+    }
+
+    @Test
+    void parseCommand_deleteIndex_asksForConfirmationNamingTheRecipe() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        Command command = parser.parseCommand("delete-recipe 1");
+
+        assertEquals("Are you sure you want to delete recipe 1: Chicken and Rice? (y/n)",
+                command.confirmationPrompt(book).orElseThrow());
+        assertEquals(2, book.getRecipes().size());
+    }
+
+    @Test
+    void parseCommand_deleteWithExtraWhitespaceOrLeadingZeros_acceptsIndex() throws MishMashException {
+        String[] inputs = {"  delete-recipe \t 1  ", "delete-recipe 0001", "delete-recipe    1"};
+
+        for (String input : inputs) {
+            RecipeBook book = createBookWithTwoRecipes();
+
+            parser.parseCommand(input).execute(book);
+
+            assertEquals(1, book.getRecipes().size(), input);
+            assertEquals("Second recipe", book.getRecipes().get(0).getName(), input);
+        }
+    }
+
+    @Test
+    void parseCommand_invalidDeleteArguments_throwsWithDeleteUsageOnly() {
+        String[][] invalidCases = {
+                {"delete-recipe", "Recipe index is required."},
+                {"delete-recipe 0", "Recipe index must be at least 1."},
+                {"delete-recipe 000", "Recipe index must be at least 1."},
+                {"delete-recipe -1", "Recipe index must be a single positive whole number."},
+                {"delete-recipe +1", "Recipe index must be a single positive whole number."},
+                {"delete-recipe 1.5", "Recipe index must be a single positive whole number."},
+                {"delete-recipe abc", "Recipe index must be a single positive whole number."},
+                {"delete-recipe 1 2", "Recipe index must be a single positive whole number."},
+                {"delete-recipe 1,2", "Recipe index must be a single positive whole number."},
+                {"delete-recipe n/Rice", "Recipe index must be a single positive whole number."},
+                {"delete-recipe 2147483648", "Recipe index must not exceed 2147483647."}
+        };
+
+        for (String[] invalidCase : invalidCases) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand(invalidCase[0]), invalidCase[0]);
+
+            String message = exception.getMessage();
+            assertTrue(message.contains(invalidCase[1]), message);
+            assertTrue(message.contains(Parser.DELETE_RECIPE_USAGE), message);
+            assertFalse(message.contains("Format: add-recipe"), message);
+        }
+    }
+
+    @Test
+    void parseCommand_largestIntIndex_parsesAndFailsOnlyWhenExecuted() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        Command command = parser.parseCommand("delete-recipe 2147483647");
+
+        MishMashException exception = assertThrows(MishMashException.class,
+                () -> command.execute(book));
+        assertEquals("Recipe index must be between 1 and 2.", exception.getMessage());
+        assertEquals(2, book.getRecipes().size());
+    }
+
+    @Test
+    void parseCommand_deleteLookalikes_areUnknownCommands() {
+        String[] inputs = {"delete-recipes", "Delete-Recipe 1", "delete 1"};
+
+        for (String input : inputs) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand(input), input);
+
+            assertTrue(exception.getMessage().startsWith("Unknown command: "), input);
+        }
+    }
+
+    @Test
+    void commandUsage_listsDeleteRecipeUsage() {
+        assertTrue(Parser.COMMAND_USAGE.contains(Parser.ADD_RECIPE_USAGE));
+        assertTrue(Parser.COMMAND_USAGE.contains(Parser.DELETE_RECIPE_USAGE));
+    }
+
+    @Test
+    void parseCommand_invalidAddRecipe_doesNotShowDeleteUsage() {
+        MishMashException exception = assertThrows(MishMashException.class,
+                () -> parser.parseCommand("add-recipe"));
+
+        assertTrue(exception.getMessage().contains(Parser.ADD_RECIPE_USAGE));
+        assertFalse(exception.getMessage().contains(Parser.DELETE_RECIPE_USAGE));
+    }
+
+    @Test
+    void parseCommand_addRecipe_needsNoConfirmation() throws MishMashException {
+        RecipeBook book = new RecipeBook();
+
+        assertFalse(parser.parseCommand(VALID_COMMAND).confirmationPrompt(book).isPresent());
+    }
+
+    /**
+     * Creates a book with "Chicken and Rice" at index 1 and "Second recipe" at index 2.
+     */
+    private RecipeBook createBookWithTwoRecipes() throws MishMashException {
+        RecipeBook book = new RecipeBook();
+        parser.parseCommand(VALID_COMMAND).execute(book);
+        parser.parseCommand(VALID_COMMAND.replace("Chicken and Rice", "Second recipe")).execute(book);
+        return book;
     }
 }
