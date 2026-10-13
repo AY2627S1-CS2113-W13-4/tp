@@ -8,7 +8,7 @@ Prerequisites: JDK 25 (use the exact version), update Intellij to the most recen
 
 1. **Ensure Intellij JDK 25 is defined as an SDK**, as described [here](https://www.jetbrains.com/help/idea/sdk.html#set-up-jdk) -- this step is not needed if you have used JDK 25 in a previous Intellij project.
 1. **Import the project _as a Gradle project_**, as described [here](https://se-education.org/guides/tutorials/intellijImportGradleProject.html).
-1. **Verify the setup**: After importing, locate `src/main/java/seedu/mishmash/MishMash.java`, right-click it, and choose `Run MishMash.main()`. You should see the MishMash banner and a prompt asking for your name. Enter your name, then use `add-recipe`, `view-plan`, or `view-list`. Type `bye` to exit.
+1. **Verify the setup**: After importing, locate `src/main/java/mishmash/MishMash.java`, right-click it, and choose `Run MishMash.main()`. You should see the MishMash banner and a prompt asking for your name. Enter your name, then use `add-recipe`, `view-plan`, or `view-list`. Type `bye` to exit.
 
 **Warning:** Keep the `src\main\java` folder as the root folder for Java files (i.e., don't rename those folders or move Java files to another folder outside of this folder path), as this is the default location some tools (e.g., Gradle) expect to find Java files.
 
@@ -22,7 +22,7 @@ Prerequisites: JDK 25 (use the exact version), update Intellij to the most recen
 
 ### JUnit tests
 
-* Tests live under `src/test/java/seedu/mishmash` and mirror the production packages. Run them with `./gradlew test` (`.\gradlew.bat test` on Windows).
+* Tests live under `src/test/java/mishmash` and mirror the production packages. Run them with `./gradlew test` (`.\gradlew.bat test` on Windows).
 * If you are new to JUnit, refer to the [JUnit Tutorial at se-education.org/guides](https://se-education.org/guides/tutorials/junit.html).
 
 ## Checkstyle

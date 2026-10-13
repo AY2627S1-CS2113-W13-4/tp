@@ -64,6 +64,15 @@
 
         <module name="AvoidStarImport"/>
 
+        <!-- Keep static, JDK, third-party, and application imports in consistent ordered groups. -->
+        <module name="ImportOrder">
+            <property name="groups" value="java,javax,org,mishmash"/>
+            <property name="option" value="top"/>
+            <property name="ordered" value="true"/>
+            <property name="separated" value="true"/>
+            <property name="sortStaticImportsAlphabetically" value="true"/>
+        </module>
+
         <!--
         NAMING CHECKS
         -->
@@ -269,6 +278,13 @@
         <!-- Checks the Javadoc's format for every class, enumeration and interface. -->
         <module name="JavadocType">
             <property name="allowMissingParamTags" value="true"/>
+        </module>
+
+        <!-- Require documentation on nontrivial methods, including private helpers. -->
+        <module name="MissingJavadocMethod">
+            <property name="scope" value="private"/>
+            <property name="allowMissingPropertyJavadoc" value="true"/>
+            <property name="minLineCount" value="2"/>
         </module>
 
         <!-- Checks the Javadoc's format for every method (excluding getters, setters and constructors). -->
