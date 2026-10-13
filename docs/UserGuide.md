@@ -4,8 +4,6 @@ MishMash is a command-line meal prep planner. Add your recipes, use them to plan
 
 **Start Here:** [Set up and launch](#quick-start) · [Find a command](#commands-at-a-glance) · [View meals](#viewing-a-meal-plan) · [View groceries](#viewing-a-grocery-list) · [Fix a problem](#troubleshooting)
 
-<!-- Team Draft - 13 October 2026:** Recipe addition and the viewing commands are implemented. Meal-plan generation and its connection to viewing are awaiting integration into the shared application. Recipe listing, recipe deletion, and the grocery-list generation command are still being completed. Examples involving these features describe the intended workflow; check the version you are running before trying them. -->
-
 <!-- TEAM: Update availability during development. Before publishing, replace this note with the release version and its supported features. -->
 
 ## Quick Start

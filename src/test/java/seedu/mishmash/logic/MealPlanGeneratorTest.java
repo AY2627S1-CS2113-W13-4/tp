@@ -1,0 +1,166 @@
+package seedu.mishmash.logic;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+
+import seedu.mishmash.model.DayPlan;
+import seedu.mishmash.model.MealPlan;
+import seedu.mishmash.model.NutritionTargets;
+import seedu.mishmash.model.Recipe;
+import seedu.mishmash.testutil.TestRecipes;
+
+/**
+ * Checks plan shape, repeatability with a seeded random source, target matching, and invalid input handling.
+ */
+class MealPlanGeneratorTest {
+    private static final List<Recipe> FIVE_RECIPES = List.of(
+            TestRecipes.recipe("Oatmeal", 500, 20, 80, 10),
+            TestRecipes.recipe("Chicken Rice", 600, 40, 70, 15),
+            TestRecipes.recipe("Salmon Bowl", 700, 45, 60, 25),
+            TestRecipes.recipe("Apple", 100, 1, 25, 0),
+            TestRecipes.recipe("Pizza", 1500, 50, 150, 70));
+
+    private static MealPlanGenerator seeded(long seed) {
+        return new MealPlanGenerator(new Random(seed));
+    }
+
+    private static List<String> mealNames(MealPlan plan) {
+        List<String> names = new ArrayList<>();
+        for (DayPlan day : plan.getDays()) {
+            day.getMeals().forEach(meal -> names.add(meal.getName()));
+        }
+        return names;
+    }
+
+    @Test
+    void generate_emptyRecipeBook_throwsIllegalArgumentException() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> seeded(1).generate(List.of(), 3, NutritionTargets.none()));
+        assertTrue(e.getMessage().contains("recipe book is empty"));
+    }
+
+    @Test
+    void generate_fewerThanThreeRecipes_throwsIllegalArgumentException() {
+        List<Recipe> two = FIVE_RECIPES.subList(0, 2);
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> seeded(1).generate(two, 3, NutritionTargets.none()));
+        assertTrue(e.getMessage().contains("at least 3 recipes"));
+    }
+
+    @Test
+    void generate_daysOutsideSupportedRange_throwsIllegalArgumentException() {
+        for (int days : new int[] {-1, 0, 8}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> seeded(1).generate(FIVE_RECIPES, days, NutritionTargets.none()));
+        }
+    }
+
+    @Test
+    void generate_nullArguments_throwNullPointerException() {
+        assertThrows(NullPointerException.class,
+                () -> seeded(1).generate(null, 3, NutritionTargets.none()));
+        assertThrows(NullPointerException.class, () -> seeded(1).generate(FIVE_RECIPES, 3, null));
+        assertThrows(NullPointerException.class, () -> new MealPlanGenerator(null));
+    }
+
+    @Test
+    void generate_noTargets_hasRequestedShape() {
+        for (int days = 1; days <= 7; days++) {
+            MealPlan plan = seeded(days).generate(FIVE_RECIPES, days, NutritionTargets.none());
+
+            assertEquals(days, plan.getNumberOfDays());
+            for (DayPlan day : plan.getDays()) {
+                assertEquals(3, day.getMeals().size());
+                assertEquals(3, new HashSet<>(day.getMeals()).size(), "meals within a day must differ");
+                assertTrue(FIVE_RECIPES.containsAll(day.getMeals()));
+            }
+        }
+    }
+
+    @Test
+    void generate_exactlyThreeRecipes_usesAllEachDay() {
+        List<Recipe> three = FIVE_RECIPES.subList(0, 3);
+        MealPlan plan = seeded(1).generate(three, 4, NutritionTargets.none());
+        for (DayPlan day : plan.getDays()) {
+            assertEquals(new HashSet<>(three), new HashSet<>(day.getMeals()));
+        }
+    }
+
+    @Test
+    void generate_sameSeed_samePlan() {
+        MealPlan first = seeded(42).generate(FIVE_RECIPES, 7, NutritionTargets.none());
+        MealPlan second = seeded(42).generate(FIVE_RECIPES, 7, NutritionTargets.none());
+        assertEquals(mealNames(first), mealNames(second));
+    }
+
+    @Test
+    void generate_calorieTarget_picksTheOnlyValidCombination() {
+        // Only Oatmeal + Chicken Rice + Salmon Bowl (1800 kcal) is within 15% of 1800.
+        NutritionTargets targets = new NutritionTargets(1800, null, null, null);
+        Set<Recipe> expected = Set.of(FIVE_RECIPES.get(0), FIVE_RECIPES.get(1), FIVE_RECIPES.get(2));
+
+        for (long seed = 0; seed < 10; seed++) {
+            MealPlan plan = seeded(seed).generate(FIVE_RECIPES, 5, targets);
+            for (DayPlan day : plan.getDays()) {
+                assertEquals(expected, new HashSet<>(day.getMeals()));
+            }
+        }
+    }
+
+    @Test
+    void generate_calorieAndMacroTargets_everyDayWithinTolerance() {
+        NutritionTargets targets = new NutritionTargets(1800, 100, 200, 50);
+        for (long seed = 0; seed < 10; seed++) {
+            MealPlan plan = seeded(seed).generate(FIVE_RECIPES, 7, targets);
+            plan.getDays().forEach(day -> assertWithinTolerance(targets, day));
+        }
+    }
+
+    @Test
+    void generate_largeRecipeBook_samplesAndStaysWithinTolerance() {
+        // 40 recipes give 9880 combinations, more than MAX_CANDIDATES, so the sampling path is used.
+        List<Recipe> recipes = new ArrayList<>();
+        for (int i = 1; i <= 40; i++) {
+            recipes.add(TestRecipes.recipe("Recipe " + i, i * 50, i * 3, i * 5, i * 2));
+        }
+        NutritionTargets targets = new NutritionTargets(2000, 120, null, null);
+
+        MealPlan plan = seeded(7).generate(recipes, 7, targets);
+        assertEquals(7, plan.getNumberOfDays());
+        for (DayPlan day : plan.getDays()) {
+            assertEquals(3, new HashSet<>(day.getMeals()).size());
+            assertWithinTolerance(targets, day);
+        }
+    }
+
+    @Test
+    void generate_unreachableTarget_throwsIllegalArgumentException() {
+        NutritionTargets targets = new NutritionTargets(10000, null, null, null);
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> seeded(1).generate(FIVE_RECIPES, 3, targets));
+        assertTrue(e.getMessage().contains("within 15%"));
+    }
+
+    private static void assertWithinTolerance(NutritionTargets targets, DayPlan day) {
+        assertWithin(targets.getCalories(), day.getTotalCalories());
+        assertWithin(targets.getProtein(), day.getTotalProtein());
+        assertWithin(targets.getCarbs(), day.getTotalCarbs());
+        assertWithin(targets.getFats(), day.getTotalFats());
+    }
+
+    private static void assertWithin(Integer target, long actual) {
+        if (target != null) {
+            assertTrue(Math.abs(actual - target) <= target * NutritionTargets.TOLERANCE,
+                    "expected " + actual + " to be within 15% of " + target);
+        }
+    }
+}
