@@ -20,3 +20,6 @@ _temp/
 text-ui-test/EXPECTED-UNIX.TXT
 
 .agents/
+
+# Application logs and their lock files
+/mishmash.*.log*
