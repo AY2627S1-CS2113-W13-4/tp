@@ -22,7 +22,12 @@ public class Parser {
      */
     public static final String ADD_RECIPE_USAGE =
             "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
-            + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+                    + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+
+    /**
+     * Describes how to choose the recipe to delete.
+     */
+    public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
@@ -31,9 +36,10 @@ public class Parser {
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
 
     private static final String COMMAND_ADD_RECIPE = "add-recipe";
+    private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
     private static final String COMMAND_VIEW_PLAN = "view-plan";
     private static final String COMMAND_VIEW_LIST = "view-list";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
@@ -99,6 +105,9 @@ public class Parser {
         if (parts[0].equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
         }
+        if (parts[0].equals(COMMAND_DELETE_RECIPE)) {
+            return parseDeleteRecipe(arguments);
+        }
         if (!parts[0].equals(COMMAND_ADD_RECIPE)) {
             throw new MishMashException("Unknown command: " + parts[0]);
         }
@@ -108,6 +117,50 @@ public class Parser {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + ADD_RECIPE_USAGE);
         }
+    }
+
+    /**
+     * Creates a command that deletes the recipe at the typed position.
+     *
+     * @param arguments The text after delete-recipe.
+     * @return A command that deletes the recipe at that position.
+     * @throws MishMashException If the index is missing or is not a positive whole number.
+     */
+    private Command parseDeleteRecipe(String arguments) throws MishMashException {
+        try {
+            return new DeleteRecipeCommand(parseRecipeIndex(arguments));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + DELETE_RECIPE_USAGE);
+        }
+    }
+
+    /**
+     * Reads the single recipe index that follows delete-recipe.
+     * Whether a recipe exists at that position is only known when the command runs.
+     *
+     * @param arguments The text after delete-recipe.
+     * @return The index, counting from 1.
+     */
+    private int parseRecipeIndex(String arguments) {
+        if (arguments.isBlank()) {
+            throw new IllegalArgumentException("Recipe index is required.");
+        }
+        // Digits only: this also rejects signs, decimals, and extra words such as "1 2".
+        if (!arguments.matches("[0-9]+")) {
+            throw new IllegalArgumentException("Recipe index must be a single positive whole number.");
+        }
+
+        int index;
+        try {
+            index = Integer.parseInt(arguments);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Recipe index must not exceed " + Integer.MAX_VALUE + ".");
+        }
+        if (index < 1) {
+            throw new IllegalArgumentException("Recipe index must be at least 1.");
+        }
+        return index;
     }
 
     /**
