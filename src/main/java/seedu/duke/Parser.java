@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Random;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,15 +32,18 @@ public class Parser {
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
+    public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
 
     /**
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
 
     private static final String COMMAND_ADD_RECIPE = "add-recipe";
     private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
+    private static final String COMMAND_GENERATE_PLAN = GeneratePlanParser.COMMAND_WORD;
+  
     private static final String COMMAND_VIEW_PLAN = "view-plan";
     private static final String COMMAND_VIEW_LIST = "view-list";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
@@ -55,7 +59,7 @@ public class Parser {
     private static final Pattern DAY_PATTERN = Pattern.compile("d/\\s*([0-9]+)");
 
     /**
-     * Supplies the active plan at command execution, allowing generation to connect its own data later.
+     * Supplies the active plan at command execution, so view-plan always shows the latest generated plan.
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
 
@@ -65,15 +69,30 @@ public class Parser {
     private final Supplier<Optional<List<GroceryItem>>> groceryListSource;
 
     /**
-     * Creates a parser with no generated data connected yet.
+     * Picks the meals for each generate-plan command.
+     */
+    private final MealPlanGenerator mealPlanGenerator;
+
+    /**
+     * Where generate-plan stores its plan; view-plan reads from the same object when built by the
+     * constructors that share it.
+     */
+    private final ActiveMealPlan activeMealPlan;
+
+    /**
+     * Creates the parser used by the application: generate-plan stores each plan in a new active plan
+     * that view-plan reads, and no grocery list is generated yet.
      */
     public Parser() {
-        this(() -> List.of(), () -> Optional.empty());
+        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), () -> Optional.empty());
     }
 
     /**
      * Connects viewing commands to the caller's existing data through functions called during execution.
      * An empty plan means no active plan; an empty Optional means no grocery list has been generated.
+     * Plans created by generate-plan on this parser are stored privately and are not visible to
+     * {@code mealPlanSource}; use {@link #Parser(MealPlanGenerator, ActiveMealPlan, Supplier)}
+     * to connect generate-plan and view-plan.
      *
      * @param mealPlanSource A function returning the active plan's meals grouped by day.
      * @param groceryListSource A function returning the generated grocery list, if available.
@@ -81,6 +100,29 @@ public class Parser {
      */
     public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource);
+    }
+
+    /**
+     * Connects generate-plan and view-plan through one shared active plan.
+     *
+     * @param mealPlanGenerator The generator used by generate-plan commands.
+     * @param activeMealPlan Where generate-plan stores its plan and view-plan reads it from.
+     * @param groceryListSource A function returning the generated grocery list, if available.
+     * @throws NullPointerException If any argument is null.
+     */
+    public Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan,
+            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+        this(mealPlanGenerator, activeMealPlan,
+                () -> activeMealPlan.get().map(MealPlan::toMealSummaries).orElse(List.of()),
+                groceryListSource);
+    }
+
+    private Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan,
+            Supplier<List<List<MealSummary>>> mealPlanSource,
+            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+        this.mealPlanGenerator = Objects.requireNonNull(mealPlanGenerator, "mealPlanGenerator");
+        this.activeMealPlan = Objects.requireNonNull(activeMealPlan, "activeMealPlan");
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
         this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
     }
@@ -105,6 +147,9 @@ public class Parser {
         if (parts[0].equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
         }
+        if (parts[0].equals(COMMAND_GENERATE_PLAN)) {
+            return parseGeneratePlan(arguments);
+        }
         if (parts[0].equals(COMMAND_DELETE_RECIPE)) {
             return parseDeleteRecipe(arguments);
         }
@@ -116,6 +161,27 @@ public class Parser {
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + ADD_RECIPE_USAGE);
+        }
+    }
+
+    /**
+     * Validates the days and optional nutrition targets of a generate-plan command.
+     * The plan itself is only generated, and stored, when the command executes.
+     *
+     * @param arguments The text after generate-plan.
+     * @return A command that generates a plan and makes it the active plan.
+     * @throws MishMashException If the arguments are invalid; the message always ends with the usage.
+     */
+    private Command parseGeneratePlan(String arguments) throws MishMashException {
+        try {
+            GeneratePlanRequest request = new GeneratePlanParser().parse(arguments);
+            return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan);
+        } catch (IllegalArgumentException e) {
+            String message = e.getMessage();
+            if (!message.contains(GENERATE_PLAN_USAGE)) {
+                message += System.lineSeparator() + GENERATE_PLAN_USAGE;
+            }
+            throw new MishMashException(message);
         }
     }
 

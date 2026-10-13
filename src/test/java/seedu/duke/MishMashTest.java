@@ -132,7 +132,7 @@ class MishMashTest {
                         "What is your name?",
                         "Hello Duke",
                         "Welcome to MishMash!",
-                        "Use 'add-recipe', 'view-plan', or 'view-list', or type 'bye' to exit.",
+                        "Use 'add-recipe', 'generate-plan', 'view-plan', or 'view-list', or type 'bye' to exit.",
                         "Error: Expected prefixed recipe arguments.",
                         Parser.ADD_RECIPE_USAGE,
                         "Please enter another command, or type 'bye' to exit.",
