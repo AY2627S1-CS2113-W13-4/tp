@@ -60,7 +60,7 @@ public class MishMash {
             LOGGER.info("MishMash started");
             greet(scanner);
             System.out.println("Welcome to MishMash!");
-            System.out.println("Use 'add-recipe', 'generate-plan', 'view-plan', or 'view-list',"
+            System.out.println("Use 'add-recipe', 'generate-plan', 'view-plan', 'generate-list', or 'view-list',"
                     + " or type 'bye' to exit.");
             readCommands(scanner, parser, recipeBook);
         } finally {

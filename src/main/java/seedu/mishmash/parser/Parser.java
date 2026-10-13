@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import seedu.mishmash.command.AddRecipeCommand;
 import seedu.mishmash.command.Command;
 import seedu.mishmash.command.DeleteRecipeCommand;
+import seedu.mishmash.command.GenerateListCommand;
 import seedu.mishmash.command.GeneratePlanCommand;
 import seedu.mishmash.command.ListRecipeCommand;
 import seedu.mishmash.command.ViewListCommand;
@@ -53,13 +54,17 @@ public class Parser {
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
+    /**
+     * Describes how to generate groceries for the active meal plan.
+     */
+    public static final String GENERATE_LIST_USAGE = GenerateListCommand.USAGE;
 
     /**
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+            VIEW_PLAN_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE);
 
     /**
      * Records parsing attempts and validated command details without logging full recipe input.
@@ -70,7 +75,8 @@ public class Parser {
     private static final String COMMAND_LIST_RECIPE = "list-recipes";
     private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
     private static final String COMMAND_GENERATE_PLAN = GeneratePlanParser.COMMAND_WORD;
-  
+    private static final String COMMAND_GENERATE_LIST = "generate-list";
+
     private static final String COMMAND_VIEW_PLAN = "view-plan";
     private static final String COMMAND_VIEW_LIST = "view-list";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
@@ -107,19 +113,30 @@ public class Parser {
     private final ActiveMealPlan activeMealPlan;
 
     /**
-     * Creates the parser used by the application: generate-plan stores each plan in a new active plan
-     * that view-plan reads, and no grocery list is generated yet.
+     * Creates a parser sharing one active plan and grocery snapshot across generation and viewing.
      */
     public Parser() {
-        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), () -> Optional.empty());
+        this(new MealPlanGenerator(new Random()), new ActiveMealPlan());
+    }
+
+    /**
+     * Connects meal-plan and grocery generation and viewing through one shared active plan.
+     *
+     * @param mealPlanGenerator The generator used by generate-plan commands.
+     * @param activeMealPlan The shared plan and its generated grocery snapshot.
+     * @throws NullPointerException If either argument is null.
+     */
+    public Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan) {
+        this(mealPlanGenerator, activeMealPlan,
+                Objects.requireNonNull(activeMealPlan, "activeMealPlan")::getGroceryList);
     }
 
     /**
      * Connects viewing commands to the caller's existing data through functions called during execution.
      * An empty plan means no active plan; an empty Optional means no grocery list has been generated.
      * Plans created by generate-plan on this parser are stored privately and are not visible to
-     * {@code mealPlanSource}; use {@link #Parser(MealPlanGenerator, ActiveMealPlan, Supplier)}
-     * to connect generate-plan and view-plan.
+     * the supplied sources. Use {@link #Parser(MealPlanGenerator, ActiveMealPlan)} to connect
+     * both generation commands to their viewers.
      *
      * @param mealPlanSource A function returning the active plan's meals grouped by day.
      * @param groceryListSource A function returning the generated grocery list, if available.
@@ -132,6 +149,8 @@ public class Parser {
 
     /**
      * Connects generate-plan and view-plan through one shared active plan.
+     * Grocery viewing uses the caller's source; use the two-argument constructor to view
+     * the grocery snapshot created by this parser's generate-list commands.
      *
      * @param mealPlanGenerator The generator used by generate-plan commands.
      * @param activeMealPlan Where generate-plan stores its plan and view-plan reads it from.
@@ -169,6 +188,9 @@ public class Parser {
         String[] parts = input.trim().split("\\s+", 2);
         LOGGER.fine(() -> "Parsing command: " + parts[0]);
         String arguments = parts.length == 2 ? parts[1] : "";
+        if (parts[0].equals(COMMAND_GENERATE_LIST)) {
+            return parseGenerateList(arguments);
+        }
         if (parts[0].equals(COMMAND_VIEW_LIST)) {
             return parseViewList(arguments);
         }
@@ -193,6 +215,23 @@ public class Parser {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + ADD_RECIPE_USAGE);
         }
+    }
+
+    /**
+     * Creates a grocery generation command after rejecting unexpected arguments.
+     *
+     * @param arguments The text after generate-list.
+     * @return A command that reads the active plan only when executed.
+     * @throws MishMashException If arguments are supplied.
+     */
+    private Command parseGenerateList(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            LOGGER.warning("generate-list rejected: unexpected arguments");
+            throw new MishMashException("generate-list does not accept arguments."
+                    + System.lineSeparator() + GENERATE_LIST_USAGE);
+        }
+        LOGGER.fine("Parsed generate-list with no arguments");
+        return new GenerateListCommand(activeMealPlan);
     }
 
     /**

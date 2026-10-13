@@ -21,6 +21,29 @@ import seedu.mishmash.parser.Parser;
  */
 class MishMashGeneratePlanTest {
     @Test
+    void main_groceryGeneration_connectsToViewingAndRecoversFromInvalidArguments() {
+        String output = runCli(String.join(System.lineSeparator(), "Tester",
+                "generate-list",
+                "add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:0.1g",
+                "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:0.2g",
+                "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:1kg",
+                "generate-plan d/2", "generate-list", "generate-list extra", "view-list",
+                "generate-plan d/1", "view-list", "generate-list", "view-list", "bye"));
+
+        assertTrue(output.contains("No active meal plan. Use 'generate-plan' first."), output);
+        assertTrue(output.contains("Grocery list generated. Use 'view-list' to view it."), output);
+        assertTrue(output.contains("Error: generate-list does not accept arguments."), output);
+        assertEquals(1, countOccurrences(output, Parser.GENERATE_LIST_USAGE), output);
+        assertFalse(output.contains(Parser.ADD_RECIPE_USAGE), output);
+        assertTrue(output.contains("[ ] Rice: 0.6g"), output);
+        assertTrue(output.contains("[ ] Rice: 2kg"), output);
+        assertTrue(output.contains("No grocery list generated. Use 'generate-list' first."), output);
+        assertTrue(output.contains("[ ] Rice: 0.3g"), output);
+        assertTrue(output.contains("[ ] Rice: 1kg"), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
     void main_invalidGeneratePlan_showsGeneratePlanUsageOnly() {
         String output = runCli("Tester" + System.lineSeparator()
                 + "generate-plan" + System.lineSeparator()
