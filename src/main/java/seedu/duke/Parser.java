@@ -5,9 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import seedu.duke.MealPlanViewer.MealSummary;
 
 /**
  * Converts raw user input into a validated command.
@@ -17,30 +21,72 @@ public class Parser {
      * Describes the required recipe fields and repeated ingredient syntax.
      */
     public static final String ADD_RECIPE_USAGE =
-        "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
-                + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+            "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
+                    + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+
     /**
      * Describes how to choose the recipe to delete.
      */
     public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
-    private static final String ADD_RECIPE_COMMAND = "add-recipe";
-    private static final String DELETE_RECIPE_COMMAND = "delete-recipe";
-    // Shown when the command word itself is missing or unknown, so the user sees every command.
-    private static final String ALL_COMMANDS_USAGE =
-            ADD_RECIPE_USAGE + System.lineSeparator() + DELETE_RECIPE_USAGE;
+    public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
+    public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
+
+    /**
+     * Lists supported syntax for empty or unknown input.
+     */
+    public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
+            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+
+    private static final String COMMAND_ADD_RECIPE = "add-recipe";
+    private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
+    private static final String COMMAND_VIEW_PLAN = "view-plan";
+    private static final String COMMAND_VIEW_LIST = "view-list";
     private static final List<String> REQUIRED_FIELDS = List.of("n", "cal", "p", "c", "f");
 
-    // Recognise unknown prefixes too, so they cannot become part of a name.
+    // Recognize unknown prefixes too, so they cannot become part of a name.
     private static final Pattern PREFIX_PATTERN =
-        Pattern.compile("(?<!\\S)([^\\s/]+)/");
+            Pattern.compile("(?<!\\S)([^\\s/]+)/");
 
     // Ingredient quantities may be decimal, while units contain letters.
     private static final Pattern INGREDIENT_PATTERN =
-        Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
+            Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
+
+    private static final Pattern DAY_PATTERN = Pattern.compile("d/\\s*([0-9]+)");
 
     /**
-     * Parses input without modifying the recipe book.
+     * Supplies the active plan at command execution, allowing generation to connect its own data later.
+     */
+    private final Supplier<List<List<MealSummary>>> mealPlanSource;
+
+    /**
+     * Supplies the generated list without making viewing responsible for generation or storage.
+     */
+    private final Supplier<Optional<List<GroceryItem>>> groceryListSource;
+
+    /**
+     * Creates a parser with no generated data connected yet.
+     */
+    public Parser() {
+        this(() -> List.of(), () -> Optional.empty());
+    }
+
+    /**
+     * Connects viewing commands to the caller's existing data through functions called during execution.
+     * An empty plan means no active plan; an empty Optional means no grocery list has been generated.
+     *
+     * @param mealPlanSource A function returning the active plan's meals grouped by day.
+     * @param groceryListSource A function returning the generated grocery list, if available.
+     * @throws NullPointerException If either source is null.
+     */
+    public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
+            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+        this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
+        this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
+    }
+
+    /**
+     * Parses input without modifying application data or calling the generated-data sources.
      *
      * @param input The raw command entered by the user.
      * @return The validated command.
@@ -48,47 +94,55 @@ public class Parser {
      */
     public Command parseCommand(String input) throws MishMashException {
         if (input == null || input.isBlank()) {
-            throw new MishMashException("Enter a command." + System.lineSeparator() + ALL_COMMANDS_USAGE);
+            throw new MishMashException("Enter a command.");
         }
 
         String[] parts = input.trim().split("\\s+", 2);
         String arguments = parts.length == 2 ? parts[1] : "";
-
-        switch (parts[0]) {
-        case ADD_RECIPE_COMMAND:
-            return parseWithUsage(ADD_RECIPE_USAGE, () -> parseAddRecipe(arguments));
-        case DELETE_RECIPE_COMMAND:
-            return parseWithUsage(DELETE_RECIPE_USAGE, () -> parseDeleteRecipe(arguments));
-        default:
-            throw new MishMashException("Unknown command: " + parts[0]
-                    + System.lineSeparator() + ALL_COMMANDS_USAGE);
+        if (parts[0].equals(COMMAND_VIEW_LIST)) {
+            return parseViewList(arguments);
         }
-    }
-
-    /**
-     * Runs a command-specific parser and attaches that command's usage to any argument error,
-     * so the user is shown the format of the command they actually typed.
-     *
-     * @param usage The format description of the command being parsed.
-     * @param parse The parser for the command's arguments; it reports problems with IllegalArgumentException.
-     * @return The validated command.
-     * @throws MishMashException If the arguments are invalid.
-     */
-    private Command parseWithUsage(String usage, Supplier<Command> parse) throws MishMashException {
+        if (parts[0].equals(COMMAND_VIEW_PLAN)) {
+            return parseViewPlan(arguments);
+        }
+        if (parts[0].equals(COMMAND_DELETE_RECIPE)) {
+            return parseDeleteRecipe(arguments);
+        }
+        if (!parts[0].equals(COMMAND_ADD_RECIPE)) {
+            throw new MishMashException("Unknown command: " + parts[0]);
+        }
         try {
-            return parse.get();
+            return parseAddRecipe(arguments);
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage() + System.lineSeparator() + usage);
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + ADD_RECIPE_USAGE);
         }
     }
 
     /**
-     * Reads the single recipe index that follows {@code delete-recipe}.
+     * Creates a command that deletes the recipe at the typed position.
      *
-     * @param arguments The arguments following the command word.
-     * @return The command that deletes the recipe at that position.
+     * @param arguments The text after delete-recipe.
+     * @return A command that deletes the recipe at that position.
+     * @throws MishMashException If the index is missing or is not a positive whole number.
      */
-    private Command parseDeleteRecipe(String arguments) {
+    private Command parseDeleteRecipe(String arguments) throws MishMashException {
+        try {
+            return new DeleteRecipeCommand(parseRecipeIndex(arguments));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + DELETE_RECIPE_USAGE);
+        }
+    }
+
+    /**
+     * Reads the single recipe index that follows delete-recipe.
+     * Whether a recipe exists at that position is only known when the command runs.
+     *
+     * @param arguments The text after delete-recipe.
+     * @return The index, counting from 1.
+     */
+    private int parseRecipeIndex(String arguments) {
         if (arguments.isBlank()) {
             throw new IllegalArgumentException("Recipe index is required.");
         }
@@ -106,7 +160,46 @@ public class Parser {
         if (index < 1) {
             throw new IllegalArgumentException("Recipe index must be at least 1.");
         }
-        return new DeleteRecipeCommand(index);
+        return index;
+    }
+
+    /**
+     * Creates a grocery viewing command after rejecting unexpected arguments.
+     *
+     * @param arguments The text after view-list.
+     * @return A command displaying the currently generated groceries.
+     * @throws MishMashException If arguments are supplied.
+     */
+    private Command parseViewList(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException("view-list does not accept arguments."
+                    + System.lineSeparator() + VIEW_LIST_USAGE);
+        }
+        return new ViewListCommand(groceryListSource);
+    }
+
+    /**
+     * Parses an optional day while leaving checks against the active plan to command execution.
+     *
+     * @param arguments The text after view-plan.
+     * @return A command for all days or one positive day number.
+     * @throws MishMashException If the day syntax or value is invalid.
+     */
+    private Command parseViewPlan(String arguments) throws MishMashException {
+        if (arguments.isBlank()) {
+            return new ViewPlanCommand(mealPlanSource);
+        }
+        Matcher matcher = DAY_PATTERN.matcher(arguments.trim());
+        if (!matcher.matches()) {
+            throw new MishMashException("Use one optional d/ argument with a positive integer."
+                    + System.lineSeparator() + VIEW_PLAN_USAGE);
+        }
+        try {
+            return new ViewPlanCommand(mealPlanSource, Integer.parseInt(matcher.group(1)));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException("Day number must be a positive integer from 1 to "
+                    + Integer.MAX_VALUE + "." + System.lineSeparator() + VIEW_PLAN_USAGE);
+        }
     }
 
     /**
@@ -118,6 +211,27 @@ public class Parser {
     private Command parseAddRecipe(String arguments) {
         Map<String, String> fields = new HashMap<>();
         List<GroceryItem> ingredients = new ArrayList<>();
+        collectRecipeArguments(arguments, fields, ingredients);
+        validateRequiredFields(fields, ingredients);
+
+        Recipe recipe = new Recipe(fields.get("n"),
+                parseNutrition(fields.get("cal"), "Calories"),
+                parseNutrition(fields.get("p"), "Protein"),
+                parseNutrition(fields.get("c"), "Carbs"),
+                parseNutrition(fields.get("f"), "Fats"),
+                ingredients);
+        return new AddRecipeCommand(recipe);
+    }
+
+    /**
+     * Reads each prefixed argument into recipe fields or ingredients.
+     *
+     * @param arguments The arguments following add-recipe.
+     * @param fields The destination for single-value fields.
+     * @param ingredients The destination for repeated ingredient fields.
+     */
+    private void collectRecipeArguments(String arguments, Map<String, String> fields,
+            List<GroceryItem> ingredients) {
         Matcher matcher = PREFIX_PATTERN.matcher(arguments);
 
         if (!matcher.find() || !arguments.substring(0, matcher.start()).isBlank()) {
@@ -134,23 +248,24 @@ public class Parser {
             valueStart = matcher.end();
         }
         readArgument(prefix, arguments.substring(valueStart).trim(), fields, ingredients);
+    }
 
+    /**
+     * Checks that every required field and at least one ingredient were supplied.
+     *
+     * @param fields The collected single-value recipe fields.
+     * @param ingredients The collected ingredients.
+     */
+    private void validateRequiredFields(Map<String, String> fields, List<GroceryItem> ingredients) {
         for (String required : REQUIRED_FIELDS) {
             if (!fields.containsKey(required)) {
                 throw new IllegalArgumentException("Missing required field: " + required + "/");
             }
         }
         if (ingredients.isEmpty()) {
-            throw new IllegalArgumentException("At least one ingredient is required. Use i/NAME:QUANTITY_UNIT.");
+            throw new IllegalArgumentException(
+                    "At least one ingredient is required. Use i/NAME:QUANTITY_UNIT.");
         }
-
-        Recipe recipe = new Recipe(fields.get("n"),
-            parseNutrition(fields.get("cal"), "Calories"),
-            parseNutrition(fields.get("p"), "Protein"),
-            parseNutrition(fields.get("c"), "Carbs"),
-            parseNutrition(fields.get("f"), "Fats"),
-            ingredients);
-        return new AddRecipeCommand(recipe);
     }
 
     /**
@@ -162,12 +277,13 @@ public class Parser {
      * @param ingredients The ingredients collected so far.
      */
     private void readArgument(String prefix, String value, Map<String, String> fields,
-             List<GroceryItem> ingredients) {
+            List<GroceryItem> ingredients) {
         if (value.isBlank()) {
             throw new IllegalArgumentException("Value must not be blank: " + prefix + "/");
         }
         if (value.contains("/")) {
-            throw new IllegalArgumentException("Unexpected '/': separate fields with spaces and use each prefix once."
+            throw new IllegalArgumentException(
+                    "Unexpected '/': separate fields with spaces and use each prefix once."
                     + " Use i/ for each ingredient; names and units must not contain '/'.");
         }
         if (prefix.equals("i")) {
