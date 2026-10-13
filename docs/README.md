@@ -1,6 +1,6 @@
-# Duke
+# MishMash
 
-{Give product intro here}
+MishMash is a command-line meal prep planner. Add your recipes, use them to plan meals, and check the ingredients you need to buy.
 
 Useful links:
 * [User Guide](UserGuide.md)
