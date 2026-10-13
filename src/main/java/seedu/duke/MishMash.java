@@ -1,6 +1,7 @@
 package seedu.duke;
 
 import java.util.Scanner;
+import java.util.Optional;
 
 /**
  * Runs the MishMash command-line application.
@@ -54,20 +55,27 @@ public class MishMash {
                 System.out.println("Goodbye!");
                 return;
             }
-            executeCommand(input, parser, recipeBook);
+            executeCommand(input, scanner, parser, recipeBook);
         }
     }
 
     /**
      * Executes one command and displays recoverable errors so the session can continue.
+     * A command that cannot be undone, such as a delete, is only run after the user agrees.
      *
      * @param input The trimmed command input.
+     * @param scanner The console input, used to read the answer to a confirmation question.
      * @param parser The parser connected to application data.
      * @param recipeBook The recipe book passed to the command.
      */
-    private static void executeCommand(String input, Parser parser, RecipeBook recipeBook) {
+    private static void executeCommand(String input, Scanner scanner, Parser parser, RecipeBook recipeBook) {
         try {
             Command command = parser.parseCommand(input);
+            Optional<String> question = command.confirmationPrompt(recipeBook);
+            if (question.isPresent() && !userConfirms(scanner, question.get())) {
+                System.out.println("Cancelled. Nothing was changed.");
+                return;
+            }
             System.out.println(command.execute(recipeBook));
         } catch (MishMashException e) {
             displayError(e);
@@ -85,6 +93,24 @@ public class MishMash {
             System.out.println(Parser.COMMAND_USAGE);
         }
         System.out.println("Please enter another command, or type 'bye' to exit.");
+    }
+
+    /**
+     * Asks a yes/no question and reads the answer from the next input line.
+     * Only "y" or "yes" (in any letter case) counts as agreement; anything else, including
+     * the end of input, counts as "no" so that a destructive action never runs by accident.
+     *
+     * @param scanner Scanner used to read user input.
+     * @param question The question to display.
+     * @return True if the user agreed.
+     */
+    private static boolean userConfirms(Scanner scanner, String question) {
+        System.out.println(question);
+        if (!scanner.hasNextLine()) {
+            return false;
+        }
+        String answer = scanner.nextLine().trim();
+        return answer.equalsIgnoreCase("y") || answer.equalsIgnoreCase("yes");
     }
 
     /**

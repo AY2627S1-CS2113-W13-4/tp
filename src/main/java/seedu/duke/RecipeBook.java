@@ -18,6 +18,25 @@ public class RecipeBook {
     }
 
     /**
+     * Removes the recipe at the given position; every later recipe moves up by one position.
+     * Recipes are identified by position because several recipes may share the same name.
+     *
+     * @param index The zero-based position of the recipe to remove.
+     * @return The recipe that was removed.
+     * @throws IndexOutOfBoundsException If the index is negative or not less than {@link #size()}.
+     */
+    public Recipe remove(int index) {
+        return recipes.remove(Objects.checkIndex(index, recipes.size()));
+    }
+
+    /**
+     * Returns how many recipes are stored.
+     */
+    public int size() {
+        return recipes.size();
+    }
+
+    /**
      * Returns a read-only snapshot of the stored recipes.
      */
     public List<Recipe> getRecipes() {

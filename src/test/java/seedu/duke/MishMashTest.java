@@ -38,6 +38,10 @@ class MishMashTest {
                             \\_____/
             """;
 
+    private static final String ADD_RICE = AddRecipeEdgeCaseTest.VALID_COMMAND;
+    private static final String ADD_OATS = "add-recipe n/Oats cal/150 p/5 c/27 f/3 i/Oats:40g";
+    private static final String CONTINUE_PROMPT = "Please enter another command, or type 'bye' to exit.";
+
     @TestFactory
     Stream<DynamicTest> main_invalidRecipe_recoversForNextCommand() throws IOException {
         return AddRecipeEdgeCaseTest.invalidCases().stream().map(testCase ->
@@ -172,5 +176,112 @@ class MishMashTest {
      */
     private int countOccurrences(String output, String message) {
         return output.split(Pattern.quote(message), -1).length - 1;
+    }
+
+    @Test
+    void main_addThenConfirmedDelete_displaysExpectedTranscript() {
+        String output = runCli(session(ADD_RICE, "delete-recipe 1", "y", "bye"));
+
+        String expected = String.join(System.lineSeparator(),
+                "New recipe added!",
+                "Rice",
+                "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
+                "Ingredients:",
+                "- Rice: 150g",
+                "Are you sure you want to delete recipe 1: Rice? (y/n)",
+                "Recipe deleted!",
+                "Rice",
+                "Recipes remaining: 0",
+                "Goodbye!") + System.lineSeparator();
+        assertTrue(output.endsWith(expected), output);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> main_deleteConfirmedWithYes_removesTheRecipe() {
+        return List.of("y", "Y", "yes", "YES", "Yes", "  yes  ").stream()
+                .map(answer -> DynamicTest.dynamicTest("Answer: [" + answer + "]", () -> {
+                    // After Rice is deleted only Oats remains, so index 2 must no longer exist.
+                    String output = runCli(session(ADD_RICE, ADD_OATS, "delete-recipe 1", answer,
+                            "delete-recipe 2", "bye"));
+
+                    assertEquals(1, countOccurrences(output, "Recipe deleted!"), output);
+                    assertTrue(output.contains("Recipes remaining: 1"), output);
+                    assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
+                    assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+                }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> main_deleteNotConfirmed_keepsTheRecipe() {
+        // "bye" at the prompt only cancels the delete; it does not exit the program.
+        return List.of("n", "N", "no", "", "   ", "maybe", "yes please", "yy", "bye").stream()
+                .map(answer -> DynamicTest.dynamicTest("Answer: [" + answer + "]", () -> {
+                    // The second delete only works if the first one left the recipe in place.
+                    String output = runCli(session(ADD_RICE, "delete-recipe 1", answer,
+                            "delete-recipe 1", "y", "bye"));
+
+                    assertEquals(2, countOccurrences(output,
+                            "Are you sure you want to delete recipe 1: Rice? (y/n)"), output);
+                    assertEquals(1, countOccurrences(output, "Cancelled. Nothing was changed."), output);
+                    assertEquals(1, countOccurrences(output, "Recipe deleted!"), output);
+                    assertTrue(output.indexOf("Cancelled.") < output.indexOf("Recipe deleted!"), output);
+                    assertEquals(1, countOccurrences(output, "Goodbye!"), output);
+                    assertEquals(0, countOccurrences(output, "Error: "), output);
+                }));
+    }
+
+    @Test
+    void main_deleteThenEndOfInput_cancelsInsteadOfDeleting() {
+        String output = runCli(session(ADD_RICE, "delete-recipe 1"));
+
+        assertTrue(output.contains("Are you sure you want to delete recipe 1: Rice? (y/n)"), output);
+        assertTrue(output.contains("Cancelled. Nothing was changed."), output);
+        assertEquals(0, countOccurrences(output, "Recipe deleted!"), output);
+    }
+
+    @Test
+    void main_deleteMissingRecipe_showsErrorWithoutAsking() {
+        String output = runCli(session("delete-recipe 1", ADD_RICE, "delete-recipe 2", "bye"));
+
+        assertEquals(0, countOccurrences(output, "Are you sure"), output);
+        assertEquals(2, countOccurrences(output, "Error: "), output);
+        assertEquals(2, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.contains("Error: There are no recipes to delete."), output);
+        assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> main_invalidDeleteArguments_showsOnlyDeleteUsageAndRecovers() {
+        return List.of("delete-recipe", "delete-recipe 0", "delete-recipe -1", "delete-recipe abc",
+                        "delete-recipe 1 2", "delete-recipe 2147483648").stream()
+                .map(badCommand -> DynamicTest.dynamicTest(badCommand, () -> {
+                    String output = runCli(session(ADD_RICE, badCommand, "delete-recipe 1", "y", "bye"));
+
+                    assertEquals(1, countOccurrences(output, "Error: "), output);
+                    assertEquals(1, countOccurrences(output, "Format: delete-recipe INDEX"), output);
+                    assertEquals(0, countOccurrences(output, "Format: add-recipe"), output);
+                    // Only the later, valid command reaches the confirmation question.
+                    assertEquals(1, countOccurrences(output, "Are you sure"), output);
+                    assertEquals(1, countOccurrences(output, "Recipe deleted!"), output);
+                    assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+                }));
+    }
+
+    @Test
+    void main_unknownCommand_listsEveryCommandUsageOnce() {
+        String output = runCli(session("unknown", "bye"));
+
+        assertTrue(output.contains("Error: Unknown command: unknown"), output);
+        assertEquals(1, countOccurrences(output, Parser.ADD_RECIPE_USAGE), output);
+        assertEquals(1, countOccurrences(output, Parser.DELETE_RECIPE_USAGE), output);
+    }
+
+    /**
+     * Builds console input: the answer to the name prompt, then each line, ending with a newline.
+     */
+    private static String session(String... lines) {
+        return "Tester" + System.lineSeparator()
+                + String.join(System.lineSeparator(), lines) + System.lineSeparator();
     }
 }
