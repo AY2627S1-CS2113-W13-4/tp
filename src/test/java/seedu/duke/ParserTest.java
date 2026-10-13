@@ -321,6 +321,96 @@ class ParserTest {
         assertFalse(parser.parseCommand(VALID_COMMAND).confirmationPrompt(book).isPresent());
     }
 
+    @Test
+    void parseCommand_listRecipeWithoutIndex_listsAllRecipes() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        String result = parser.parseCommand("list-recipes").execute(book);
+
+        assertEquals("Recipes:" + System.lineSeparator()
+                + "1. Chicken and Rice (650 kcal)" + System.lineSeparator()
+                + "2. Second recipe (650 kcal)", result);
+        assertEquals(2, book.getRecipes().size());
+    }
+
+    @Test
+    void parseCommand_listRecipeWithIndex_showsThatRecipeInFull() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        String result = parser.parseCommand("list-recipes 2").execute(book);
+
+        assertEquals("Second recipe" + System.lineSeparator()
+                + "650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g" + System.lineSeparator()
+                + "Ingredients:" + System.lineSeparator()
+                + "- Chicken Breast: 200g" + System.lineSeparator()
+                + "- White Rice: 150g", result);
+    }
+
+    @Test
+    void parseCommand_listRecipeVariations_areAccepted() throws MishMashException {
+        String[] inputs = {"  list-recipes \t 1  ", "list-recipes 0001", "list-recipes    1"};
+
+        for (String input : inputs) {
+            String result = parser.parseCommand(input).execute(createBookWithTwoRecipes());
+
+            assertTrue(result.startsWith("Chicken and Rice" + System.lineSeparator()), input);
+        }
+        assertInstanceOf(ListRecipeCommand.class, parser.parseCommand("list-recipes"));
+        assertInstanceOf(ListRecipeCommand.class, parser.parseCommand("  list-recipes   "));
+    }
+
+    @Test
+    void parseCommand_invalidListRecipeArguments_throwsWithListUsageOnly() {
+        String[][] invalidCases = {
+                {"list-recipes 0", "Recipe index must be at least 1."},
+                {"list-recipes -1", "Recipe index must be a single positive whole number."},
+                {"list-recipes 1.5", "Recipe index must be a single positive whole number."},
+                {"list-recipes abc", "Recipe index must be a single positive whole number."},
+                {"list-recipes 1 2", "Recipe index must be a single positive whole number."},
+                {"list-recipes n/Rice", "Recipe index must be a single positive whole number."},
+                {"list-recipes 2147483648", "Recipe index must not exceed 2147483647."}
+        };
+
+        for (String[] invalidCase : invalidCases) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand(invalidCase[0]), invalidCase[0]);
+
+            String message = exception.getMessage();
+            assertTrue(message.contains(invalidCase[1]), message);
+            assertTrue(message.contains(Parser.LIST_RECIPE_USAGE), message);
+            assertFalse(message.contains("Format: add-recipe"), message);
+            assertFalse(message.contains("Format: delete-recipe"), message);
+        }
+    }
+
+    @Test
+    void parseCommand_listRecipeLargestIndex_parsesAndFailsOnlyWhenExecuted() throws MishMashException {
+        RecipeBook book = createBookWithTwoRecipes();
+
+        Command command = parser.parseCommand("list-recipes 2147483647");
+
+        MishMashException exception = assertThrows(MishMashException.class,
+                () -> command.execute(book));
+        assertEquals("Recipe index must be between 1 and 2.", exception.getMessage());
+    }
+
+    @Test
+    void parseCommand_listRecipeLookalikes_areUnknownCommands() {
+        String[] inputs = {"list", "list-recipe", "list-recipess", "List-Recipes", "list-recipes1"};
+
+        for (String input : inputs) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand(input), input);
+
+            assertTrue(exception.getMessage().startsWith("Unknown command: "), input);
+        }
+    }
+
+    @Test
+    void commandUsage_listsListRecipeUsage() {
+        assertTrue(Parser.COMMAND_USAGE.contains(Parser.LIST_RECIPE_USAGE));
+    }
+
     /**
      * Creates a book with "Chicken and Rice" at index 1 and "Second recipe" at index 2.
      */

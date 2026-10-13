@@ -277,6 +277,58 @@ class MishMashTest {
         assertEquals(1, countOccurrences(output, Parser.DELETE_RECIPE_USAGE), output);
     }
 
+    @Test
+    void main_listRecipes_showsListThenFullRecipeWithoutAsking() {
+        String output = runCli(session(ADD_RICE, ADD_OATS, "list-recipes", "list-recipes 2", "bye"));
+
+        String expected = String.join(System.lineSeparator(),
+                "Recipes:",
+                "1. Rice (200 kcal)",
+                "2. Oats (150 kcal)",
+                "Oats",
+                "150 kcal | Protein: 5g | Carbs: 27g | Fats: 3g",
+                "Ingredients:",
+                "- Oats: 40g",
+                "Goodbye!") + System.lineSeparator();
+        assertTrue(output.endsWith(expected), output);
+        assertEquals(0, countOccurrences(output, "Are you sure"), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+    }
+
+    @Test
+    void main_listRecipeWithNoRecipes_continuesWithoutError() {
+        String output = runCli(session("list-recipes", ADD_RICE, "list-recipes", "bye"));
+
+        assertEquals(1, countOccurrences(output, "No recipes yet. Use 'add-recipe' to add one."), output);
+        assertTrue(output.contains("1. Rice (200 kcal)"), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_listRecipeBadIndex_showsErrorAndRecovers() {
+        String output = runCli(session("list-recipes 1", ADD_RICE, "list-recipes 2", "list-recipes abc",
+                "list-recipes 1", "bye"));
+
+        assertEquals(3, countOccurrences(output, "Error: "), output);
+        assertTrue(output.contains("Error: There are no recipes to show. Use 'add-recipe' to add one."), output);
+        assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
+        assertTrue(output.contains("Error: Recipe index must be a single positive whole number."), output);
+        assertEquals(3, countOccurrences(output, CONTINUE_PROMPT), output);
+        // The last command still works after the errors.
+        assertTrue(output.contains("- Rice: 150g" + System.lineSeparator() + "Goodbye!"), output);
+    }
+
+    @Test
+    void main_listRecipeThenDelete_showsTheNumbersDeleteUses() {
+        String output = runCli(session(ADD_RICE, ADD_OATS, "list-recipes", "delete-recipe 2", "y",
+                "list-recipes", "bye"));
+
+        assertTrue(output.contains("Are you sure you want to delete recipe 2: Oats? (y/n)"), output);
+        assertTrue(output.endsWith("Recipes:" + System.lineSeparator() + "1. Rice (200 kcal)"
+                + System.lineSeparator() + "Goodbye!" + System.lineSeparator()), output);
+    }
+
     /**
      * Builds console input: the answer to the name prompt, then each line, ending with a newline.
      */
