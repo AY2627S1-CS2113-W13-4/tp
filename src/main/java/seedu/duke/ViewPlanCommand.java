@@ -3,6 +3,7 @@ package seedu.duke;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 import seedu.duke.MealPlanViewer.MealSummary;
 
@@ -14,6 +15,8 @@ public class ViewPlanCommand implements Command {
      * Describes the command's optional day argument.
      */
     public static final String USAGE = "Format: view-plan [d/DAY_NUMBER]";
+
+    private static final Logger LOGGER = Logger.getLogger(ViewPlanCommand.class.getName());
 
     /**
      * Reads the current plan at execution time; an empty list means there is no active plan.
@@ -61,13 +64,23 @@ public class ViewPlanCommand implements Command {
     public String execute(RecipeBook recipeBook) throws MishMashException {
         List<List<MealSummary>> mealsByDay = mealPlanSource.get();
         MealPlanViewer viewer = new MealPlanViewer();
-        if (dayNumber == null || mealsByDay.isEmpty()) {
+        if (mealsByDay.isEmpty()) {
+            LOGGER.fine("view-plan requested with no active meal plan");
             return viewer.view(mealsByDay);
         }
+        if (dayNumber == null) {
+            String result = viewer.view(mealsByDay);
+            LOGGER.fine(() -> "view-plan displayed all " + mealsByDay.size() + " days");
+            return result;
+        }
         if (dayNumber > mealsByDay.size()) {
+            LOGGER.fine(() -> "view-plan rejected day " + dayNumber
+                    + ": active plan contains " + mealsByDay.size() + " days");
             throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + "."
                     + System.lineSeparator() + USAGE);
         }
-        return viewer.view(mealsByDay, dayNumber);
+        String result = viewer.view(mealsByDay, dayNumber);
+        LOGGER.fine(() -> "view-plan displayed day " + dayNumber);
+        return result;
     }
 }

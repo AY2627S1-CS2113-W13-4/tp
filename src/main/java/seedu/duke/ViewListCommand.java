@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 /**
  * Displays an already generated grocery list without generating or storing groceries.
@@ -13,6 +14,8 @@ public class ViewListCommand implements Command {
      * Describes the command's syntax without arguments.
      */
     public static final String USAGE = "Format: view-list";
+
+    private static final Logger LOGGER = Logger.getLogger(ViewListCommand.class.getName());
 
     private static final String NO_LIST_MESSAGE = "No grocery list generated. Use 'generate-list' first.";
 
@@ -42,8 +45,11 @@ public class ViewListCommand implements Command {
     public String execute(RecipeBook recipeBook) {
         Optional<List<GroceryItem>> groceries = groceryListSource.get();
         if (groceries.isEmpty()) {
+            LOGGER.fine("view-list requested before a grocery list was generated");
             return NO_LIST_MESSAGE;
         }
-        return new GroceryListViewer().view(groceries.get());
+        String result = new GroceryListViewer().view(groceries.get());
+        LOGGER.fine(() -> "view-list displayed " + groceries.get().size() + " items");
+        return result;
     }
 }
