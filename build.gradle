@@ -38,7 +38,7 @@ test {
 }
 
 application {
-    mainClass = 'seedu.mishmash.MishMash'
+    mainClass = 'mishmash.MishMash'
 }
 
 jar {
