@@ -30,6 +30,11 @@ public class Parser {
      */
     public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
+    /**
+     * Describes how to list all recipes or show one in full.
+     */
+    public static final String LIST_RECIPE_USAGE = "Format: list-recipes [INDEX]";
+
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
@@ -38,9 +43,11 @@ public class Parser {
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE, VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
+            ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
+            VIEW_PLAN_USAGE, VIEW_LIST_USAGE);
 
     private static final String COMMAND_ADD_RECIPE = "add-recipe";
+    private static final String COMMAND_LIST_RECIPE = "list-recipes";
     private static final String COMMAND_DELETE_RECIPE = "delete-recipe";
     private static final String COMMAND_GENERATE_PLAN = GeneratePlanParser.COMMAND_WORD;
   
@@ -150,6 +157,9 @@ public class Parser {
         if (parts[0].equals(COMMAND_GENERATE_PLAN)) {
             return parseGeneratePlan(arguments);
         }
+        if (parts[0].equals(COMMAND_LIST_RECIPE)) {
+            return parseListRecipe(arguments);
+        }
         if (parts[0].equals(COMMAND_DELETE_RECIPE)) {
             return parseDeleteRecipe(arguments);
         }
@@ -202,10 +212,29 @@ public class Parser {
     }
 
     /**
-     * Reads the single recipe index that follows delete-recipe.
+     * Creates a command that lists all recipes, or shows one in full if an index is given.
+     *
+     * @param arguments The text after list-recipe; empty to list every recipe.
+     * @return A command that shows the recipe list or one recipe's details.
+     * @throws MishMashException If an index is given but is not a positive whole number.
+     */
+    private Command parseListRecipe(String arguments) throws MishMashException {
+        if (arguments.isBlank()) {
+            return new ListRecipeCommand();
+        }
+        try {
+            return new ListRecipeCommand(parseRecipeIndex(arguments));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + LIST_RECIPE_USAGE);
+        }
+    }
+
+    /**
+     * Reads the single recipe index that follows delete-recipe or list-recipe.
      * Whether a recipe exists at that position is only known when the command runs.
      *
-     * @param arguments The text after delete-recipe.
+     * @param arguments The text after the command word.
      * @return The index, counting from 1.
      */
     private int parseRecipeIndex(String arguments) {
