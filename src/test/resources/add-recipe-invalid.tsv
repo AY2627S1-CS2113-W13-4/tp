@@ -109,28 +109,28 @@ unknown prefix n-	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1
 unknown prefix n_	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g n_/value
 unknown prefix N	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g N/value
 unknown prefix CAL	Unknown field:	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g CAL/value
-malformed ingredient Rice	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice
-malformed ingredient Rice:	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:
-malformed ingredient Rice:10	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10
+malformed ingredient Rice	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice
+malformed ingredient Rice:	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:
+malformed ingredient Rice:10	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10
 malformed ingredient :10g	Ingredient name must not be blank	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/:10g
-malformed ingredient Rice:abcg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:abcg
-malformed ingredient Rice:-1g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:-1g
-malformed ingredient Rice:+1g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:+1g
-malformed ingredient Rice:.5g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:.5g
-malformed ingredient Rice:1.g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.g
-malformed ingredient Rice:1.2.3g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.2.3g
-malformed ingredient Rice:1e3g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1e3g
-malformed ingredient Rice:1,000g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1,000g
-malformed ingredient Rice:10g extra	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g extra
-malformed ingredient Rice:10g:20g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g:20g
-malformed ingredient Rice::10g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice::10g
-malformed ingredient Rice:10g,Rice:20g	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g,Rice:20g
-malformed ingredient Rice:10g;Oil:2ml	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g;Oil:2ml
-malformed ingredient Rice:10g Oil:2ml	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g Oil:2ml
-malformed ingredient Rice:10g2	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g2
-malformed ingredient Rice:10%	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10%
-malformed ingredient Rice:NaNg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:NaNg
-malformed ingredient Rice:Infinityg	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:Infinityg
+malformed ingredient Rice:abcg	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:abcg
+malformed ingredient Rice:-1g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:-1g
+malformed ingredient Rice:+1g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:+1g
+malformed ingredient Rice:.5g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:.5g
+malformed ingredient Rice:1.g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.g
+malformed ingredient Rice:1.2.3g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1.2.3g
+malformed ingredient Rice:1e3g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1e3g
+malformed ingredient Rice:1,000g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:1,000g
+malformed ingredient Rice:10g extra	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g extra
+malformed ingredient Rice:10g:20g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g:20g
+malformed ingredient Rice::10g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice::10g
+malformed ingredient Rice:10g,Rice:20g	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g,Rice:20g
+malformed ingredient Rice:10g;Oil:2ml	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g;Oil:2ml
+malformed ingredient Rice:10g Oil:2ml	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g Oil:2ml
+malformed ingredient Rice:10g2	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10g2
+malformed ingredient Rice:10%	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:10%
+malformed ingredient Rice:NaNg	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:NaNg
+malformed ingredient Rice:Infinityg	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:Infinityg
 zero ingredient Rice:0g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:0g
 zero ingredient Rice:0.0g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:0.0g
 zero ingredient Rice:000.000g	quantity must be greater than zero	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:000.000g
@@ -146,4 +146,4 @@ joined p/4 c/45	Unexpected '/'	add-recipe n/Rice cal/200 p/4c/45 f/1 i/Rice:150g
 joined c/45 f/1	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45f/1 i/Rice:150g
 joined f/1 i/Rice:150g	Unexpected '/'	add-recipe n/Rice cal/200 p/4 c/45 f/1i/Rice:150g
 empty final ingredient	Value must not be blank: i/	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g i/
-invalid second ingredient	Ingredient must use	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g i/Broken
+invalid second ingredient	Invalid ingredient format	add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g i/Broken

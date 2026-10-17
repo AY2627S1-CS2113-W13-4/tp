@@ -38,8 +38,14 @@ public class Parser {
      * Describes the required recipe fields and repeated ingredient syntax.
      */
     public static final String ADD_RECIPE_USAGE =
-            "Format: add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
-                    + " i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]";
+            "Format: add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
+                    + " i/INGREDIENT:QUANTITYUNIT"
+                    + System.lineSeparator()
+                    + "Include at least one ingredient. To add more, repeat i/INGREDIENT:QUANTITYUNIT,"
+                    + " separated by spaces."
+                    + System.lineSeparator()
+                    + "Example: add-recipe n/Chicken Rice cal/650 p/50 c/70 f/15"
+                    + " i/Chicken:200g i/Rice:150g";
 
     /**
      * Describes how to choose the recipe to delete.
@@ -466,7 +472,7 @@ public class Parser {
         }
         if (ingredients.isEmpty()) {
             throw new IllegalArgumentException(
-                    "At least one ingredient is required. Use i/NAME:QUANTITY_UNIT.");
+                    "At least one ingredient is required. Use i/INGREDIENT:QUANTITYUNIT, for example i/Rice:150g.");
         }
     }
 
@@ -533,7 +539,7 @@ public class Parser {
         Matcher matcher = INGREDIENT_PATTERN.matcher(value);
         if (!matcher.matches()) {
             throw new IllegalArgumentException(
-                    "Ingredient must use NAME:QUANTITY_UNIT, for example Chicken Breast:200g.");
+                    "Invalid ingredient format. Use i/INGREDIENT:QUANTITYUNIT, for example i/Chicken Breast:200g.");
         }
 
         BigDecimal quantity = new BigDecimal(matcher.group(2));
