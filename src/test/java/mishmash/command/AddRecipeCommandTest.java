@@ -42,7 +42,9 @@ class AddRecipeCommandTest {
                 "Ingredients:",
                 "- Chicken Breast: 200g",
                 "- White Rice: 150g",
-                "- Olive Oil: 10ml");
+                "- Olive Oil: 10ml",
+                "",
+                "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.");
 
         assertEquals(List.of(recipe), book.getRecipes());
         assertEquals(expected, result);
