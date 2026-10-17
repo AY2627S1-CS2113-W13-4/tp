@@ -151,6 +151,8 @@ class MishMashTest {
                         "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                         "Ingredients:",
                         "- Rice: 150g",
+                        "",
+                        "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.",
                         "Goodbye!") + System.lineSeparator();
 
         assertEquals(expected, output);
@@ -262,6 +264,8 @@ class MishMashTest {
                 "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                 "Ingredients:",
                 "- Rice: 150g",
+                "",
+                "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.",
                 "Are you sure you want to delete recipe 1: Rice? (y/n)",
                 "Recipe deleted!",
                 "Rice",
