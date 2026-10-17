@@ -246,7 +246,7 @@ public class Parser {
             return parseAddRecipe(arguments);
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + ADD_RECIPE_USAGE);
+                    + System.lineSeparator() + ADD_RECIPE_USAGE, e);
         }
     }
 
@@ -516,7 +516,7 @@ public class Parser {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(fieldName + " must not exceed "
-                    + Integer.MAX_VALUE + ".");
+                    + Integer.MAX_VALUE + ".", e);
         }
     }
 
