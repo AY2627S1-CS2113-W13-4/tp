@@ -39,6 +39,7 @@ test {
 
 application {
     mainClass = 'mishmash.MishMash'
+    applicationDefaultJvmArgs = ['-ea']
 }
 
 jar {
