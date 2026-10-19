@@ -405,7 +405,7 @@ public class Parser {
             return command;
         } catch (IllegalArgumentException e) {
             throw new MishMashException("Day number must be a positive integer from 1 to "
-                    + Integer.MAX_VALUE + "." + System.lineSeparator() + VIEW_PLAN_USAGE);
+                    + Integer.MAX_VALUE + "." + System.lineSeparator() + VIEW_PLAN_USAGE, e);
         }
     }
 

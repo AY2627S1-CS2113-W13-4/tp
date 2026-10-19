@@ -168,6 +168,17 @@ class ParserTest {
     }
 
     @Test
+    void parseCommand_invalidNumericDay_preservesCauseForDiagnostics() {
+        MishMashException overflow = assertThrows(MishMashException.class,
+                () -> parser.parseCommand("view-plan d/2147483648"));
+        assertInstanceOf(NumberFormatException.class, overflow.getCause());
+
+        MishMashException nonPositiveDay = assertThrows(MishMashException.class,
+                () -> parser.parseCommand("view-plan d/0"));
+        assertInstanceOf(IllegalArgumentException.class, nonPositiveDay.getCause());
+    }
+
+    @Test
     void parseCommand_viewListArguments_includesUsage() {
         for (String arguments : List.of("extra", "d/1", "i/Rice:200g")) {
             MishMashException exception = assertThrows(MishMashException.class,
