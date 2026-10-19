@@ -25,6 +25,8 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    // Exercise internal invariants during every test run as well as application runs.
+    enableAssertions = true
 
     testLogging {
         events 'passed', 'skipped', 'failed'
