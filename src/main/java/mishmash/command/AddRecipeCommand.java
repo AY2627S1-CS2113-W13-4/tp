@@ -1,6 +1,7 @@
 package mishmash.command;
 
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
@@ -10,6 +11,11 @@ import mishmash.ui.RecipeViewer;
  * Adds a validated recipe and returns its confirmation.
  */
 public class AddRecipeCommand implements Command {
+    /**
+     * Records successful additions without including recipe contents.
+     */
+    private static final Logger LOGGER = Logger.getLogger(AddRecipeCommand.class.getName());
+
     private final Recipe recipe;
 
     /**
@@ -25,8 +31,12 @@ public class AddRecipeCommand implements Command {
     @Override
     public String execute(RecipeBook recipeBook) {
         Objects.requireNonNull(recipeBook, "recipeBook");
+        // Prepare the output first so a formatting failure cannot leave an unconfirmed addition.
+        String confirmation = "New recipe added!" + System.lineSeparator() + new RecipeViewer().view(recipe)
+                + System.lineSeparator() + System.lineSeparator()
+                + "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.";
         recipeBook.add(recipe);
-
-        return "New recipe added!" + System.lineSeparator() + new RecipeViewer().view(recipe);
+        LOGGER.fine(() -> "Recipe added; recipe count: " + recipeBook.size());
+        return confirmation;
     }
 }
