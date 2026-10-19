@@ -65,6 +65,23 @@ class ViewListCommandTest {
     }
 
     @Test
+    void execute_nullOptionalFromSource_reportsBrokenSourceAndCanReadReplacement() {
+        AtomicReference<Optional<List<GroceryItem>>> currentGroceries = new AtomicReference<>();
+        ViewListCommand command = new ViewListCommand(currentGroceries::get);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> command.execute(recipeBook));
+        assertEquals("Grocery list source returned null; use Optional.empty() for no list.",
+                exception.getMessage());
+        assertTrue(recipeBook.getRecipes().isEmpty());
+
+        currentGroceries.set(Optional.of(List.of(rice)));
+        String expected = String.join(System.lineSeparator(), GROCERY_LIST_HEADER,
+                "[ ] Rice: 200g", GROCERY_LIST_FOOTER, "Total items to purchase: 1");
+        assertEquals(expected, command.execute(recipeBook));
+    }
+
+    @Test
     void constructor_nullSource_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new ViewListCommand(null));
     }
