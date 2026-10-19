@@ -34,7 +34,9 @@ public class ViewPlanCommand implements Command {
     /**
      * Creates a command to display every day of the active plan.
      *
-     * @param mealPlanSource A function returning the current plan's meals grouped by day.
+     * @param mealPlanSource A function returning the current plan's meals grouped by day, or an empty list
+     *         if no plan is active. The function must never return {@code null}.
+     * @throws NullPointerException If the source is null.
      */
     public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource) {
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
@@ -44,9 +46,11 @@ public class ViewPlanCommand implements Command {
     /**
      * Creates a command to display one day, checking its upper bound against the plan at execution time.
      *
-     * @param mealPlanSource A function returning the current plan's meals grouped by day.
+     * @param mealPlanSource A function returning the current plan's meals grouped by day, or an empty list
+     *         if no plan is active. The function must never return {@code null}.
      * @param dayNumber The day to display, starting at 1.
      * @throws IllegalArgumentException If the day number is not positive.
+     * @throws NullPointerException If the source is null.
      */
     public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource, int dayNumber) {
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
@@ -62,10 +66,15 @@ public class ViewPlanCommand implements Command {
      * @param recipeBook The shared command context; viewing does not read or modify recipes.
      * @return The formatted plan or a prompt when no plan is available.
      * @throws MishMashException If the selected day exceeds the active plan's size.
+     * @throws IllegalStateException If the source returns {@code null} instead of a list.
+     * @throws NullPointerException If a displayed day or meal is null.
      */
     @Override
     public String execute(RecipeBook recipeBook) throws MishMashException {
         List<List<MealSummary>> mealsByDay = mealPlanSource.get();
+        if (mealsByDay == null) {
+            throw new IllegalStateException("Meal plan source returned null; use an empty list for no active plan.");
+        }
         MealPlanViewer viewer = new MealPlanViewer();
         if (mealsByDay.isEmpty()) {
             LOGGER.fine("view-plan requested with no active meal plan");
