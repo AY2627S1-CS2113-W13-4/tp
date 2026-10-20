@@ -423,3 +423,14 @@ No. `view-plan` and `view-list` display existing data. Use the corresponding gen
 The current `[ ]` markers are display-only. No shopping-item marking command is available.
 
 <!-- TEAM: Confirm the release download link, actual JAR filename, feature availability, sample workflow, and storage behavior before publishing. Remove unfinished fields and owner comments from the release guide. -->
+
+
+
+### Viewing available commands: `help`
+
+Type `help` to see every supported command, its purpose, and its syntax. This includes
+`add-recipe`, `list-recipes`, `delete-recipe`, `generate-plan`, `view-plan`,
+`generate-list`, `view-list`, `help`, and `bye`. The `help` command takes no arguments.
+
+A divider and an input prompt appear when the command session starts and after every
+command, including invalid commands and cancelled actions. Type `bye` to exit.

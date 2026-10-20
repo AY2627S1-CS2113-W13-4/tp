@@ -32,11 +32,10 @@ public class AddRecipeCommand implements Command {
     public String execute(RecipeBook recipeBook) {
         Objects.requireNonNull(recipeBook, "recipeBook");
         // Prepare the output first so a formatting failure cannot leave an unconfirmed addition.
-        String confirmation = "New recipe added!" + System.lineSeparator() + new RecipeViewer().view(recipe)
-                + System.lineSeparator() + System.lineSeparator()
-                + "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.";
+        String confirmation = "New recipe added!" + System.lineSeparator() + new RecipeViewer().view(recipe);
         recipeBook.add(recipe);
         LOGGER.fine(() -> "Recipe added; recipe count: " + recipeBook.size());
         return confirmation;
     }
 }
+

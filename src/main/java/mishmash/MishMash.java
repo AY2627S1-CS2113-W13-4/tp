@@ -38,6 +38,9 @@ public class MishMash {
      */
     private static final int LOG_FILE_COUNT = 3;
 
+    /** Separates command output from the next input prompt. */
+    private static final String DIVIDER = "------------------------------------------------------------";
+
     private static final String WELCOME_BANNER = """
               __  __ _     _     __  __           _
              |  \\/  (_)___| |__ |  \\/  | __ _ ___| |__
@@ -71,8 +74,7 @@ public class MishMash {
             LOGGER.info("MishMash started");
             greet(scanner);
             System.out.println("Welcome to MishMash!");
-            System.out.println("Use 'add-recipe', 'generate-plan', 'view-plan', 'generate-list', or 'view-list',"
-                    + " or type 'bye' to exit.");
+            System.out.println("Type 'help' to view all commands and what they do, or 'bye' to exit.");
             readCommands(scanner, parser, recipeBook);
         } catch (RuntimeException | AssertionError e) {
             // Log unexpected failures once at the application boundary before ending the session.
@@ -120,6 +122,7 @@ public class MishMash {
      * @param recipeBook The recipe book passed to each command.
      */
     private static void readCommands(Scanner scanner, Parser parser, RecipeBook recipeBook) {
+        displayCommandPrompt();
         while (scanner.hasNextLine()) {
             String input = scanner.nextLine().trim();
             if (input.equals("bye")) {
@@ -128,6 +131,7 @@ public class MishMash {
                 return;
             }
             executeCommand(input, scanner, parser, recipeBook);
+            displayCommandPrompt();
         }
         LOGGER.fine("Console input ended");
     }
@@ -169,7 +173,12 @@ public class MishMash {
         if (!exception.getMessage().contains("Format: ")) {
             System.out.println(Parser.COMMAND_USAGE);
         }
-        System.out.println("Please enter another command, or type 'bye' to exit.");
+    }
+
+    /** Displays a consistent prompt after every command, including errors and cancellations. */
+    private static void displayCommandPrompt() {
+        System.out.println(DIVIDER);
+        System.out.println("Enter a command, or type 'help' for all commands or 'bye' to exit.");
     }
 
     /**
@@ -205,3 +214,4 @@ public class MishMash {
         }
     }
 }
+
