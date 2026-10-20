@@ -1,6 +1,7 @@
 package mishmash;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.logging.FileHandler;
@@ -73,6 +74,10 @@ public class MishMash {
             System.out.println("Use 'add-recipe', 'generate-plan', 'view-plan', 'generate-list', or 'view-list',"
                     + " or type 'bye' to exit.");
             readCommands(scanner, parser, recipeBook);
+        } catch (RuntimeException | AssertionError e) {
+            // Log unexpected failures once at the application boundary before ending the session.
+            LOGGER.log(Level.SEVERE, "Unexpected application failure", e);
+            throw e;
         } finally {
             LOGGER.info("MishMash stopped");
             if (logFile != null) {
@@ -189,8 +194,10 @@ public class MishMash {
      * Displays the banner and reads the user's name.
      *
      * @param scanner Scanner used to read user input.
+     * @throws NullPointerException If the scanner is null.
      */
     public static void greet(Scanner scanner) {
+        Objects.requireNonNull(scanner, "scanner");
         System.out.println(WELCOME_BANNER);
         System.out.println("What is your name?");
         if (scanner.hasNextLine()) {

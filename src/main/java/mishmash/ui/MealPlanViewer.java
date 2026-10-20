@@ -58,10 +58,11 @@ public class MealPlanViewer {
      * Formats one day's meals and sums their nutrition values for the daily totals.
      *
      * @param meals The meals in their planned order for the selected day.
-     * @param dayNumber The original day number in the plan, starting at 1.
+     * @param dayNumber The validated day number in the plan, starting at 1.
      * @return The day's meal breakdown and nutrition totals.
      */
     private String formatDay(List<MealSummary> meals, int dayNumber) {
+        assert dayNumber > 0 : "A displayed day must have a positive number: " + dayNumber;
         Objects.requireNonNull(meals, "meals");
 
         StringBuilder result = new StringBuilder("================ Day ")

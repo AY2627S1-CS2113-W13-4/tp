@@ -1,6 +1,8 @@
 package mishmash;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -200,6 +202,78 @@ class MishMashTest {
         }
     }
 
+    @Test
+    void main_runtimeFailure_logsCauseAndRethrowsAfterCleanup() {
+        IllegalStateException failure = new IllegalStateException("Broken application dependency");
+        InputStream failingInput = new InputStream() {
+            @Override
+            public int read() {
+                throw failure;
+            }
+        };
+
+        assertFailureIsLoggedAndRethrown(failingInput, failure);
+    }
+
+    @Test
+    void main_assertionFailure_logsCauseAndRethrowsAfterCleanup() {
+        AssertionError failure = new AssertionError("Broken internal invariant");
+        InputStream failingInput = new InputStream() {
+            @Override
+            public int read() {
+                throw failure;
+            }
+        };
+
+        assertFailureIsLoggedAndRethrown(failingInput, failure);
+    }
+
+    /**
+     * Checks that an unexpected failure is logged once and rethrown with logging configuration restored.
+     *
+     * @param failingInput The console stream that throws the expected failure when read.
+     * @param expectedFailure The original exception or assertion error that must reach the caller.
+     */
+    private void assertFailureIsLoggedAndRethrown(InputStream failingInput, Throwable expectedFailure) {
+        Logger appLogger = Logger.getLogger("mishmash");
+        Level originalLevel = appLogger.getLevel();
+        boolean wasUsingParentHandlers = appLogger.getUseParentHandlers();
+        List<Handler> expectedHandlers = new ArrayList<>(Arrays.asList(appLogger.getHandlers()));
+        RecordingHandler recordingHandler = new RecordingHandler();
+        expectedHandlers.add(recordingHandler);
+        appLogger.addHandler(recordingHandler);
+
+        try {
+            Throwable thrown = assertThrows(expectedFailure.getClass(), () -> runCli(failingInput));
+            assertSame(expectedFailure, thrown);
+            List<LogRecord> failures = recordingHandler.records.stream()
+                    .filter(record -> record.getLevel() == Level.SEVERE).toList();
+            assertEquals(1, failures.size());
+            assertSame(expectedFailure, failures.get(0).getThrown());
+            assertEquals(originalLevel, appLogger.getLevel());
+            assertEquals(wasUsingParentHandlers, appLogger.getUseParentHandlers());
+            assertEquals(expectedHandlers, Arrays.asList(appLogger.getHandlers()));
+        } finally {
+            appLogger.removeHandler(recordingHandler);
+            appLogger.setLevel(originalLevel);
+            appLogger.setUseParentHandlers(wasUsingParentHandlers);
+        }
+    }
+
+    @Test
+    void greet_nullScanner_rejectsBeforeDisplayingPrompt() {
+        PrintStream originalOutput = System.out;
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (PrintStream capturedOutput = new PrintStream(output, true, StandardCharsets.UTF_8)) {
+            System.setOut(capturedOutput);
+            NullPointerException exception = assertThrows(NullPointerException.class, () -> MishMash.greet(null));
+            assertEquals("scanner", exception.getMessage());
+            assertEquals(0, output.size());
+        } finally {
+            System.setOut(originalOutput);
+        }
+    }
+
     /**
      * Captures records propagated from application subpackages for logging integration checks.
      */
@@ -229,11 +303,21 @@ class MishMashTest {
      * @return The captured output.
      */
     private String runCli(String input) {
+        return runCli(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /**
+     * Runs a CLI session with a supplied input stream, including one that simulates a failure.
+     *
+     * @param input The simulated console stream.
+     * @return The captured output.
+     */
+    private String runCli(InputStream input) {
         InputStream originalInput = System.in;
         PrintStream originalOutput = System.out;
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (PrintStream capturedOutput = new PrintStream(output, true, StandardCharsets.UTF_8)) {
-            System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+            System.setIn(input);
             System.setOut(capturedOutput);
             MishMash.main(new String[0]);
         } finally {

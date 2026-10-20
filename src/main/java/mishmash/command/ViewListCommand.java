@@ -32,7 +32,8 @@ public class ViewListCommand implements Command {
      * Creates a viewing command connected to the caller's generated-list data.
      * A present but empty list is valid and displays zero items.
      *
-     * @param groceryListSource A function returning the currently generated list, if available.
+     * @param groceryListSource A function returning the generated list, or {@code Optional.empty()} if absent.
+     *         The function must never return {@code null}.
      * @throws NullPointerException If the source is null.
      */
     public ViewListCommand(Supplier<Optional<List<GroceryItem>>> groceryListSource) {
@@ -44,10 +45,15 @@ public class ViewListCommand implements Command {
      *
      * @param recipeBook The shared command context; viewing does not read or modify recipes.
      * @return The formatted list or a prompt when no list has been generated.
+     * @throws IllegalStateException If the source returns {@code null} instead of an Optional.
+     * @throws NullPointerException If a grocery item is null.
      */
     @Override
     public String execute(RecipeBook recipeBook) {
         Optional<List<GroceryItem>> groceries = groceryListSource.get();
+        if (groceries == null) {
+            throw new IllegalStateException("Grocery list source returned null; use Optional.empty() for no list.");
+        }
         if (groceries.isEmpty()) {
             LOGGER.fine("view-list requested before a grocery list was generated");
             return NO_LIST_MESSAGE;

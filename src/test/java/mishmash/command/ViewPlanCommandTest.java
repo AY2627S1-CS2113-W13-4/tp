@@ -95,6 +95,26 @@ class ViewPlanCommandTest {
     }
 
     @Test
+    void execute_nullPlanFromSource_reportsBrokenSourceAndCanReadReplacement() throws MishMashException {
+        AtomicReference<List<List<MealSummary>>> currentMealsByDay = new AtomicReference<>();
+        ViewPlanCommand allDays = new ViewPlanCommand(currentMealsByDay::get);
+        ViewPlanCommand selectedDay = new ViewPlanCommand(currentMealsByDay::get, 2);
+
+        for (ViewPlanCommand command : List.of(allDays, selectedDay)) {
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> command.execute(recipeBook));
+            assertEquals("Meal plan source returned null; use an empty list for no active plan.",
+                    exception.getMessage());
+        }
+        assertTrue(recipeBook.getRecipes().isEmpty());
+
+        currentMealsByDay.set(mealsByDay);
+        assertEquals(DAY_ONE_DISPLAY + System.lineSeparator() + System.lineSeparator() + DAY_TWO_DISPLAY,
+                allDays.execute(recipeBook));
+        assertEquals(DAY_TWO_DISPLAY, selectedDay.execute(recipeBook));
+    }
+
+    @Test
     void constructor_invalidDayOrSource_rejectsInput() {
         assertThrows(IllegalArgumentException.class, () -> new ViewPlanCommand(() -> mealsByDay, 0));
         assertThrows(IllegalArgumentException.class, () -> new ViewPlanCommand(() -> mealsByDay, -1));
