@@ -18,6 +18,7 @@ import mishmash.command.Command;
 import mishmash.command.DeleteRecipeCommand;
 import mishmash.command.GenerateListCommand;
 import mishmash.command.GeneratePlanCommand;
+import mishmash.command.HelpCommand;
 import mishmash.command.ListRecipeCommand;
 import mishmash.command.ViewListCommand;
 import mishmash.command.ViewPlanCommand;
@@ -71,7 +72,7 @@ public class Parser {
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE);
+            VIEW_PLAN_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE, "Format: help", "Format: bye");
 
     /**
      * Records parsing attempts and validated command details without logging full recipe input.
@@ -216,6 +217,13 @@ public class Parser {
      * @throws MishMashException If the command name or arguments are invalid.
      */
     private Command parseNamedCommand(String commandWord, String arguments) throws MishMashException {
+        if (commandWord.equals("help")) {
+            if (!arguments.isBlank()) {
+                throw new MishMashException("help does not accept arguments."
+                        + System.lineSeparator() + "Format: help");
+            }
+            return new HelpCommand();
+        }
         if (commandWord.equals(COMMAND_GENERATE_LIST)) {
             return parseGenerateList(arguments);
         }
@@ -553,4 +561,5 @@ public class Parser {
         return new GroceryItem(matcher.group(1), quantity, matcher.group(3));
     }
 }
+
 

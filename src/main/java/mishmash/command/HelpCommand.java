@@ -1,0 +1,40 @@
+package mishmash.command;
+
+import mishmash.model.RecipeBook;
+import mishmash.parser.Parser;
+
+/** Displays every supported command with its purpose and syntax. */
+public class HelpCommand implements Command {
+    @Override
+    public String execute(RecipeBook recipeBook) {
+        return String.join(System.lineSeparator(),
+                "Available commands (names are case-sensitive):",
+                "add-recipe - Add a recipe with nutrition and ingredients.",
+                Parser.ADD_RECIPE_USAGE,
+                "",
+                "list-recipes - List all recipes, or show one recipe in full.",
+                Parser.LIST_RECIPE_USAGE,
+                "",
+                "delete-recipe - Delete a recipe by its displayed index, after confirmation.",
+                Parser.DELETE_RECIPE_USAGE,
+                "",
+                "generate-plan - Generate a meal plan with optional daily nutrition targets.",
+                Parser.GENERATE_PLAN_USAGE,
+                "",
+                "view-plan - View the active meal plan, or one day.",
+                Parser.VIEW_PLAN_USAGE,
+                "",
+                "generate-list - Generate a grocery list from the active meal plan.",
+                Parser.GENERATE_LIST_USAGE,
+                "",
+                "view-list - View the generated grocery list.",
+                Parser.VIEW_LIST_USAGE,
+                "",
+                "help - Show all commands and what they do.",
+                "Format: help",
+                "bye - Exit MishMash.",
+                "Format: bye",
+                "",
+                "Square brackets indicate optional arguments. Use list-recipes to find recipe indexes.");
+    }
+}

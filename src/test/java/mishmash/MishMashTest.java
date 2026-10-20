@@ -51,7 +51,33 @@ class MishMashTest {
 
     private static final String ADD_RICE = AddRecipeTestData.VALID_COMMAND;
     private static final String ADD_OATS = "add-recipe n/Oats cal/150 p/5 c/27 f/3 i/Oats:40g";
-    private static final String CONTINUE_PROMPT = "Please enter another command, or type 'bye' to exit.";
+    private static final String CONTINUE_PROMPT = "Enter a command, or type 'help' for all commands or 'bye' to exit.";
+
+    @Test
+    void main_helpAndRecovery_promptAfterEveryCommand() {
+        String output = runCli(session("help", "list-recipes", "view-plan", "view-list",
+                "generate-list", "generate-plan d/1", "unknown", "", "help extra", "bye"));
+
+        for (String word : List.of("add-recipe", "list-recipes", "delete-recipe", "generate-plan",
+                "view-plan", "generate-list", "view-list", "help", "bye")) {
+            assertTrue(output.contains("Format: " + word), output);
+        }
+        assertTrue(output.contains("help does not accept arguments."), output);
+        assertEquals(10, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertEquals(10, countOccurrences(output,
+                "------------------------------------------------------------"), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_cancelledDelete_promptsOnceAfterCancellation() {
+        String output = runCli(session(ADD_RICE, "delete-recipe 1", "n", "list-recipes", "bye"));
+        assertEquals(4, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.contains("Cancelled. Nothing was changed." + System.lineSeparator()
+                + "------------------------------------------------------------" + System.lineSeparator()
+                + CONTINUE_PROMPT), output);
+        assertTrue(output.contains("1. Rice (200 kcal)"), output);
+    }
 
     @TestFactory
     Stream<DynamicTest> main_invalidRecipe_recoversForNextCommand() throws IOException {
@@ -63,7 +89,7 @@ class MishMashTest {
                             + "bye" + System.lineSeparator());
                     assertTrue(output.contains(testCase[1]), output);
                     assertTrue(output.contains(Parser.ADD_RECIPE_USAGE), output);
-                    assertTrue(output.contains("Please enter another command, or type 'bye' to exit."),
+                    assertTrue(output.contains("Enter a command, or type 'help' for all commands or 'bye' to exit."),
                             output);
                     assertEquals(1, countOccurrences(output, "Error: "), output);
                     assertEquals(1, countOccurrences(output, "New recipe added!"), output);
@@ -86,7 +112,7 @@ class MishMashTest {
                     String diagnostic = input.isBlank() ? "Enter a command." : "Unknown command: " + input;
                     assertTrue(output.contains("Error: " + diagnostic), output);
                     assertEquals(1, countOccurrences(output, "Format: add-recipe"), output);
-                    assertTrue(output.contains("Please enter another command, or type 'bye' to exit."),
+                    assertTrue(output.contains("Enter a command, or type 'help' for all commands or 'bye' to exit."),
                             output);
                     assertEquals(1, countOccurrences(output, "New recipe added!"), output);
                     assertTrue(output.indexOf("Error: ") < output.indexOf("New recipe added!"), output);
@@ -143,18 +169,20 @@ class MishMashTest {
                         "What is your name?",
                         "Hello Tester",
                         "Welcome to MishMash!",
-                        "Use 'add-recipe', 'generate-plan', 'view-plan', 'generate-list', or 'view-list',"
-                                + " or type 'bye' to exit.",
+                        "Type 'help' to view all commands and what they do, or 'bye' to exit.",
+                        "------------------------------------------------------------",
+                        CONTINUE_PROMPT,
                         "Error: Expected prefixed recipe arguments.",
                         Parser.ADD_RECIPE_USAGE,
-                        "Please enter another command, or type 'bye' to exit.",
+                        "------------------------------------------------------------",
+                        CONTINUE_PROMPT,
                         "New recipe added!",
                         "Rice",
                         "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                         "Ingredients:",
                         "- Rice: 150g",
-                        "",
-                        "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.",
+                        "------------------------------------------------------------",
+                        CONTINUE_PROMPT,
                         "Goodbye!") + System.lineSeparator();
 
         assertEquals(expected, output);
@@ -348,12 +376,14 @@ class MishMashTest {
                 "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                 "Ingredients:",
                 "- Rice: 150g",
-                "",
-                "Add another recipe with 'add-recipe', enter another command, or type 'bye' to exit.",
+                "------------------------------------------------------------",
+                CONTINUE_PROMPT,
                 "Are you sure you want to delete recipe 1: Rice? (y/n)",
                 "Recipe deleted!",
                 "Rice",
                 "Recipes remaining: 0",
+                "------------------------------------------------------------",
+                CONTINUE_PROMPT,
                 "Goodbye!") + System.lineSeparator();
         assertTrue(output.endsWith(expected), output);
     }
@@ -407,7 +437,7 @@ class MishMashTest {
 
         assertEquals(0, countOccurrences(output, "Are you sure"), output);
         assertEquals(2, countOccurrences(output, "Error: "), output);
-        assertEquals(2, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertEquals(4, countOccurrences(output, CONTINUE_PROMPT), output);
         assertTrue(output.contains("Error: There are no recipes to delete."), output);
         assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
@@ -447,10 +477,14 @@ class MishMashTest {
                 "Recipes:",
                 "1. Rice (200 kcal)",
                 "2. Oats (150 kcal)",
+                "------------------------------------------------------------",
+                CONTINUE_PROMPT,
                 "Oats",
                 "150 kcal | Protein: 5g | Carbs: 27g | Fats: 3g",
                 "Ingredients:",
                 "- Oats: 40g",
+                "------------------------------------------------------------",
+                CONTINUE_PROMPT,
                 "Goodbye!") + System.lineSeparator();
         assertTrue(output.endsWith(expected), output);
         assertEquals(0, countOccurrences(output, "Are you sure"), output);
@@ -476,9 +510,11 @@ class MishMashTest {
         assertTrue(output.contains("Error: There are no recipes to show. Use 'add-recipe' to add one."), output);
         assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
         assertTrue(output.contains("Error: Recipe index must be a single positive whole number."), output);
-        assertEquals(3, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertEquals(6, countOccurrences(output, CONTINUE_PROMPT), output);
         // The last command still works after the errors.
-        assertTrue(output.contains("- Rice: 150g" + System.lineSeparator() + "Goodbye!"), output);
+        assertTrue(output.contains("- Rice: 150g" + System.lineSeparator()
+                + "------------------------------------------------------------" + System.lineSeparator()
+                + CONTINUE_PROMPT + System.lineSeparator() + "Goodbye!"), output);
     }
 
     @Test
@@ -488,6 +524,8 @@ class MishMashTest {
 
         assertTrue(output.contains("Are you sure you want to delete recipe 2: Oats? (y/n)"), output);
         assertTrue(output.endsWith("Recipes:" + System.lineSeparator() + "1. Rice (200 kcal)"
+                + System.lineSeparator() + "------------------------------------------------------------"
+                + System.lineSeparator() + CONTINUE_PROMPT
                 + System.lineSeparator() + "Goodbye!" + System.lineSeparator()), output);
     }
 
@@ -499,3 +537,4 @@ class MishMashTest {
                 + String.join(System.lineSeparator(), lines) + System.lineSeparator();
     }
 }
+
