@@ -299,7 +299,7 @@ public class Parser {
             if (!message.contains(GENERATE_PLAN_USAGE)) {
                 message += System.lineSeparator() + GENERATE_PLAN_USAGE;
             }
-            throw new MishMashException(message);
+            throw new MishMashException(message, e);
         }
     }
 
@@ -318,7 +318,7 @@ public class Parser {
             return command;
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + DELETE_RECIPE_USAGE);
+                    + System.lineSeparator() + DELETE_RECIPE_USAGE, e);
         }
     }
 
@@ -341,7 +341,7 @@ public class Parser {
             return command;
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + LIST_RECIPE_USAGE);
+                    + System.lineSeparator() + LIST_RECIPE_USAGE, e);
         }
     }
 

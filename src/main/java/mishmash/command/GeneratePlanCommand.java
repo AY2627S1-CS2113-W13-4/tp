@@ -53,7 +53,7 @@ public class GeneratePlanCommand implements Command {
             plan = generator.generate(recipeBook.getRecipes(), request.days(), request.targets());
         } catch (IllegalArgumentException e) {
             // The generator reports user-fixable problems this way; show them like any other input error.
-            throw new MishMashException(e.getMessage());
+            throw new MishMashException(e.getMessage(), e);
         }
 
         activePlan.set(plan);
