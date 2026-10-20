@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.logging.Logger;
 
 import mishmash.model.DayPlan;
 import mishmash.model.MealPlan;
@@ -44,6 +45,8 @@ public class MealPlanGenerator {
      */
     private static final int TRIPLE_PERMUTATION_COUNT = 6;
 
+    private static final Logger LOGGER = Logger.getLogger(MealPlanGenerator.class.getName());
+
     private final Random random;
 
     /**
@@ -80,11 +83,17 @@ public class MealPlanGenerator {
             throw new IllegalArgumentException("Days must be between " + MIN_DAYS + " and " + MAX_DAYS + ".");
         }
         checkEnoughRecipes(recipes);
+        LOGGER.fine(() -> "Generating meal plan: days=" + days + ", recipes=" + recipes.size()
+                + ", targets supplied=" + targets.hasAnyTarget());
 
+        MealPlan plan;
         if (!targets.hasAnyTarget()) {
-            return generateRandomPlan(recipes, days);
+            plan = generateRandomPlan(recipes, days);
+        } else {
+            plan = generateTargetedPlan(recipes, days, targets);
         }
-        return generateTargetedPlan(recipes, days, targets);
+        assert plan.getNumberOfDays() == days : "Generated plan must contain the requested number of days";
+        return plan;
     }
 
     /**
@@ -138,6 +147,7 @@ public class MealPlanGenerator {
                 matching.add(candidate);
             }
         }
+        LOGGER.fine(() -> "Found " + matching.size() + " candidate combinations matching nutrition targets");
         if (matching.isEmpty()) {
             throw new IllegalArgumentException("Could not find " + MEALS_PER_DAY
                     + " recipes that meet your daily targets within 15%."
@@ -156,6 +166,8 @@ public class MealPlanGenerator {
      * otherwise {@link #MAX_CANDIDATES} randomly chosen combinations.
      */
     private List<DayPlan> buildCandidates(List<Recipe> recipes) {
+        assert recipes.size() >= MEALS_PER_DAY
+                : "Recipe count should have been validated before building candidates";
         int recipeCount = recipes.size();
         long combinationCount = (long) recipeCount * (recipeCount - 1) * (recipeCount - 2)
                 / TRIPLE_PERMUTATION_COUNT;

@@ -1,6 +1,7 @@
 package mishmash.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -88,6 +89,8 @@ class GeneratePlanCommandTest {
                 () -> command("d/3").execute(new RecipeBook()));
 
         assertTrue(e.getMessage().contains("recipe book is empty"));
+        assertInstanceOf(IllegalArgumentException.class, e.getCause());
+        assertEquals(e.getMessage(), e.getCause().getMessage());
     }
 
     @Test

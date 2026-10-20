@@ -33,6 +33,25 @@ class ParserTest {
     private final Parser parser = new Parser();
 
     @Test
+    void parseCommand_invalidArguments_preservesCauseAndUsage() {
+        String[][] invalidCommands = {
+            {"generate-plan d/0", Parser.GENERATE_PLAN_USAGE},
+            {"delete-recipe 0", Parser.DELETE_RECIPE_USAGE},
+            {"list-recipes 0", Parser.LIST_RECIPE_USAGE}
+        };
+
+        for (String[] input : invalidCommands) {
+            MishMashException exception = assertThrows(MishMashException.class,
+                    () -> parser.parseCommand(input[0]), input[0]);
+
+            IllegalArgumentException cause = assertInstanceOf(
+                    IllegalArgumentException.class, exception.getCause(), input[0]);
+            assertTrue(exception.getMessage().contains(cause.getMessage()), input[0]);
+            assertTrue(exception.getMessage().endsWith(input[1]), input[0]);
+        }
+    }
+
+    @Test
     void parseCommand_validInput_preservesRecipeFields() throws MishMashException {
         RecipeBook recipeBook = new RecipeBook();
 
