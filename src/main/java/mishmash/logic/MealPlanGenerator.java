@@ -177,6 +177,7 @@ public class MealPlanGenerator {
         return sampleCandidates(recipes);
     }
 
+    //@@author GauthamNandi
     /**
      * Returns every combination of three recipes in their original index order, without duplicates.
      *
@@ -210,4 +211,5 @@ public class MealPlanGenerator {
         }
         return candidates;
     }
+    //@@author
 }

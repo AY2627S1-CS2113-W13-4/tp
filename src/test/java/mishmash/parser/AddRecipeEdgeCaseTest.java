@@ -21,6 +21,7 @@ import mishmash.testutil.AddRecipeTestData;
  * The shared TSV cases are also used by the CLI tests and can be tried manually.
  */
 class AddRecipeEdgeCaseTest {
+    //@@author peilingggg
     @TestFactory
     Stream<DynamicTest> parseCommand_invalidInput_preservesBook() throws IOException {
         return AddRecipeTestData.invalidCases().stream().map(testCase -> DynamicTest.dynamicTest(testCase[0], () -> {
@@ -42,4 +43,5 @@ class AddRecipeEdgeCaseTest {
             assertEquals("Second recipe", book.getRecipes().get(1).getName());
         }));
     }
+    //@@author
 }

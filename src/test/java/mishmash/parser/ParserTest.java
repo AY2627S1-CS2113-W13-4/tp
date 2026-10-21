@@ -51,6 +51,7 @@ class ParserTest {
         }
     }
 
+    //@@author peilingggg
     @Test
     void parseCommand_validInput_preservesRecipeFields() throws MishMashException {
         RecipeBook recipeBook = new RecipeBook();
@@ -81,6 +82,7 @@ class ParserTest {
         assertEquals(new BigDecimal("2.5"),
                 recipeBook.getRecipes().get(0).getIngredients().get(0).getQuantity());
     }
+    //@@author
 
     @Test
     void parseCommand_missingField_throwsMishMashException() {
@@ -130,6 +132,7 @@ class ParserTest {
         assertTrue(exception.getMessage().contains(Parser.ADD_RECIPE_USAGE));
     }
 
+    //@@author peilingggg
     @Test
     void parseCommand_invalidBetweenValid_preservesRecipeBook() throws MishMashException {
         RecipeBook recipeBook = new RecipeBook();
@@ -147,6 +150,7 @@ class ParserTest {
         assertEquals("Chicken and Rice", recipeBook.getRecipes().get(0).getName());
         assertEquals("Second recipe", recipeBook.getRecipes().get(1).getName());
     }
+    //@@author
 
     @Test
     void parseCommand_emptyOrUnknown_throwsMishMashException() {

@@ -79,6 +79,7 @@ class MishMashTest {
         assertTrue(output.contains("1. Rice (200 kcal)"), output);
     }
 
+    //@@author peilingggg
     @TestFactory
     Stream<DynamicTest> main_invalidRecipe_recoversForNextCommand() throws IOException {
         return AddRecipeTestData.invalidCases().stream().map(testCase ->
@@ -127,6 +128,7 @@ class MishMashTest {
         assertTrue(output.contains(Parser.ADD_RECIPE_USAGE), output);
         assertEquals(0, countOccurrences(output, "New recipe added!"), output);
     }
+    //@@author
 
     @Test
     void main_viewingWithoutGeneratedData_displaysPromptsAndContinues() {
@@ -334,6 +336,7 @@ class MishMashTest {
         return runCli(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
     }
 
+    //@@author peilingggg
     /**
      * Runs a CLI session with a supplied input stream, including one that simulates a failure.
      *
@@ -354,6 +357,7 @@ class MishMashTest {
         }
         return output.toString(StandardCharsets.UTF_8);
     }
+    //@@author
 
     /**
      * Counts literal message occurrences without interpreting punctuation as regular expressions.
