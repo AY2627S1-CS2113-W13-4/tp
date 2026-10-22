@@ -254,7 +254,6 @@ public class Parser {
         throw new MishMashException("Unknown command: " + commandWord);
     }
 
-    //@@author peilingggg
     /**
      * Creates a read-only shortfall check and attaches command usage to invalid target errors.
      *
@@ -271,6 +270,7 @@ public class Parser {
         }
     }
 
+    //@@author peilingggg
     /**
      * Parses a recipe addition and attaches its usage instructions to recoverable validation errors.
      *
