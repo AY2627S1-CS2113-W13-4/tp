@@ -20,7 +20,9 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.TestRecipes;
 
-/** Checks daily comparison boundaries, omitted targets, and preservation of existing plan data. */
+/**
+ * Checks daily comparison boundaries, omitted targets, and preservation of existing plan data.
+ */
 class CheckShortfallCommandTest {
     private final ActiveMealPlan activePlan = new ActiveMealPlan();
     private final RecipeBook recipeBook = new RecipeBook();
@@ -28,7 +30,7 @@ class CheckShortfallCommandTest {
     @Test
     void execute_multipleDays_reportsShortfallsSeparatelyWithoutChangingData() {
         MealPlan plan = new MealPlan(List.of(
-                day(1800, 80, 250, 60), day(2200, 120, 300, 70)));
+                createDayPlan(1800, 80, 250, 60), createDayPlan(2200, 120, 300, 70)));
         activePlan.set(plan);
         List<GroceryItem> groceries = List.of(new GroceryItem("Rice", new BigDecimal("150"), "g"));
         activePlan.setGroceryList(groceries);
@@ -79,7 +81,7 @@ class CheckShortfallCommandTest {
 
     @Test
     void execute_exactTargetsAndSurpluses_areNotShortfalls() {
-        activePlan.set(new MealPlan(List.of(day(2000, 100, 250, 70))));
+        activePlan.set(new MealPlan(List.of(createDayPlan(2000, 100, 250, 70))));
 
         String result = new CheckShortfallCommand(activePlan,
                 new NutritionTargets(2000, 100, 250, 60)).execute(recipeBook);
@@ -90,7 +92,7 @@ class CheckShortfallCommandTest {
 
     @Test
     void execute_allNutrientsOneUnitBelowTarget_reportsEvenWithinGenerationTolerance() {
-        activePlan.set(new MealPlan(List.of(day(1999, 99, 249, 59))));
+        activePlan.set(new MealPlan(List.of(createDayPlan(1999, 99, 249, 59))));
 
         String result = new CheckShortfallCommand(activePlan,
                 new NutritionTargets(2000, 100, 250, 60)).execute(recipeBook);
@@ -103,7 +105,7 @@ class CheckShortfallCommandTest {
 
     @Test
     void execute_omittedTargets_doesNotCheckThoseNutrients() {
-        activePlan.set(new MealPlan(List.of(day(0, 100, 0, 0))));
+        activePlan.set(new MealPlan(List.of(createDayPlan(0, 100, 0, 0))));
 
         String result = new CheckShortfallCommand(activePlan,
                 new NutritionTargets(null, 100, null, null)).execute(recipeBook);
@@ -133,10 +135,10 @@ class CheckShortfallCommandTest {
                 new NutritionTargets(2000, null, null, null));
         assertEquals("No active meal plan. Use 'generate-plan' first.", command.execute(recipeBook));
 
-        activePlan.set(new MealPlan(List.of(day(0, 0, 0, 0))));
+        activePlan.set(new MealPlan(List.of(createDayPlan(0, 0, 0, 0))));
         assertTrue(command.execute(recipeBook).contains("short by 2000 kcal"));
 
-        activePlan.set(new MealPlan(List.of(day(2000, 0, 0, 0))));
+        activePlan.set(new MealPlan(List.of(createDayPlan(2000, 0, 0, 0))));
         assertTrue(command.execute(recipeBook).contains("No shortfalls for the supplied targets."));
     }
 
@@ -149,8 +151,10 @@ class CheckShortfallCommandTest {
                 () -> new CheckShortfallCommand(null, new NutritionTargets(2000, null, null, null)));
     }
 
-    /** Creates a day with controlled totals, independently of random plan generation. */
-    private DayPlan day(int calories, int protein, int carbs, int fats) {
+    /**
+     * Creates a day with controlled totals, independently of random plan generation.
+     */
+    private DayPlan createDayPlan(int calories, int protein, int carbs, int fats) {
         return new DayPlan(List.of(TestRecipes.recipe("Meal", calories, protein, carbs, fats)));
     }
 }

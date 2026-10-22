@@ -24,7 +24,8 @@ public class HelpCommand implements Command {
                 "view-plan - View the active meal plan, or one day.",
                 Parser.VIEW_PLAN_USAGE,
                 "",
-                "check-shortfall - Check each day's planned nutrition against explicit daily targets.",
+                CheckShortfallCommand.COMMAND_WORD
+                        + " - Check each day's planned nutrition against explicit daily targets.",
                 Parser.CHECK_SHORTFALL_USAGE,
                 "Supply at least one target; omitted nutrients are not checked.",
                 "",

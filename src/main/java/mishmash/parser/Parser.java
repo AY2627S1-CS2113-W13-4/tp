@@ -29,6 +29,7 @@ import mishmash.model.ActiveMealPlan;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
+import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
@@ -239,7 +240,7 @@ public class Parser {
         if (commandWord.equals(COMMAND_GENERATE_PLAN)) {
             return parseGeneratePlan(arguments);
         }
-        if (commandWord.equals("check-shortfall")) {
+        if (commandWord.equals(CheckShortfallCommand.COMMAND_WORD)) {
             return parseCheckShortfall(arguments);
         }
         if (commandWord.equals(COMMAND_LIST_RECIPE)) {
@@ -263,7 +264,8 @@ public class Parser {
      */
     private Command parseCheckShortfall(String arguments) throws MishMashException {
         try {
-            return new CheckShortfallCommand(activeMealPlan, new CheckShortfallParser().parse(arguments));
+            NutritionTargets targets = new CheckShortfallParser().parse(arguments);
+            return new CheckShortfallCommand(activeMealPlan, targets);
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);

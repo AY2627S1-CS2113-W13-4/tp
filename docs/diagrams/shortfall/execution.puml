@@ -29,23 +29,23 @@ else plan present
       Check -> Check : findShortfalls(day)
       activate Check
       Check -> Day : getTotalCalories()
-      Day --> Check : actual: long
+      Day --> Check : plannedTotal: long
       Check -> Targets : getCalories()
-      Targets --> Check : target: Integer (possibly null)
-      Check -> Check : addShortfall(shortfalls, "Calories",\n"kcal", actual, target)
+      Targets --> Check : dailyTarget: Integer (possibly null)
+      Check -> Check : addShortfall(shortfalls, "Calories",\n"kcal", plannedTotal, dailyTarget)
       note over Check, Targets
-        Append a deficit only if target != null and actual < target.
+        Append only if dailyTarget != null and plannedTotal < dailyTarget.
         Repeat these getter/comparison steps for protein, carbs and fats.
       end note
       Check --> Check : shortfalls
       deactivate Check
       alt shortfalls is empty
-        note right of Check : Add a day-specific "No shortfalls" line to output.
+        note right of Check : Add a day-specific "No shortfalls" line to outputLines.
       else shortfalls is not empty
-        note right of Check : Add the day heading and deficit lines to output.
+        note right of Check : Add the day heading and deficit lines to outputLines.
       end
     end
-    Check --> App : String.join(lineSeparator, output)
+    Check --> App : String.join(lineSeparator, outputLines)
   end
 end
 deactivate Check

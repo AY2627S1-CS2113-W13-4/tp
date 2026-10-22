@@ -16,14 +16,19 @@ import mishmash.model.RecipeBook;
  * A shortfall is any amount below a supplied target, independently of generation's tolerance.
  */
 public class CheckShortfallCommand implements Command {
+    /** Command word shared by parsing, help, and usage instructions. */
+    public static final String COMMAND_WORD = "check-shortfall";
+
     /** At least one of these daily targets must be supplied. */
-    public static final String USAGE = "Format: check-shortfall [cal/DAILY_CALORIES] [p/DAILY_PROTEIN]"
+    public static final String USAGE = "Format: " + COMMAND_WORD + " [cal/DAILY_CALORIES] [p/DAILY_PROTEIN]"
             + " [c/DAILY_CARBS] [f/DAILY_FATS]";
 
     private static final Logger LOGGER = Logger.getLogger(CheckShortfallCommand.class.getName());
 
     /** Reads the latest plan when the command executes, rather than capturing an earlier plan. */
     private final ActiveMealPlan activePlan;
+
+    /** Request-specific targets; a null nutrient value means that nutrient is not checked. */
     private final NutritionTargets targets;
 
     /**
@@ -55,22 +60,29 @@ public class CheckShortfallCommand implements Command {
         if (plan == null || plan.getNumberOfDays() == 0) {
             return "No active meal plan. Use 'generate-plan' first.";
         }
-        List<String> output = new ArrayList<>();
-        output.add("Daily nutrition shortfalls (compared with the supplied targets):");
+
+        List<String> outputLines = new ArrayList<>();
+        outputLines.add("Daily nutrition shortfalls (compared with the supplied targets):");
         for (int index = 0; index < plan.getNumberOfDays(); index++) {
             List<String> shortfalls = findShortfalls(plan.getDays().get(index));
             if (shortfalls.isEmpty()) {
-                output.add("Day " + (index + 1) + ": No shortfalls for the supplied targets.");
+                outputLines.add("Day " + (index + 1) + ": No shortfalls for the supplied targets.");
             } else {
-                output.add("Day " + (index + 1) + ":");
-                output.addAll(shortfalls);
+                outputLines.add("Day " + (index + 1) + ":");
+                outputLines.addAll(shortfalls);
             }
         }
+
         LOGGER.fine(() -> "Checked nutrition shortfalls for " + plan.getNumberOfDays() + " days");
-        return String.join(System.lineSeparator(), output);
+        return String.join(System.lineSeparator(), outputLines);
     }
 
-    /** Collects only the supplied nutrients whose totals are strictly below their daily targets. */
+    /**
+     * Returns deficits for the supplied nutrients whose planned totals are below their daily targets.
+     *
+     * @param day The planned day whose nutrition totals are checked.
+     * @return Deficit lines in calorie, protein, carbohydrate, and fat order.
+     */
     private List<String> findShortfalls(DayPlan day) {
         List<String> shortfalls = new ArrayList<>();
         addShortfall(shortfalls, "Calories", "kcal", day.getTotalCalories(), targets.getCalories());
@@ -80,11 +92,21 @@ public class CheckShortfallCommand implements Command {
         return shortfalls;
     }
 
-    /** Uses long totals so large recipe values cannot overflow and appear to be shortfalls. */
-    private void addShortfall(List<String> shortfalls, String label, String unit, long actual, Integer target) {
-        if (target != null && actual < target) {
-            shortfalls.add("- " + label + ": " + actual + "/" + target + " " + unit
-                    + " (short by " + (target - actual) + " " + unit + ").");
+    /**
+     * Adds a deficit line when a supplied daily target exceeds the planned total.
+     * Long arithmetic prevents large recipe totals from wrapping around into false deficits.
+     *
+     * @param shortfalls The output lines for the current day.
+     * @param nutrientName The nutrient's display name.
+     * @param unit The displayed measurement unit, either kcal or g.
+     * @param plannedTotal The total amount supplied by that day's planned meals.
+     * @param dailyTarget The amount to compare against, or null to leave the nutrient unchecked.
+     */
+    private void addShortfall(List<String> shortfalls, String nutrientName, String unit,
+            long plannedTotal, Integer dailyTarget) {
+        if (dailyTarget != null && plannedTotal < dailyTarget) {
+            shortfalls.add("- " + nutrientName + ": " + plannedTotal + "/" + dailyTarget + " " + unit
+                    + " (short by " + (dailyTarget - plannedTotal) + " " + unit + ").");
         }
     }
 }

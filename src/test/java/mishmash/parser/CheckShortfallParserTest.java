@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,9 @@ import org.junit.jupiter.api.TestFactory;
 
 import mishmash.model.NutritionTargets;
 
-/** Exercises each target prefix, numerical boundaries, and malformed command arguments. */
+/**
+ * Exercises each target prefix, numerical boundaries, and malformed command arguments.
+ */
 class CheckShortfallParserTest {
     private final CheckShortfallParser parser = new CheckShortfallParser();
 
@@ -44,15 +46,29 @@ class CheckShortfallParserTest {
 
     @Test
     void parse_eachSingleTarget_setsOnlyRequestedNutrient() {
-        List<NutritionTargets> targets = List.of(parser.parse("cal/1"), parser.parse("p/1"),
-                parser.parse("c/1"), parser.parse("f/1"));
-        for (int index = 0; index < targets.size(); index++) {
-            NutritionTargets actual = targets.get(index);
-            assertEquals(index == 0 ? 1 : null, actual.getCalories());
-            assertEquals(index == 1 ? 1 : null, actual.getProtein());
-            assertEquals(index == 2 ? 1 : null, actual.getCarbs());
-            assertEquals(index == 3 ? 1 : null, actual.getFats());
-        }
+        NutritionTargets calorieTargets = parser.parse("cal/1");
+        assertEquals(1, calorieTargets.getCalories());
+        assertNull(calorieTargets.getProtein());
+        assertNull(calorieTargets.getCarbs());
+        assertNull(calorieTargets.getFats());
+
+        NutritionTargets proteinTargets = parser.parse("p/1");
+        assertNull(proteinTargets.getCalories());
+        assertEquals(1, proteinTargets.getProtein());
+        assertNull(proteinTargets.getCarbs());
+        assertNull(proteinTargets.getFats());
+
+        NutritionTargets carbTargets = parser.parse("c/1");
+        assertNull(carbTargets.getCalories());
+        assertNull(carbTargets.getProtein());
+        assertEquals(1, carbTargets.getCarbs());
+        assertNull(carbTargets.getFats());
+
+        NutritionTargets fatTargets = parser.parse("f/1");
+        assertNull(fatTargets.getCalories());
+        assertNull(fatTargets.getProtein());
+        assertNull(fatTargets.getCarbs());
+        assertEquals(1, fatTargets.getFats());
     }
 
     @Test
@@ -63,12 +79,18 @@ class CheckShortfallParserTest {
     }
 
     @TestFactory
-    Stream<DynamicTest> parse_malformedValues_rejectsEveryNutrient() {
+    List<DynamicTest> parse_malformedValues_rejectsEveryNutrient() {
         List<String> invalidValues = List.of("", "0", "000", "-1", "+1", "1.5", "1e3", "NaN", "Infinity",
                 "1_000", "1,000", "2000kcal", "\u0661", "2147483648", "99999999999999999999999", "1/2");
-        return Stream.of("cal/", "p/", "c/", "f/").flatMap(prefix -> invalidValues.stream()
-                .map(value -> DynamicTest.dynamicTest(prefix + value,
-                        () -> assertThrows(IllegalArgumentException.class, () -> parser.parse(prefix + value)))));
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String prefix : List.of("cal/", "p/", "c/", "f/")) {
+            for (String invalidValue : invalidValues) {
+                String arguments = prefix + invalidValue;
+                tests.add(DynamicTest.dynamicTest(arguments,
+                        () -> assertThrows(IllegalArgumentException.class, () -> parser.parse(arguments))));
+            }
+        }
+        return tests;
     }
 
     @Test

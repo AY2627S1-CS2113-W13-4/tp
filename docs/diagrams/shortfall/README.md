@@ -38,3 +38,10 @@ After changing code, check every depicted method, constructor, message order, as
 and guard against the implementation. Render the diagrams and inspect their images;
 syntax checking alone cannot detect a diagram that misrepresents the code. Keep the
 abstraction notes in the guide when omitting repeated getters or formatting details.
+
+The class diagram uses a typed private attribute for the parser's shared holder and
+navigable association ends with private role names and target-end multiplicities for
+the remaining stored references. No reference is shown in both forms. Ordered, nonunique
+ends represent the model's lists; normal generation
+applies stricter day and meal-count rules. Static constants and unrelated members are
+omitted rather than represented as instance members.

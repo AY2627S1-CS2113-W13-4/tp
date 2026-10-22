@@ -20,12 +20,18 @@ Parser -> TargetParser : new CheckShortfallParser()
 Parser -> TargetParser : parse("cal/2000 p/100")
 activate TargetParser
 loop each supplied token (cal/2000, then p/100)
+  TargetParser -> TargetParser : readTarget(token, values)
+  activate TargetParser
+  note right of TargetParser
+    Accept a recognized, unique prefix.
+  end note
   TargetParser -> TargetParser : parseTarget(value, prefix)
   note right of TargetParser
-    Accept a recognised, unique prefix
-    and a positive integer value.
-    Collect the value in a local map.
+    Accept a positive integer value
+    and record it in the local map.
   end note
+  TargetParser --> TargetParser : return
+  deactivate TargetParser
 end
 create Targets
 TargetParser -> Targets : new NutritionTargets(\n2000, 100, null, null)

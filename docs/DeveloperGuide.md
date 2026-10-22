@@ -139,12 +139,15 @@ Figure 2 expands the implementation classes and the model references used by the
 ![Figure 2. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
 
 *Figure 2: Only members relevant to this enhancement are shown. Solid arrows are
-navigable associations; dashed arrows show dependencies or interface realisation.
-The `addShortfall` parameter list is abbreviated.*
+navigable associations with private role names; dashed arrows show dependencies or
+interface realization. Each reference is shown either as a typed attribute or as an
+association end, without duplication. The `addShortfall` parameter list is abbreviated.*
 
-`CheckShortfallParser` converts arguments into `NutritionTargets`. Its local map detects
-duplicate prefixes and keeps the values separate; omitted nutrients remain `null` in the
-result. It checks the token syntax before integer conversion, which rejects signs,
+`CheckShortfallParser` converts arguments into `NutritionTargets`. Its `parse` method
+coordinates the request while `readTarget` validates and records one token. Named prefix
+constants are shared by validation and target construction to keep those rules consistent.
+The local map detects duplicate prefixes and keeps the values separate; omitted nutrients
+remain `null` in the result. Token syntax is checked before integer conversion, rejecting signs,
 decimals, units, and non-ASCII digits consistently. Conversion then detects values beyond
 `Integer.MAX_VALUE`. The existing `NutritionTargets` constructor additionally rejects
 non-positive values.
@@ -158,7 +161,11 @@ targets, protecting callers that construct commands without using the parser.
 `MealPlan` supplies ordered `DayPlan` objects. Each day calculates its totals from its
 `Recipe` references through four existing getters. The class diagram uses plain
 associations rather than composition: the lists copy references, and recipes can occur
-in multiple days. An active plan is optional, and the model permits empty day lists and
+in multiple days. Association roles name the actual private fields; the parser's shared
+holder is represented as a typed private attribute instead. Target-end
+multiplicities are shown; reverse ends are left unspecified. The ordered, nonunique list
+ends allow the model to hold repeated object references. An active plan is optional,
+and the model permits empty day lists and
 empty meal lists. Normal generation applies the stricter limits of one to seven days and
 three distinct recipe entries per day.
 
@@ -167,7 +174,7 @@ three distinct recipe entries per day.
 Figure 3 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
 from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
 the parser lifeline. A new target parser is created for the request. Its `parse` method
-collects values, validates each supplied token, and constructs
+collects values by calling `readTarget` for each supplied token, then constructs
 `NutritionTargets(2000, 100, null, null)`.
 
 ![Figure 3. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
@@ -189,7 +196,7 @@ requires no confirmation. That common interface step is omitted from the diagram
 ![Figure 4. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
 
 *Figure 4: The calorie getter/comparison calls are expanded; the equivalent calls for
-protein, carbohydrates, and fat are summarised in the note. Repeated day-count reads,
+protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
 list indexing, logging, and string-building details are condensed.*
 
 The command looks up the plan during execution, rather than capturing the plan while
@@ -201,7 +208,8 @@ such a failure still inspect the previous plan.
 If no plan exists, or its day list is empty, execution returns the generate-first message.
 Otherwise it visits each day in order. `findShortfalls(day)` obtains the four totals and
 corresponding optional targets. `addShortfall` appends a line only when
-`target != null && actual < target`; the reported deficit is `target - actual`.
+`dailyTarget != null && plannedTotal < dailyTarget`; the reported deficit is
+`dailyTarget - plannedTotal`.
 For a day with 1800 kcal and 80 g protein, targets of 2000 kcal and 100 g protein produce:
 
 ```text
@@ -236,13 +244,13 @@ command prompt instead of ending the session.
 
 ![Figure 5. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
 
-*Figure 5: Exception returns are labelled explicitly. For this invalid request, neither
+*Figure 5: Exception returns are labeled explicitly. For this invalid request, neither
 the target object nor the shortfall command is constructed, and the plan is not accessed.*
 
 An invalid request is an input error, whereas a valid request with no active plan returns
 normal guidance from `execute`. Neither path changes application data.
 
-| Boundary or invalid condition | Implemented behaviour |
+| Boundary or invalid condition | Implemented behavior |
 | --- | --- |
 | No targets, including blank arguments | Reject with a request for at least one daily target and the command format. |
 | Zero, negative, signed, decimal, non-numeric, unit-suffixed, or overflowing target | Reject. Accepted values are digit strings representing 1 to `Integer.MAX_VALUE`; leading zeros are allowed. |
@@ -258,7 +266,7 @@ normal guidance from `execute`. Neither path changes application data.
 | Decision | Alternative considered | Reason for the current choice |
 | --- | --- | --- |
 | Report any amount strictly below a target | Reuse the generator's +/-15% satisfaction test | Generation accepts approximate matches; this feature explains the exact gap. A 1900 kcal plan can be accepted for a 2000 kcal generation target and still have a 100 kcal shortfall. `isSatisfiedBy` also returns only a boolean and cannot explain which nutrients are deficient. |
-| Require explicit targets for each check | Read saved personal targets or remember the previous generation request | Saved personal settings are a separate enhancement. Explicit arguments make the current behaviour predictable and allow checks against different targets without changing the plan. |
+| Require explicit targets for each check | Read saved personal targets or remember the previous generation request | Saved personal settings are a separate enhancement. Explicit arguments make the current behavior predictable and allow checks against different targets without changing the plan. |
 | Reuse the existing per-day `long` totals | Duplicate summation, use `int`, or compare an average across all days | Reuse keeps calculations consistent with the model; `long` prevents integer wraparound, and per-day checks avoid masking deficits through averaging. |
 | Report deficits without modifying meals | Automatically regenerate or rebalance the plan | Automatic changes would introduce selection rules and could invalidate groceries. Reporting is sufficient for this user story and keeps the action read-only. |
 | Return formatted text through `Command.execute` | Add a new formatter class and a separate shortfall-result model | The output currently has one consumer and four fixed nutrients. The existing command contract is sufficient; a structured result would become useful if another interface or export feature needed to consume it. |
@@ -274,6 +282,14 @@ dispatch, wrapped errors, default and injected dependencies, and a check after f
 generation. `MishMashTest` covers the complete console workflow and continued use of
 viewing and help commands. Run these with the full Java 25 verification tasks documented
 under [Testing](#testing).
+
+Maintenance follows the course's [Java conventions](https://se-education.org/guides/conventions/java/index.html),
+[code-quality guidance](https://se-education.org/se-book/codeQuality/index.html), and
+[Week 8 developer-testing and documentation guidance](https://nus-cs2113-ay2627-s1.github.io/website/schedule/week8/topics.html).
+Keep request coordination separate from token validation, use descriptive names and the
+shared command/prefix constants, and document method contracts in multiline Javadoc.
+Behavioral tests should verify independent expected results, exceptions, and unchanged
+data; diagram checks should verify relationships and call order against the implementation.
 
 Editable sources for all five figures are under
 [`docs/diagrams/shortfall`](diagrams/shortfall/README.md). Rendered SVGs are checked in so

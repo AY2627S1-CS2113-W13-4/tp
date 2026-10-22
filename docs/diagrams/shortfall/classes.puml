@@ -3,6 +3,8 @@
 !include style.iuml
 title Shortfall checking: selected class relationships
 top to bottom direction
+skinparam nodesep 50
+skinparam ranksep 75
 hide empty members
 
 class Parser {
@@ -12,20 +14,18 @@ class Parser {
 }
 class CheckShortfallParser {
   + parse(arguments: String): NutritionTargets
+  - readTarget(token: String, values: Map<String, Integer>): void
   - parseTarget(value: String, prefix: String): int
 }
 interface Command {
   + execute(recipeBook: RecipeBook): String
 }
 class CheckShortfallCommand {
-  - activePlan: ActiveMealPlan
-  - targets: NutritionTargets
   + execute(recipeBook: RecipeBook): String
   - findShortfalls(day: DayPlan): List<String>
-  - addShortfall(shortfalls, label, unit, actual, target): void
+  - addShortfall(shortfalls, nutrientName, unit, plannedTotal, dailyTarget): void
 }
 class ActiveMealPlan {
-  - plan: MealPlan
   + get(): Optional<MealPlan>
 }
 class NutritionTargets {
@@ -40,12 +40,10 @@ class NutritionTargets {
   + getFats(): Integer
 }
 class MealPlan {
-  - days: List<DayPlan>
   + getDays(): List<DayPlan>
   + getNumberOfDays(): int
 }
 class DayPlan {
-  - meals: List<Recipe>
   + getTotalCalories(): long
   + getTotalProtein(): long
   + getTotalCarbs(): long
@@ -55,19 +53,20 @@ class Recipe
 
 Parser ..> CheckShortfallParser : creates
 Parser ..> CheckShortfallCommand : creates
-Parser --> "1" ActiveMealPlan : activeMealPlan
 CheckShortfallParser ..> NutritionTargets : creates
 CheckShortfallCommand ..|> Command
-CheckShortfallCommand --> "1" ActiveMealPlan : activePlan
-CheckShortfallCommand --> "1" NutritionTargets : targets
-ActiveMealPlan --> "0..1" MealPlan : plan
-MealPlan --> "0..*" DayPlan : days {ordered}
-DayPlan --> "0..*" Recipe : meals {ordered}
+CheckShortfallCommand --> "1\n-activePlan" ActiveMealPlan
+CheckShortfallCommand --> "1\n-targets" NutritionTargets
+ActiveMealPlan --> "0..1\n-plan" MealPlan
+MealPlan --> "0..*\n-days\n{ordered, nonunique}" DayPlan
+DayPlan --> "0..*\n-meals\n{ordered, nonunique}" Recipe
 
 legend bottom
   Only feature-relevant members are shown. The addShortfall parameter list is abbreviated.
-  Solid arrows are navigable associations; dashed arrows are dependencies or realisation.
-  Model multiplicities allow empty lists; normal generation produces 1-7 days and 3 meals/day.
+  Solid arrows show references with private role names; dashed arrows show dependencies or realization.
+  The parser's shared holder is an attribute; other references use association ends, never both.
+  Target-end multiplicities are shown; reverse ends are unspecified. Lists are ordered and nonunique.
+  The model allows empty lists; normal generation produces 1-7 days and 3 distinct recipes/day.
   Integer targets may be null. RecipeBook is an execution parameter, not a stored command field.
 endlegend
 @enduml

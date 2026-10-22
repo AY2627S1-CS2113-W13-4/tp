@@ -10,7 +10,12 @@ import mishmash.model.NutritionTargets;
  * Parses explicit daily targets for check-shortfall without modifying the targets used for generation.
  */
 public class CheckShortfallParser {
-    private static final List<String> PREFIXES = List.of("cal", "p", "c", "f");
+    private static final String PREFIX_CALORIES = "cal";
+    private static final String PREFIX_PROTEIN = "p";
+    private static final String PREFIX_CARBS = "c";
+    private static final String PREFIX_FATS = "f";
+    private static final List<String> SUPPORTED_PREFIXES = List.of(
+            PREFIX_CALORIES, PREFIX_PROTEIN, PREFIX_CARBS, PREFIX_FATS);
 
     /**
      * Reads one or more targets in any order; omitted nutrients are not checked.
@@ -23,28 +28,56 @@ public class CheckShortfallParser {
         if (arguments == null || arguments.isBlank()) {
             throw new IllegalArgumentException("Supply at least one daily nutrition target.");
         }
+
         Map<String, Integer> values = new HashMap<>();
         for (String token : arguments.trim().split("\\s+")) {
-            int separator = token.indexOf('/');
-            String prefix = separator < 0 ? "" : token.substring(0, separator);
-            if (!PREFIXES.contains(prefix)) {
-                throw new IllegalArgumentException("Unrecognised parameter: " + token);
-            }
-            if (values.containsKey(prefix)) {
-                throw new IllegalArgumentException("Parameter " + prefix + "/ was given more than once.");
-            }
-            values.put(prefix, parseTarget(token.substring(separator + 1), prefix));
+            readTarget(token, values);
         }
-        return new NutritionTargets(values.get("cal"), values.get("p"), values.get("c"), values.get("f"));
+
+        return new NutritionTargets(values.get(PREFIX_CALORIES), values.get(PREFIX_PROTEIN),
+                values.get(PREFIX_CARBS), values.get(PREFIX_FATS));
     }
 
-    /** Rejects signs, decimals, missing values, zero, and values beyond the supported integer range. */
+    /**
+     * Reads one unique prefixed target into the request's values.
+     *
+     * @param token A complete argument such as {@code "cal/2000"}.
+     * @param values The already validated targets, keyed by prefix without the slash.
+     * @throws IllegalArgumentException If the prefix is unknown, duplicated, or has an invalid value.
+     */
+    private void readTarget(String token, Map<String, Integer> values) {
+        int separator = token.indexOf('/');
+        if (separator < 1) {
+            throw new IllegalArgumentException("Unrecognized parameter: " + token);
+        }
+
+        String prefix = token.substring(0, separator);
+        if (!SUPPORTED_PREFIXES.contains(prefix)) {
+            throw new IllegalArgumentException("Unrecognized parameter: " + token);
+        }
+        if (values.containsKey(prefix)) {
+            throw new IllegalArgumentException("Parameter " + prefix + "/ was given more than once.");
+        }
+
+        String value = token.substring(separator + 1);
+        values.put(prefix, parseTarget(value, prefix));
+    }
+
+    /**
+     * Returns a validated positive integer target.
+     *
+     * @param value The digit string following a target prefix.
+     * @param prefix The prefix to identify in validation feedback.
+     * @return The target in the range 1 to Integer.MAX_VALUE.
+     * @throws IllegalArgumentException If the value is missing, malformed, non-positive, or too large.
+     */
     private int parseTarget(String value, String prefix) {
         String error = "Target for " + prefix + "/ must be a positive whole number from 1 to "
                 + Integer.MAX_VALUE + ".";
         if (!value.matches("[0-9]+")) {
             throw new IllegalArgumentException(error);
         }
+
         try {
             int target = Integer.parseInt(value);
             if (target < 1) {

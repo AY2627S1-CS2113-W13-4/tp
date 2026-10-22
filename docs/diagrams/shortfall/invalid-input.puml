@@ -16,6 +16,7 @@ create TargetParser
 Parser -> TargetParser : new CheckShortfallParser()
 Parser -> TargetParser : parse("cal/0")
 activate TargetParser
+TargetParser -> TargetParser : readTarget("cal/0", values)
 TargetParser -> TargetParser : parseTarget("0", "cal")
 TargetParser --> Parser : throws IllegalArgumentException
 deactivate TargetParser
