@@ -4,7 +4,7 @@ MishMash is a command-line meal prep planner. Add your recipes, use them to plan
 
 **Start Here:** [Set up and launch](#quick-start) · [Find a command](#commands-at-a-glance) · [View meals](#viewing-a-meal-plan) · [Check nutrition](#checking-nutrition-shortfalls) · [View groceries](#viewing-a-grocery-list) · [Fix a problem](#troubleshooting)
 
-This guide covers the current team version and the upcoming nutrition shortfall feature. `view-plan` and `view-list` are available in the current team version. Sections marked **Upcoming** describe `check-shortfall`, implemented on the `Checking-Shortfall` branch and awaiting integration into the team version. Use a build from that branch to try the upcoming examples.
+This guide covers the current team version, including meal-plan viewing, grocery-list viewing, and nutrition shortfall checking.
 
 ## Quick Start
 
@@ -60,7 +60,7 @@ bye
 
 ## Commands at a Glance
 
-Click a task to jump directly to its instructions. Commands marked **Upcoming** require a build that includes the feature; the other commands are supported by the current team version.
+Click a task to jump directly to its instructions. The commands below are supported by the current team version.
 
 | I Want To… | Enter | Before Using It |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ Click a task to jump directly to its instructions. Commands marked **Upcoming** 
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
-| [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | **Upcoming.** Generate a plan first; supply at least one daily target. |
+| [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |
 | [Show command help](#viewing-available-commands-help) | `help` | No prerequisites. |
@@ -83,7 +83,7 @@ Use this sequence to generate meals and their groceries:
 1. **Add at least three recipes** with `add-recipe`.
 2. **Generate meals** with `generate-plan d/3`.
 3. **Review meals** with `view-plan` or `view-plan d/1`.
-4. **Check daily nutrition (Upcoming)** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional and requires a build that includes shortfall checking.
+4. **Check daily nutrition** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional.
 5. **Generate ingredients** with `generate-list`.
 6. **Check your shopping list** with `view-list`.
 
@@ -265,8 +265,6 @@ The application remains open. Enter `view-plan d/2` to select a valid day. If th
 
 ## Checking Nutrition Shortfalls
 
-> **Upcoming:** Available on the `Checking-Shortfall` branch; awaiting integration into the team version. The commands and output below describe that implementation. A build without this feature reports `Error: Unknown command: check-shortfall`.
-
 Use `check-shortfall` to see which days in your active meal plan fall below your supplied daily calorie, protein, carbohydrate, or fat targets, and by how much.
 
 **Before You Start:** Add at least three recipes, then generate a meal plan. For example, use `generate-plan d/2` to create a two-day plan. You do not need to generate a grocery list before checking nutrition.
@@ -431,7 +429,7 @@ view-list
 
 **Example Output:**
 
-Use the three `add-recipe` commands and `generate-plan d/2` from the [two-day example](#checking-nutrition-shortfalls), then run `generate-list` and `view-list`. Grocery generation and viewing work in the current team version; you can skip the upcoming `check-shortfall` command. Each sample meal is used once per day for two days, so the list contains the following quantities. Item order may vary with the meal order.
+Use the three `add-recipe` commands and `generate-plan d/2` from the [two-day example](#checking-nutrition-shortfalls), then run `generate-list` and `view-list`. You can generate and view groceries without running `check-shortfall`. Each sample meal is used once per day for two days, so the list contains the following quantities. Item order may vary with the meal order.
 
 ```text
 ================ Grocery List ================
@@ -492,7 +490,6 @@ MishMash displays `Goodbye!` and closes. In the current application, all session
 | `Unable to access jarfile` | Check the filename and the terminal's current folder. Put quotes around filenames or paths containing spaces. |
 | The application greets me instead of running my first command | Enter your name first. The next line is your first command. |
 | `Error: Unknown command: ...` | Use the spelling and lowercase command word from the command table, or enter `help`. |
-| `Error: Unknown command: check-shortfall` | This is an upcoming feature. Use a build from `Checking-Shortfall` to try it; it is not yet included in the team version. |
 | `Error: Enter a command.` | Enter a supported command instead of a blank line. |
 | A plan or grocery list is missing | Run `generate-plan d/2` after adding at least three recipes. Run `generate-list` before `view-list`, including after replacing a plan. |
 | A generated plan still shows a nutrition shortfall | Generation accepts daily totals within +/-15% of supplied targets; `check-shortfall` reports any amount below its supplied targets. See [Checking Nutrition Shortfalls](#checking-nutrition-shortfalls). |
@@ -527,10 +524,8 @@ The current `[ ]` markers are display-only. No shopping-item marking command is 
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `delete-recipe`, `generate-plan`, `view-plan`,
-`generate-list`, `view-list`, `help`, and `bye`.
+`check-shortfall`, `generate-list`, `view-list`, `help`, and `bye`.
 The `help` command takes no arguments.
-
-Builds that include the upcoming shortfall feature also list `check-shortfall` in `help`.
 
 A divider and an input prompt appear when the command session starts and after every
 command, including invalid commands and cancelled actions. Type `bye` to exit.
