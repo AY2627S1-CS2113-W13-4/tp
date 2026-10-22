@@ -21,6 +21,21 @@ skinparam sequenceGroupBorderColor #94A3B8
 skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #C4AC70
 skinparam maxMessageSize 240
+' Keep text inside light boxes black in both light and dark viewers.
+skinparam componentFontColor #000000
+skinparam classFontColor #000000
+skinparam classAttributeFontColor #000000
+skinparam classStereotypeFontColor #000000
+skinparam participantFontColor #000000
+skinparam sequenceParticipantFontColor #000000
+skinparam noteFontColor #000000
+skinparam legendFontColor #000000
+skinparam legendBackgroundColor #FFFFFF
+skinparam titleFontColor #000000
+skinparam titleBackgroundColor #FFFFFF
+skinparam sequenceGroupFontColor #000000
+skinparam sequenceGroupHeaderFontColor #000000
+skinparam sequenceGroupHeaderBackgroundColor #FFFFFF
 hide footbox
 title Adding a recipe: architectural context
 top to bottom direction
