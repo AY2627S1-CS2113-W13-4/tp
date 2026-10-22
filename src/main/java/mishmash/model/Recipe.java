@@ -14,6 +14,7 @@ public class Recipe {
     private final int fats;
     private final List<GroceryItem> ingredients;
 
+    //@@author peilingggg
     /**
      * Creates a recipe with non-negative nutrition and at least one ingredient.
      * Copies the ingredient list so callers cannot change the recipe afterwards.
@@ -79,6 +80,7 @@ public class Recipe {
             }
         }
     }
+    //@@author
 
     /**
      * Returns the recipe name.

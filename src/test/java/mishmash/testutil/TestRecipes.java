@@ -13,6 +13,7 @@ public final class TestRecipes {
     private TestRecipes() {
     }
 
+    //@@author GauthamNandi
     /**
      * Creates a recipe with one placeholder ingredient, which every recipe must have.
      */
@@ -20,4 +21,5 @@ public final class TestRecipes {
         return new Recipe(name, calories, protein, carbs, fats,
                 List.of(new GroceryItem("Ingredient", BigDecimal.ONE, "g")));
     }
+    //@@author
 }

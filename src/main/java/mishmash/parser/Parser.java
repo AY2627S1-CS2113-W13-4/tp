@@ -248,6 +248,7 @@ public class Parser {
         throw new MishMashException("Unknown command: " + commandWord);
     }
 
+    //@@author peilingggg
     /**
      * Parses a recipe addition and attaches its usage instructions to recoverable validation errors.
      *
@@ -263,6 +264,7 @@ public class Parser {
                     + System.lineSeparator() + ADD_RECIPE_USAGE, e);
         }
     }
+    //@@author
 
     /**
      * Creates a grocery generation command after rejecting unexpected arguments.
@@ -417,6 +419,7 @@ public class Parser {
         }
     }
 
+    //@@author peilingggg
     /**
      * Collects the arguments and creates a command after all fields are valid.
      *
@@ -513,6 +516,7 @@ public class Parser {
             throw new IllegalArgumentException("Repeated field: " + prefix + "/");
         }
     }
+    //@@author
 
     /**
      * Converts a nutrition field to a non-negative integer.
