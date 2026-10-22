@@ -92,7 +92,7 @@ Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to 
 
 ### Documentation
 
-The project documentation is maintained in Markdown under `docs`. The main documents are `DeveloperGuide.md` and `UserGuide.md`; `AddRecipeTesting.md` describes recipe-validation test data and checks.
+The project documentation is maintained in Markdown under `docs`. The main documents are `DeveloperGuide.md` and `UserGuide.md`
 
 Keep command formats, examples, prerequisites, and expected results consistent with the code. Document planned behaviour separately from available behaviour.
 
