@@ -1,6 +1,5 @@
 @startuml
 !pragma layout smetana
-!include style.iuml
 title Adding a recipe: architectural context
 top to bottom direction
 
