@@ -96,14 +96,14 @@ current session; adding a recipe does not regenerate an existing plan or grocery
 
 #### Architecture-level view
 
-Figure 6 places the feature within the existing command workflow. `MishMash`
+Figure 1 places the feature within the existing command workflow. `MishMash`
 reads input and asks `Parser` for a `Command`. Parsing validates the request and
 constructs the recipe; execution adds that recipe to the session's `RecipeBook`.
 `RecipeViewer` formats the successful addition for display.
 
-![Figure 6. Architecture context for adding a recipe.](images/add-recipe/architecture.svg)
+![Figure 1. Architecture context for adding a recipe.](images/add-recipe/architecture.svg)
 
-*Figure 6: Dependencies between existing responsibilities. The boxes group the
+*Figure 1: Dependencies between existing responsibilities. The boxes group the
 named implementation classes; arrows do not represent runtime message order.*
 
 The parser does not receive or modify the recipe book when parsing this command.
@@ -111,11 +111,11 @@ The parser does not receive or modify the recipe book when parsing this command.
 
 #### Class-level responsibilities and relationships
 
-Figure 7 shows the selected classes used for recipe addition.
+Figure 2 shows the selected classes used for recipe addition.
 
-![Figure 7. Selected classes and relationships used by recipe addition.](images/add-recipe/classes.svg)
+![Figure 2. Selected classes and relationships used by recipe addition.](images/add-recipe/classes.svg)
 
-*Figure 7: Only relevant members and relationships are shown; some parameter
+*Figure 2: Only relevant members and relationships are shown; some parameter
 types are abbreviated. Solid arrows show stored references with private role
 names and target-end multiplicities. Dashed arrows show dependencies or interface
 realization. Reverse multiplicities are unspecified.*
@@ -139,12 +139,12 @@ ends rather than duplicated as attributes.
 
 #### Successful command parsing
 
-Figure 8 follows the example command through validation and object creation.
+Figure 3 follows the example command through validation and object creation.
 Dispatch through `parseNamedCommand` and `parseAddRecipeCommand` is condensed.
 
-![Figure 8. Sequence for parsing a valid add-recipe command.](images/add-recipe/parsing.svg)
+![Figure 3. Sequence for parsing a valid add-recipe command.](images/add-recipe/parsing.svg)
 
-*Figure 8: Dashed arrows represent returns, and constructor messages begin new
+*Figure 3: Dashed arrows represent returns, and constructor messages begin new
 lifelines. Constructor internals, library operations, and logging are condensed.
 The underlined `MishMash` participant represents the class containing the static
 application methods.*
@@ -169,12 +169,12 @@ objects were created before a later validation failure.
 
 #### Execution and confirmation output
 
-Figure 9 starts after parsing. The inherited `confirmationPrompt` method returns
+Figure 4 starts after parsing. The inherited `confirmationPrompt` method returns
 an empty `Optional`, so the addition proceeds without a confirmation question.
 
-![Figure 9. Sequence for formatting and executing a recipe addition.](images/add-recipe/execution.svg)
+![Figure 4. Sequence for formatting and executing a recipe addition.](images/add-recipe/execution.svg)
 
-*Figure 9: Formatting is treated as a black box. Diagnostic logging, including
+*Figure 4: Formatting is treated as a black box. Diagnostic logging, including
 the recipe-count read, is omitted. The next command prompt belongs to the
 application's read loop.*
 
@@ -202,12 +202,12 @@ without including the full recipe contents in their success messages.
 
 #### Invalid input and recovery
 
-Figure 10 shows the example with `i/Rice:0g`. `parseIngredient` rejects the
+Figure 5 shows the example with `i/Rice:0g`. `parseIngredient` rejects the
 non-positive quantity before constructing a `GroceryItem`.
 
-![Figure 10. Sequence for rejecting an invalid ingredient and recovering.](images/add-recipe/invalid-input.svg)
+![Figure 5. Sequence for rejecting an invalid ingredient and recovering.](images/add-recipe/invalid-input.svg)
 
-*Figure 10: Dashed messages labelled as exceptions show exceptional control
+*Figure 5: Dashed messages labelled as exceptions show exceptional control
 flow. No recipe or addition command is constructed for this request, and the
 recipe book is not accessed.*
 
@@ -310,14 +310,14 @@ not saved as personal settings or inferred from a previous generation command.
 
 #### Architecture-level view
 
-Figure 1 shows the enhancement in the existing architecture. `MishMash` reads the input,
+Figure 6 shows the enhancement in the existing architecture. `MishMash` reads the input,
 asks `Parser` for a `Command`, executes it, and displays its returned text. The shortfall
 feature follows that command workflow. Parsing validates syntax and creates the action;
 execution reads the current session models and performs the comparison.
 
-![Figure 1. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
+![Figure 6. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
 
-*Figure 1: Dependencies between existing responsibilities. Each box groups the named
+*Figure 6: Dependencies between existing responsibilities. Each box groups the named
 implementation classes; it does not introduce a new Java component or service.*
 
 The normal `Parser()` constructor shares its `ActiveMealPlan` between plan generation,
@@ -329,11 +329,11 @@ the parser's `ActiveMealPlan`.
 
 #### Class-level responsibilities and relationships
 
-Figure 2 expands the implementation classes and the model references used by the check.
+Figure 7 expands the implementation classes and the model references used by the check.
 
-![Figure 2. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
+![Figure 7. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
 
-*Figure 2: Only members relevant to this enhancement are shown. Solid arrows are
+*Figure 7: Only members relevant to this enhancement are shown. Solid arrows are
 navigable associations with private role names; dashed arrows show dependencies or
 interface realization. Each reference is shown either as a typed attribute or as an
 association end, without duplication. The `addShortfall` parameter list is abbreviated.*
@@ -366,15 +366,15 @@ three distinct recipe entries per day.
 
 #### Successful command parsing
 
-Figure 3 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
+Figure 8 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
 from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
 the parser lifeline. A new target parser is created for the request. Its `parse` method
 collects values by calling `readTarget` for each supplied token, then constructs
 `NutritionTargets(2000, 100, null, null)`.
 
-![Figure 3. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
+![Figure 8. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
 
-*Figure 3: Parsing returns a command without reading any plan. Dashed return arrows
+*Figure 8: Parsing returns a command without reading any plan. Dashed return arrows
 represent returned values; constructor messages start the new objects' lifelines.*
 
 The outer parser creates `CheckShortfallCommand` only after argument validation succeeds.
@@ -384,13 +384,13 @@ altering its data and lets tests inspect or defer a command before running it.
 
 #### Execution and daily comparison
 
-Figure 4 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
+Figure 9 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
 inherited confirmation method returns an empty `Optional`, so this read-only action
 requires no confirmation. That common interface step is omitted from the diagram.
 
-![Figure 4. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
+![Figure 9. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
 
-*Figure 4: The calorie getter/comparison calls are expanded; the equivalent calls for
+*Figure 9: The calorie getter/comparison calls are expanded; the equivalent calls for
 protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
 list indexing, logging, and string-building details are condensed.*
 
@@ -431,15 +431,15 @@ The command's `FINE` log records the number of checked days; it installs no log 
 
 #### Invalid input and recovery
 
-Figure 5 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
+Figure 10 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
 `IllegalArgumentException`; `Parser.parseCheckShortfall` wraps it as `MishMashException`,
 preserves its cause, and appends `CHECK_SHORTFALL_USAGE`. `MishMash.executeCommand` catches
 that recoverable exception and displays the error. The read loop then prints another
 command prompt instead of ending the session.
 
-![Figure 5. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
+![Figure 10. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
 
-*Figure 5: Exception returns are labeled explicitly. For this invalid request, neither
+*Figure 10: Exception returns are labeled explicitly. For this invalid request, neither
 the target object nor the shortfall command is constructed, and the plan is not accessed.*
 
 An invalid request is an input error, whereas a valid request with no active plan returns
