@@ -71,6 +71,8 @@ Persistent application-data storage is not implemented. Recipes, meal plans, and
 
 Diagnostic logs are written to disk, but they do not save or restore the recipe book or generated data.
 
+## Implementation
+
 ## Documentation Logging Testing Configuration and DevOps
 
 ### Documentation
