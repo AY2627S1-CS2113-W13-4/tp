@@ -2,7 +2,7 @@
 !pragma layout smetana
 title Adding a recipe: selected class relationships
 top to bottom direction
-skinparam nodesep 100
+skinparam nodesep 160
 skinparam ranksep 120
 hide empty members
 
@@ -62,8 +62,8 @@ AddRecipeCommand -down-> "1\n-recipe" Recipe
 AddRecipeCommand ..> RecipeBook : execute parameter
 AddRecipeCommand ..> RecipeViewer : creates and uses
 RecipeViewer .left.> Recipe : view parameter
-RecipeBook -right-> "0..*\n-recipes\n{ordered, nonunique}" Recipe
-Recipe -down-> "1..*\n-ingredients\n{ordered, nonunique}" GroceryItem
+RecipeBook -right-> "0..*\n-recipes\n{ordered,\nnonunique}" Recipe
+Recipe -down-> "1..*\n-ingredients\n{ordered,\nnonunique}" GroceryItem
 
 legend bottom
   Only feature-relevant members and relationships are shown; some parameter types are abbreviated.
