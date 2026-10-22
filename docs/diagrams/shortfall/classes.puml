@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+!include style.iuml
+title Shortfall checking: selected class relationships
+top to bottom direction
+hide empty members
+
+class Parser {
+  - activeMealPlan: ActiveMealPlan
+  + parseCommand(input: String): Command
+  - parseCheckShortfall(arguments: String): Command
+}
+class CheckShortfallParser {
+  + parse(arguments: String): NutritionTargets
+  - parseTarget(value: String, prefix: String): int
+}
+interface Command {
+  + execute(recipeBook: RecipeBook): String
+}
+class CheckShortfallCommand {
+  - activePlan: ActiveMealPlan
+  - targets: NutritionTargets
+  + execute(recipeBook: RecipeBook): String
+  - findShortfalls(day: DayPlan): List<String>
+  - addShortfall(shortfalls, label, unit, actual, target): void
+}
+class ActiveMealPlan {
+  - plan: MealPlan
+  + get(): Optional<MealPlan>
+}
+class NutritionTargets {
+  - calories: Integer
+  - protein: Integer
+  - carbs: Integer
+  - fats: Integer
+  + hasAnyTarget(): boolean
+  + getCalories(): Integer
+  + getProtein(): Integer
+  + getCarbs(): Integer
+  + getFats(): Integer
+}
+class MealPlan {
+  - days: List<DayPlan>
+  + getDays(): List<DayPlan>
+  + getNumberOfDays(): int
+}
+class DayPlan {
+  - meals: List<Recipe>
+  + getTotalCalories(): long
+  + getTotalProtein(): long
+  + getTotalCarbs(): long
+  + getTotalFats(): long
+}
+class Recipe
+
+Parser ..> CheckShortfallParser : creates
+Parser ..> CheckShortfallCommand : creates
+Parser --> "1" ActiveMealPlan : activeMealPlan
+CheckShortfallParser ..> NutritionTargets : creates
+CheckShortfallCommand ..|> Command
+CheckShortfallCommand --> "1" ActiveMealPlan : activePlan
+CheckShortfallCommand --> "1" NutritionTargets : targets
+ActiveMealPlan --> "0..1" MealPlan : plan
+MealPlan --> "0..*" DayPlan : days {ordered}
+DayPlan --> "0..*" Recipe : meals {ordered}
+
+legend bottom
+  Only feature-relevant members are shown. The addShortfall parameter list is abbreviated.
+  Solid arrows are navigable associations; dashed arrows are dependencies or realisation.
+  Model multiplicities allow empty lists; normal generation produces 1-7 days and 3 meals/day.
+  Integer targets may be null. RecipeBook is an execution parameter, not a stored command field.
+endlegend
+@enduml

@@ -1,0 +1,48 @@
+@startuml
+!include style.iuml
+title Successful parsing: check-shortfall cal/2000 p/100
+autonumber
+
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+participant "targetParser:\nCheckShortfallParser" as TargetParser
+participant "targets:\nNutritionTargets" as Targets
+participant "check:\nCheckShortfallCommand" as Check
+
+App -> Parser : parseCommand(input)
+activate Parser
+note over Parser
+  parseNamedCommand dispatches to
+  parseCheckShortfall(arguments).
+end note
+create TargetParser
+Parser -> TargetParser : new CheckShortfallParser()
+Parser -> TargetParser : parse("cal/2000 p/100")
+activate TargetParser
+loop each supplied token (cal/2000, then p/100)
+  TargetParser -> TargetParser : parseTarget(value, prefix)
+  note right of TargetParser
+    Accept a recognised, unique prefix
+    and a positive integer value.
+    Collect the value in a local map.
+  end note
+end
+create Targets
+TargetParser -> Targets : new NutritionTargets(\n2000, 100, null, null)
+TargetParser --> Parser : targets
+deactivate TargetParser
+create Check
+Parser -> Check : new CheckShortfallCommand(\nactiveMealPlan, targets)
+activate Check
+Check -> Targets : hasAnyTarget()
+Targets --> Check : true
+Check --> Parser : constructed command
+deactivate Check
+Parser --> App : check as Command
+deactivate Parser
+note over Parser, Check
+  No plan is read while parsing.
+  The command retains the active-plan holder
+  and these explicit targets for execution.
+end note
+@enduml
