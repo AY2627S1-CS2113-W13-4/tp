@@ -448,6 +448,7 @@ normal guidance from `execute`. Neither path changes application data.
 | Boundary or invalid condition | Implemented behavior |
 | --- | --- |
 | No targets, including blank arguments | Reject with a request for at least one daily target and the command format. |
+| Supported prefix with no attached value, such as `cal/` or `cal/ 2000` | Reject with `Missing value after cal/.` and the command format. Each supported prefix is named in its own missing-value message. Unknown and repeated prefixes retain their respective errors. |
 | Zero, negative, signed, decimal, non-numeric, unit-suffixed, or overflowing target | Reject. Accepted values are digit strings representing 1 to `Integer.MAX_VALUE`; leading zeros are allowed. |
 | Unknown prefix, repeated prefix, extra token, or space after a prefix | Reject without accessing the plan; each supported prefix is allowed once, in any order. |
 | Target omitted | Ignore that nutrient, even when its total is zero. |
@@ -468,15 +469,20 @@ normal guidance from `execute`. Neither path changes application data.
 
 #### Verification and diagram maintenance
 
-`CheckShortfallCommandTest` covers the daily comparison boundaries, omitted targets,
-missing and empty plans, empty days, large totals, repeated execution, current-plan lookup,
-and preservation of a non-empty grocery snapshot and recipe book.
-`CheckShortfallParserTest` exercises every nutrient prefix, numerical limits, leading
-zeros, whitespace, duplicates, and malformed values. `ParserCheckShortfallTest` covers
-dispatch, wrapped errors, default and injected dependencies, and a check after failed
-generation. `MishMashTest` covers the complete console workflow and continued use of
-viewing and help commands. Run these with the full Java 25 verification tasks documented
-under [Testing](#testing).
+`CheckShortfallCommandTest` covers daily comparison boundaries, all 15 non-empty target
+combinations, different deficits on different days, a shortfall on the seventh day,
+missing and empty plans, empty days between populated days, varied and repeated meals,
+large totals, repeated execution, and current-plan lookup. It also checks preservation
+of absent, empty, and non-empty grocery snapshots and the recipe book.
+`CheckShortfallParserTest` exercises all 24 target orders, every nutrient prefix,
+numerical limits, leading zeros, whitespace, duplicate prefixes, malformed values,
+specific missing-value messages, and independence between parsing attempts.
+`ParserCheckShortfallTest` covers dispatch, wrapped errors and their causes, unchanged
+data after rejection, output ordering, explicit targets independent of generation,
+checks after recipe deletion, default and injected dependencies, and failed generation.
+`MishMashTest` covers the complete console workflow, repeated checks and recovery,
+continued use of viewing and help commands, and end-of-input after an invalid check.
+Run these with the full Java 25 verification tasks documented under [Testing](#testing).
 
 Maintenance follows the course's [Java conventions](https://se-education.org/guides/conventions/java/index.html),
 [code-quality guidance](https://se-education.org/se-book/codeQuality/index.html), and

@@ -72,6 +72,10 @@ public class CheckShortfallParser {
      * @throws IllegalArgumentException If the value is missing, malformed, non-positive, or too large.
      */
     private int parseTarget(String value, String prefix) {
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("Missing value after " + prefix + "/.");
+        }
+
         String error = "Target for " + prefix + "/ must be a positive whole number from 1 to "
                 + Integer.MAX_VALUE + ".";
         if (!value.matches("[0-9]+")) {
