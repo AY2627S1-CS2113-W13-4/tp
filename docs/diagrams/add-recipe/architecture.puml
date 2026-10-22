@@ -1,42 +1,6 @@
 @startuml
 !pragma layout smetana
-' Styling is inline so browser renderers need no neighbouring files.
-' Visual settings matching the existing shortfall diagrams.
-skinparam backgroundColor white
-skinparam defaultFontName Arial
-skinparam defaultFontSize 14
-skinparam shadowing false
-skinparam ArrowColor #475569
-skinparam LineColor #475569
-skinparam classAttributeIconSize 0
-skinparam classBackgroundColor #F5F8FC
-skinparam classBorderColor #475569
-skinparam componentBackgroundColor #F5F8FC
-skinparam componentBorderColor #475569
-skinparam participantBackgroundColor #F5F8FC
-skinparam participantBorderColor #475569
-skinparam sequenceLifeLineBorderColor #94A3B8
-skinparam sequenceGroupBackgroundColor #FFFFFF
-skinparam sequenceGroupBorderColor #94A3B8
-skinparam noteBackgroundColor #FFF9E8
-skinparam noteBorderColor #C4AC70
-skinparam maxMessageSize 240
-' Keep text inside light boxes black in both light and dark viewers.
-skinparam componentFontColor #000000
-skinparam classFontColor #000000
-skinparam classAttributeFontColor #000000
-skinparam classStereotypeFontColor #000000
-skinparam participantFontColor #000000
-skinparam sequenceParticipantFontColor #000000
-skinparam noteFontColor #000000
-skinparam legendFontColor #000000
-skinparam legendBackgroundColor #FFFFFF
-skinparam titleFontColor #000000
-skinparam titleBackgroundColor #FFFFFF
-skinparam sequenceGroupFontColor #000000
-skinparam sequenceGroupHeaderFontColor #000000
-skinparam sequenceGroupHeaderBackgroundColor #FFFFFF
-hide footbox
+!include style.iuml
 title Adding a recipe: architectural context
 top to bottom direction
 

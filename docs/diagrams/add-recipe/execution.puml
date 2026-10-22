@@ -1,0 +1,59 @@
+@startuml
+!include style.iuml
+title Executing a validated recipe addition
+autonumber
+
+participant "<u>MishMash</u>" as App
+participant "add: AddRecipeCommand" as Add
+participant "viewer: RecipeViewer" as Viewer
+participant "recipeBook: RecipeBook" as Book
+
+note over App, Add
+  The command already holds the validated recipe.
+end note
+App -> Add : confirmationPrompt(recipeBook)
+activate Add
+Add --> App : Optional.empty()
+deactivate Add
+App -> Add : execute(recipeBook)
+activate Add
+note right of Add : Reject a null recipeBook before formatting.
+create Viewer
+Add -> Viewer : new RecipeViewer()
+activate Viewer
+deactivate Viewer
+Add -> Viewer : view(recipe)
+activate Viewer
+note right of Viewer
+  Read name, nutrition and ingredients.
+  Formatting internals are omitted.
+end note
+Viewer --> Add : formatted recipe details
+deactivate Viewer
+note right of Add
+  Prepend "New recipe added!"
+  to prepare the complete confirmation.
+end note
+Add -> Book : add(recipe)
+activate Book
+note right of Book : Append the non-null recipe reference.
+Book --> Add : return
+deactivate Book
+Add --> App : confirmation
+deactivate Add
+note over App
+  executeCommand prints the confirmation.
+  readCommands then calls the static method below.
+end note
+App -> App : <u>displayCommandPrompt()</u>
+activate App
+App --> App : return
+deactivate App
+
+legend bottom
+  Solid filled-arrow messages are synchronous calls; dashed messages are returns.
+  The default confirmationPrompt implementation is inherited from Command.
+  The underlined participant and operation denote static application code.
+  The viewer's constructor return and diagnostic logging, including size(), are omitted.
+endlegend
+@enduml
