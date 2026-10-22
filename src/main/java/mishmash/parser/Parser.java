@@ -14,6 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import mishmash.command.AddRecipeCommand;
+import mishmash.command.CheckShortfallCommand;
 import mishmash.command.Command;
 import mishmash.command.DeleteRecipeCommand;
 import mishmash.command.GenerateListCommand;
@@ -61,6 +62,7 @@ public class Parser {
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
+    public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
 
     /**
      * Describes how to generate groceries for the active meal plan.
@@ -72,7 +74,8 @@ public class Parser {
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE, "Format: help", "Format: bye");
+            VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
+            "Format: help", "Format: bye");
 
     /**
      * Records parsing attempts and validated command details without logging full recipe input.
@@ -236,6 +239,9 @@ public class Parser {
         if (commandWord.equals(COMMAND_GENERATE_PLAN)) {
             return parseGeneratePlan(arguments);
         }
+        if (commandWord.equals("check-shortfall")) {
+            return parseCheckShortfall(arguments);
+        }
         if (commandWord.equals(COMMAND_LIST_RECIPE)) {
             return parseListRecipe(arguments);
         }
@@ -246,6 +252,22 @@ public class Parser {
             return parseAddRecipeCommand(arguments);
         }
         throw new MishMashException("Unknown command: " + commandWord);
+    }
+
+    /**
+     * Creates a read-only shortfall check and attaches command usage to invalid target errors.
+     *
+     * @param arguments Explicit daily nutrition targets supplied after check-shortfall.
+     * @return A check that reads the current active plan when executed.
+     * @throws MishMashException If no target is supplied or target syntax is invalid.
+     */
+    private Command parseCheckShortfall(String arguments) throws MishMashException {
+        try {
+            return new CheckShortfallCommand(activeMealPlan, new CheckShortfallParser().parse(arguments));
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
+        }
     }
 
     /**
