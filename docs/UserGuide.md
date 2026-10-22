@@ -70,6 +70,7 @@ Click a task to jump directly to its instructions. Commands marked **pending** a
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Pending; add at least three recipes. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
+| [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |
 | [Exit](#exiting-mishmash) | `bye` | Session data will be cleared. |
@@ -261,6 +262,56 @@ Please enter another command, or type 'bye' to exit.
 
 The application remains open. Enter `view-plan d/2` to select a valid day. If there is no active plan, a syntactically valid command such as `view-plan d/2` shows the no-plan message instead.
 
+## Checking Nutrition Shortfalls
+
+Use `check-shortfall` to see which days in your active meal plan fall below your daily
+calorie or macronutrient targets, and by how much.
+
+**Format:**
+
+```text
+check-shortfall [cal/DAILY_CALORIES] [p/DAILY_PROTEIN] [c/DAILY_CARBS] [f/DAILY_FATS]
+```
+
+Supply at least one target. Targets must be positive whole numbers from 1 to 2147483647,
+with calories in kcal and macronutrients in grams. Leading zeros are accepted; signs,
+decimals, and units in the value are rejected. Write `cal/2000`, not `cal/ 2000`.
+Each prefix can appear once, in any order. Nutrients whose
+targets are omitted are not checked. The same targets are checked separately for every day.
+
+**Example:** After generating a plan, enter:
+
+```text
+check-shortfall cal/2000 p/100
+```
+
+If Day 1 contains 1800 kcal and 80 g of protein, its result is:
+
+```text
+Daily nutrition shortfalls (compared with the supplied targets):
+Day 1:
+- Calories: 1800/2000 kcal (short by 200 kcal).
+- Protein: 80/100 g (short by 20 g).
+```
+
+A day with no shortfalls displays `Day 1: No shortfalls for the supplied targets.`
+This does not mean every nutrient is within its target: excesses and omitted nutrients
+are not checked by this command.
+
+The check reports **any amount below the supplied target**, including amounts within the
+generator's +/-15% acceptance tolerance. For example, a plan with 1900 kcal may be accepted
+for a 2000 kcal generation target but will still show a 100 kcal shortfall here.
+
+This command does not change your plan, grocery list, recipes, or generation targets.
+Supply the targets each time; the check does not save them as personal settings.
+
+**Errors and recovery:**
+
+- No active plan: `No active meal plan. Use 'generate-plan' first.` Generate a plan and retry.
+- No targets: `Supply at least one daily nutrition target.` Add a target such as `cal/2000`.
+- Invalid or repeated arguments: an error and the command format are displayed.
+  Use one or more of `cal/`, `p/`, `c/`, and `f/` with positive whole-number values.
+
 ## Generating a Grocery List
 
 Combines the ingredients of every meal in the active plan into one shopping list.
@@ -430,7 +481,8 @@ The current `[ ]` markers are display-only. No shopping-item marking command is 
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `delete-recipe`, `generate-plan`, `view-plan`,
-`generate-list`, `view-list`, `help`, and `bye`. The `help` command takes no arguments.
+`check-shortfall`, `generate-list`, `view-list`, `help`, and `bye`.
+The `help` command takes no arguments.
 
 A divider and an input prompt appear when the command session starts and after every
 command, including invalid commands and cancelled actions. Type `bye` to exit.

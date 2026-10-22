@@ -1,0 +1,56 @@
+@startuml
+!include style.iuml
+title Execution: read the current plan and compare each day
+autonumber
+
+participant "MishMash" as App
+participant "check:\nCheckShortfallCommand" as Check
+participant "activePlan:\nActiveMealPlan" as Active
+participant "plan: MealPlan" as Plan
+participant "day: DayPlan" as Day
+participant "targets:\nNutritionTargets" as Targets
+
+App -> Check : execute(recipeBook)
+activate Check
+Check -> Active : get()
+Active --> Check : Optional<MealPlan>
+alt plan absent
+  Check --> App : "No active meal plan. Use 'generate-plan' first."
+else plan present
+  Check -> Plan : getNumberOfDays()
+  Plan --> Check : numberOfDays
+  alt numberOfDays == 0
+    Check --> App : "No active meal plan. Use 'generate-plan' first."
+  else numberOfDays > 0
+    loop each day index in order
+      Check -> Plan : getDays()
+      Plan --> Check : days
+      note over Check, Plan : Select day = days.get(index).
+      Check -> Check : findShortfalls(day)
+      activate Check
+      Check -> Day : getTotalCalories()
+      Day --> Check : plannedTotal: long
+      Check -> Targets : getCalories()
+      Targets --> Check : dailyTarget: Integer (possibly null)
+      Check -> Check : addShortfall(shortfalls, "Calories",\n"kcal", plannedTotal, dailyTarget)
+      note over Check, Targets
+        Append only if dailyTarget != null and plannedTotal < dailyTarget.
+        Repeat these getter/comparison steps for protein, carbs and fats.
+      end note
+      Check --> Check : shortfalls
+      deactivate Check
+      alt shortfalls is empty
+        note right of Check : Add a day-specific "No shortfalls" line to outputLines.
+      else shortfalls is not empty
+        note right of Check : Add the day heading and deficit lines to outputLines.
+      end
+    end
+    Check --> App : String.join(lineSeparator, outputLines)
+  end
+end
+deactivate Check
+note over App, Plan
+  Repeated day-count checks and formatting details are condensed.
+  No model data is changed. RecipeBook is not read by this command.
+end note
+@enduml

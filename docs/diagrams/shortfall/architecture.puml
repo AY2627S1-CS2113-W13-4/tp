@@ -1,0 +1,30 @@
+@startuml
+!pragma layout smetana
+!include style.iuml
+title Shortfall checking: architectural context
+top to bottom direction
+
+component "Terminal interaction\nMishMash" as App
+component "Command parsing\nParser + CheckShortfallParser" as Parsing
+component "Read-only action\nCheckShortfallCommand" as Check
+component "Session models\nActiveMealPlan, MealPlan, DayPlan,\nRecipe, NutritionTargets" as Models
+
+App ..> Parsing : parseCommand(input)
+Parsing ..> Check : creates command
+App ..> Check : execute(recipeBook)\nvia the Command interface
+Parsing ..> Models : creates targets;\nshares active-plan holder
+Check ..> Models : reads plan, totals\nand targets
+
+note bottom of App
+  Displays the returned String
+  or a recoverable input error.
+end note
+note bottom of Check
+  No model setters, generation calls,
+  storage writes, or confirmation.
+end note
+legend bottom
+  Feature-level groupings of existing classes; unrelated commands are omitted.
+  Dashed arrows show dependencies, not new Java interfaces.
+endlegend
+@enduml

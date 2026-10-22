@@ -1,0 +1,39 @@
+@startuml
+!include style.iuml
+title Invalid input: check-shortfall cal/0
+autonumber
+
+actor User
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+participant "targetParser:\nCheckShortfallParser" as TargetParser
+
+User -> App : check-shortfall cal/0
+App -> Parser : parseCommand(input)
+activate Parser
+note over Parser : Dispatch to parseCheckShortfall(arguments).
+create TargetParser
+Parser -> TargetParser : new CheckShortfallParser()
+Parser -> TargetParser : parse("cal/0")
+activate TargetParser
+TargetParser -> TargetParser : readTarget("cal/0", values)
+TargetParser -> TargetParser : parseTarget("0", "cal")
+TargetParser --> Parser : throws IllegalArgumentException
+deactivate TargetParser
+note right of Parser
+  Catch the validation error and create
+  MishMashException with the usage
+  instructions and original cause.
+end note
+Parser --> App : throws MishMashException
+deactivate Parser
+App -> App : displayError(exception)
+App --> User : Error message and check-shortfall format
+note over App : After executeCommand returns to readCommands:
+App -> App : displayCommandPrompt()
+App --> User : Divider and next command prompt
+note over Parser, TargetParser
+  No CheckShortfallCommand or NutritionTargets is created.
+  No plan, recipe, or grocery data is read or changed.
+end note
+@enduml

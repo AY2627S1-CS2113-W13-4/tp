@@ -9,6 +9,7 @@ MishMash is a command-line meal prep planner for managing recipes, generating me
 - [JUnit Jupiter](https://junit.org/junit5/) provides the automated testing framework.
 - [Checkstyle](https://checkstyle.org/) checks Java coding conventions.
 - [Shadow](https://gradleup.com/shadow/) packages the application JAR.
+- [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams/shortfall`.
 
 <!-- TEAM: Add any further sources of reused or adapted code, ideas, and documentation before submission. -->
 
@@ -39,6 +40,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `delete-recipe` | Remove a recipe by its displayed index after confirmation. |
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. |
 | `view-plan` | Display the active meal plan or one selected day. |
+| `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
 | `help` | Display the supported commands and their formats. |
@@ -88,6 +90,216 @@ Grocery parsing and viewing use `FINE` logs, successful generation logs counts a
 
 Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
 <!-- @@author -->
+
+<!-- @@author Rixte -->
+### Checking nutrition shortfalls
+
+#### Purpose and implemented scope
+
+This V2.0 enhancement supports the following user story: **As a user tracking nutrition,
+I want to detect when my planned meals fall short of my calorie or macronutrient targets
+so that I can add or adjust meals accordingly.** It reports differences for the user to
+act on; it does not automatically rebalance or change meals.
+
+The command accepts one or more explicit daily targets:
+
+```text
+check-shortfall [cal/DAILY_CALORIES] [p/DAILY_PROTEIN] [c/DAILY_CARBS] [f/DAILY_FATS]
+```
+
+For example, `check-shortfall cal/2000 p/100` checks calories and protein for every day in
+the active meal plan. Each target is optional individually, but the request must contain
+at least one. Calories use kcal; protein, carbohydrates, and fat use grams. The feature
+checks planned meals, not meals recorded as eaten. Targets belong to this request and are
+not saved as personal settings or inferred from a previous generation command.
+
+#### Architecture-level view
+
+Figure 1 shows the enhancement in the existing architecture. `MishMash` reads the input,
+asks `Parser` for a `Command`, executes it, and displays its returned text. The shortfall
+feature follows that command workflow. Parsing validates syntax and creates the action;
+execution reads the current session models and performs the comparison.
+
+![Figure 1. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
+
+*Figure 1: Dependencies between existing responsibilities. Each box groups the named
+implementation classes; it does not introduce a new Java component or service.*
+
+The normal `Parser()` constructor shares its `ActiveMealPlan` between plan generation,
+grocery generation, viewing, and shortfall checking. Tests can supply that holder through
+`Parser(MealPlanGenerator, ActiveMealPlan)` to control the plan and generator. The
+supplier-based parser constructors have separate caller-provided viewing sources; those
+sources do not become the shortfall command's data source. Shortfall checks always use
+the parser's `ActiveMealPlan`.
+
+#### Class-level responsibilities and relationships
+
+Figure 2 expands the implementation classes and the model references used by the check.
+
+![Figure 2. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
+
+*Figure 2: Only members relevant to this enhancement are shown. Solid arrows are
+navigable associations with private role names; dashed arrows show dependencies or
+interface realization. Each reference is shown either as a typed attribute or as an
+association end, without duplication. The `addShortfall` parameter list is abbreviated.*
+
+`CheckShortfallParser` converts arguments into `NutritionTargets`. Its `parse` method
+coordinates the request while `readTarget` validates and records one token. Named prefix
+constants are shared by validation and target construction to keep those rules consistent.
+The local map detects duplicate prefixes and keeps the values separate; omitted nutrients
+remain `null` in the result. Token syntax is checked before integer conversion, rejecting signs,
+decimals, units, and non-ASCII digits consistently. Conversion then detects values beyond
+`Integer.MAX_VALUE`. The existing `NutritionTargets` constructor additionally rejects
+non-positive values.
+
+`CheckShortfallCommand` implements `Command` and retains two references: the shared
+`ActiveMealPlan` holder and the request's `NutritionTargets`. It does not retain or read
+the `RecipeBook` passed to `execute`; that parameter comes from the common command
+interface. The constructor rejects null dependencies and a target object containing no
+targets, protecting callers that construct commands without using the parser.
+
+`MealPlan` supplies ordered `DayPlan` objects. Each day calculates its totals from its
+`Recipe` references through four existing getters. The class diagram uses plain
+associations rather than composition: the lists copy references, and recipes can occur
+in multiple days. Association roles name the actual private fields; the parser's shared
+holder is represented as a typed private attribute instead. Target-end
+multiplicities are shown; reverse ends are left unspecified. The ordered, nonunique list
+ends allow the model to hold repeated object references. An active plan is optional,
+and the model permits empty day lists and
+empty meal lists. Normal generation applies the stricter limits of one to seven days and
+three distinct recipe entries per day.
+
+#### Successful command parsing
+
+Figure 3 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
+from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
+the parser lifeline. A new target parser is created for the request. Its `parse` method
+collects values by calling `readTarget` for each supplied token, then constructs
+`NutritionTargets(2000, 100, null, null)`.
+
+![Figure 3. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
+
+*Figure 3: Parsing returns a command without reading any plan. Dashed return arrows
+represent returned values; constructor messages start the new objects' lifelines.*
+
+The outer parser creates `CheckShortfallCommand` only after argument validation succeeds.
+The command's `hasAnyTarget` check ensures the request contains something to compare.
+Separating parsing from execution allows the application to validate input without
+altering its data and lets tests inspect or defer a command before running it.
+
+#### Execution and daily comparison
+
+Figure 4 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
+inherited confirmation method returns an empty `Optional`, so this read-only action
+requires no confirmation. That common interface step is omitted from the diagram.
+
+![Figure 4. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
+
+*Figure 4: The calorie getter/comparison calls are expanded; the equivalent calls for
+protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
+list indexing, logging, and string-building details are condensed.*
+
+The command looks up the plan during execution, rather than capturing the plan while
+parsing. Consequently, a command parsed before generation can inspect a plan created
+later. Replacing the active plan before execution also causes the replacement to be
+checked. Failed generation preserves the old plan and grocery snapshot, so checks after
+such a failure still inspect the previous plan.
+
+If no plan exists, or its day list is empty, execution returns the generate-first message.
+Otherwise it visits each day in order. `findShortfalls(day)` obtains the four totals and
+corresponding optional targets. `addShortfall` appends a line only when
+`dailyTarget != null && plannedTotal < dailyTarget`; the reported deficit is
+`dailyTarget - plannedTotal`.
+For a day with 1800 kcal and 80 g protein, targets of 2000 kcal and 100 g protein produce:
+
+```text
+Day 1:
+- Calories: 1800/2000 kcal (short by 200 kcal).
+- Protein: 80/100 g (short by 20 g).
+```
+
+Each day is compared separately. A surplus on Day 2 therefore cannot hide a deficit on
+Day 1. Exact matches and surpluses produce no shortfall lines. A day with no deficits
+receives an explicit `No shortfalls for the supplied targets.` message; this does not
+claim that excesses or omitted nutrients meet any constraint.
+
+The existing total getters sum into `long`, and the comparison and subtraction keep
+that type. Three large recipe values cannot wrap around into a false deficit as they
+could with `int` summation. Totals are recomputed from the plan rather than cached.
+For D days containing M meal occurrences in total, comparison work is O(D + M), since
+each meal is visited a fixed four times. The result contains at most four deficit lines
+per day, so the additional output space is O(D).
+
+No setter, recipe mutation, generator, or storage operation is called during this check.
+Repeated checks leave the plan, recipe book, and existing grocery snapshot unchanged.
+The command's `FINE` log records the number of checked days; it installs no log handler.
+
+#### Invalid input and recovery
+
+Figure 5 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
+`IllegalArgumentException`; `Parser.parseCheckShortfall` wraps it as `MishMashException`,
+preserves its cause, and appends `CHECK_SHORTFALL_USAGE`. `MishMash.executeCommand` catches
+that recoverable exception and displays the error. The read loop then prints another
+command prompt instead of ending the session.
+
+![Figure 5. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
+
+*Figure 5: Exception returns are labeled explicitly. For this invalid request, neither
+the target object nor the shortfall command is constructed, and the plan is not accessed.*
+
+An invalid request is an input error, whereas a valid request with no active plan returns
+normal guidance from `execute`. Neither path changes application data.
+
+| Boundary or invalid condition | Implemented behavior |
+| --- | --- |
+| No targets, including blank arguments | Reject with a request for at least one daily target and the command format. |
+| Zero, negative, signed, decimal, non-numeric, unit-suffixed, or overflowing target | Reject. Accepted values are digit strings representing 1 to `Integer.MAX_VALUE`; leading zeros are allowed. |
+| Unknown prefix, repeated prefix, extra token, or space after a prefix | Reject without accessing the plan; each supported prefix is allowed once, in any order. |
+| Target omitted | Ignore that nutrient, even when its total is zero. |
+| Total equal to or above target | Do not report a shortfall for that nutrient. |
+| Non-empty plan containing an empty day | Its totals are zero; report the full amount of each supplied target as a deficit. |
+| Large daily total exceeding the integer range | Keep the total as `long`; do not wrap around. |
+| Missing plan or plan with no days | Return `No active meal plan. Use 'generate-plan' first.` |
+
+#### Rationale and alternatives considered
+
+| Decision | Alternative considered | Reason for the current choice |
+| --- | --- | --- |
+| Report any amount strictly below a target | Reuse the generator's +/-15% satisfaction test | Generation accepts approximate matches; this feature explains the exact gap. A 1900 kcal plan can be accepted for a 2000 kcal generation target and still have a 100 kcal shortfall. `isSatisfiedBy` also returns only a boolean and cannot explain which nutrients are deficient. |
+| Require explicit targets for each check | Read saved personal targets or remember the previous generation request | Saved personal settings are a separate enhancement. Explicit arguments make the current behavior predictable and allow checks against different targets without changing the plan. |
+| Reuse the existing per-day `long` totals | Duplicate summation, use `int`, or compare an average across all days | Reuse keeps calculations consistent with the model; `long` prevents integer wraparound, and per-day checks avoid masking deficits through averaging. |
+| Report deficits without modifying meals | Automatically regenerate or rebalance the plan | Automatic changes would introduce selection rules and could invalidate groceries. Reporting is sufficient for this user story and keeps the action read-only. |
+| Return formatted text through `Command.execute` | Add a new formatter class and a separate shortfall-result model | The output currently has one consumer and four fixed nutrients. The existing command contract is sufficient; a structured result would become useful if another interface or export feature needed to consume it. |
+
+#### Verification and diagram maintenance
+
+`CheckShortfallCommandTest` covers the daily comparison boundaries, omitted targets,
+missing and empty plans, empty days, large totals, repeated execution, current-plan lookup,
+and preservation of a non-empty grocery snapshot and recipe book.
+`CheckShortfallParserTest` exercises every nutrient prefix, numerical limits, leading
+zeros, whitespace, duplicates, and malformed values. `ParserCheckShortfallTest` covers
+dispatch, wrapped errors, default and injected dependencies, and a check after failed
+generation. `MishMashTest` covers the complete console workflow and continued use of
+viewing and help commands. Run these with the full Java 25 verification tasks documented
+under [Testing](#testing).
+
+Maintenance follows the course's [Java conventions](https://se-education.org/guides/conventions/java/index.html),
+[code-quality guidance](https://se-education.org/se-book/codeQuality/index.html), and
+[Week 8 developer-testing and documentation guidance](https://nus-cs2113-ay2627-s1.github.io/website/schedule/week8/topics.html).
+Keep request coordination separate from token validation, use descriptive names and the
+shared command/prefix constants, and document method contracts in multiline Javadoc.
+Behavioral tests should verify independent expected results, exceptions, and unchanged
+data; diagram checks should verify relationships and call order against the implementation.
+
+Editable sources for all five figures are under
+[`docs/diagrams/shortfall`](diagrams/shortfall/README.md). Rendered SVGs are checked in so
+the diagrams display without a website plugin. The source README records the renderer
+version and regeneration commands. Sources and images must be updated together after
+changes to methods, references, or control flow. Syntax checks verify that the diagrams
+render; accuracy also requires checking every depicted call and branch against the code.
+
+<!-- @@author -->
+
 ## Documentation Logging Testing Configuration and DevOps
 
 ### Documentation
@@ -145,7 +357,7 @@ Use Java 25. JUnit reports appear at `build/reports/tests/test/index.html`, and 
 
 The current application has no user configuration file. Users supply recipe values, plan length, and optional daily nutrition targets through commands.
 
-The supported plan length is 1 to 7 days. Each generated day contains exactly three different stored recipe entries. Daily nutrition targets use a fixed tolerance of 15%; users cannot change that tolerance through a command.
+The supported plan length is 1 to 7 days. Each generated day contains exactly three different stored recipe entries. Generation uses a fixed target tolerance of 15%; users cannot change that tolerance through a command. In contrast, `check-shortfall` reports any amount strictly below the explicit targets supplied to that check.
 
 ### DevOps
 
@@ -173,6 +385,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | User managing recipes | Confirm deletion of a selected recipe | Check that I am removing the intended entry |
 | Meal prep user | Generate a random meal plan | Reduce manual meal selection |
 | User tracking nutrition | Supply daily calorie and macronutrient targets | Generate meals within the supported tolerance |
+| User tracking nutrition | Detect when planned meals fall short of calorie or macronutrient targets | Add or adjust meals accordingly |
 | Meal prep user | View all planned days or a selected day | Review meals and daily nutrition totals |
 | Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
 | Shopper | View the generated grocery list | See what to purchase |
@@ -301,6 +514,28 @@ Viewing does not regenerate groceries. The displayed `[ ]` markers cannot be tic
 - Entering `help` displays command purposes and formats. Additional arguments produce an error.
 - Entering `bye` displays the goodbye message and ends the session. Session data is discarded.
 
+<!-- @@author Rixte -->
+#### UC09 Check planned nutrition shortfalls
+
+**MSS**
+
+1. The user enters `check-shortfall` with at least one daily nutrition target.
+2. MishMash validates the target arguments and obtains the active plan.
+3. MishMash compares each day's planned totals with the supplied targets.
+4. MishMash displays each day's deficient nutrients and amounts, or a no-shortfalls
+   message for that day, then prompts for another command.
+
+**Extensions**
+
+- 2a. Targets are missing, repeated, unknown, or invalid: MishMash displays an error and
+  the check-shortfall format. The use case ends without changing application data.
+- 2b. No plan exists or the plan has no days: MishMash asks the user to generate a plan.
+  The use case ends.
+
+Omitted nutrients and excesses are not checked. All plan, recipe, and grocery data remains
+unchanged. A shortfall is any amount below a target, even within generation's tolerance.
+<!-- @@author -->
+
 ### Non Functional Requirements
 
 - The application requires Java 25 and provides a command-line interface.
@@ -393,6 +628,34 @@ After generating a two-day plan:
 - Enter `view-plan d/1`. Expect only Day 1.
 - Enter `view-plan d/3`. Expect a day-range error and another prompt.
 - In a fresh session with no plan, enter `view-plan`. Expect the generate-first message.
+
+<!-- @@author Rixte -->
+### Check Nutrition Shortfalls
+
+1. In a fresh session, enter `check-shortfall cal/2000` before generating a plan. Expect
+   `No active meal plan. Use 'generate-plan' first.` and another command prompt.
+2. Load exactly the three [sample recipes](#sample-recipes), enter `generate-plan d/2`,
+   and then `generate-list`. Each day's planned totals are 1500 kcal, 80 g protein,
+   180 g carbohydrates, and 37 g fat.
+3. Enter `check-shortfall cal/2000 p/100 c/200 f/60`. Both Day 1 and Day 2 should report
+   deficits of 500 kcal, 20 g protein, 20 g carbohydrates, and 23 g fat. For each day,
+   verify that the displayed total and target are included alongside the deficit.
+4. Enter `check-shortfall cal/1500 p/80 c/100`. Both days should display
+   `No shortfalls for the supplied targets.` Calories and protein exactly match,
+   carbohydrates exceed the target, and fat is omitted.
+5. Enter `check-shortfall cal/1501`. Expect a 1 kcal deficit for each day even though
+   that difference is within the generation tolerance.
+6. Try `check-shortfall`, `check-shortfall cal/0`, `check-shortfall p/1.5`,
+   `check-shortfall cal/2000 cal/2100`, and `check-shortfall d/1`. Each should produce a
+   recoverable error with the check-shortfall format. Retry a valid check afterwards.
+7. Enter `view-plan` and `view-list`. The two-day plan and all five grocery entries should
+   be unchanged. Their quantities should match the table in
+   [Generate a Grocery List](#generate-a-grocery-list). Repeat a check to verify that
+   results are stable, and enter `help` to confirm the new command is listed.
+
+The CLI cannot generate an empty day or an empty plan; those defensive cases, null
+dependencies, and integer-overflow boundaries are covered by the automated tests.
+<!-- @@author -->
 
 ### Generate a Grocery List
 
