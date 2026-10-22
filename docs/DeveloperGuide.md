@@ -73,7 +73,7 @@ Diagnostic logs are written to disk, but they do not save or restore the recipe 
 
 ## Implementation
 
-//@@author oilybikechain
+<!-- @@author oilybikechain -->
 ### Grocery command integration
 
 `Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
@@ -87,8 +87,7 @@ Successfully storing a replacement plan clears its old groceries. Failed plan ge
 Grocery parsing and viewing use `FINE` logs, successful generation logs counts at `INFO`, and rejected generation requests use `WARNING`. These loggers inherit the existing application configuration; no additional handlers are installed. New diagnostics exclude ingredient names and raw input.
 
 Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
-//@@author
-
+<!-- @@author -->
 ## Documentation Logging Testing Configuration and DevOps
 
 ### Documentation
