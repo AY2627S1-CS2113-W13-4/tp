@@ -1,5 +1,4 @@
 @startuml
-!include style.iuml
 title Successful parsing: add-recipe with one ingredient
 autonumber
 
@@ -31,9 +30,12 @@ Parser -> Parser : readArgument("i", "Rice:150g", fields, ingredients)
 activate Parser
 Parser -> Parser : parseIngredient("Rice:150g")
 activate Parser
-note right of Parser : Validate syntax and positive decimal quantity.
+note right of Parser
+  Validate syntax and positive decimal quantity.
+  quantity = new BigDecimal("150")
+end note
 create Ingredient
-Parser -> Ingredient : new GroceryItem("Rice", new BigDecimal("150"), "g")
+Parser -> Ingredient : new GroceryItem(\n"Rice", quantity, "g")
 activate Ingredient
 deactivate Ingredient
 Parser --> Parser : ingredient

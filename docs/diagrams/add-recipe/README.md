@@ -11,10 +11,13 @@ These sources document the implemented `add-recipe` feature in
 | `execution.puml` | Confirmation preparation, recipe insertion, and the next prompt |
 | `invalid-input.puml` | Validation failure, exception wrapping, and CLI recovery |
 
-`style.iuml` contains the shared visual settings copied from the shortfall
-diagrams. Keep it beside the five sources. Generated SVGs belong under
-`docs/images/add-recipe` and are embedded directly in the guide so the images
-display without a website plugin or browser extension.
+The five `.puml` files are self-contained and use PlantUML's default styling.
+They do not include `style.iuml`, so each complete source can be pasted into an
+online renderer without uploading additional files. `style.iuml` is retained
+as a reference copy of the shortfall settings; it is not loaded by these diagrams.
+
+Generated SVGs belong under `docs/images/add-recipe` and are embedded directly
+in the guide so the images display without a website plugin or browser extension.
 
 ## Regenerating
 
@@ -33,8 +36,8 @@ java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/add-r
 
 The output directory is relative to each source file. Architecture and class
 diagrams use the built-in Smetana layout engine, so a separate Graphviz
-installation is not required. Relative includes are resolved during local
-rendering; a browser extension may not resolve `style.iuml`.
+installation is not required. For an online preview, paste the entire `.puml`
+file from `@startuml` to `@enduml`; no include file is needed.
 
 Commit the generated SVGs alongside their sources after inspecting all five
 images. Rendering has not been run in the preparation environment.

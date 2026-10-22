@@ -1,10 +1,9 @@
 @startuml
 !pragma layout smetana
-!include style.iuml
 title Adding a recipe: selected class relationships
 top to bottom direction
-skinparam nodesep 45
-skinparam ranksep 65
+skinparam nodesep 100
+skinparam ranksep 120
 hide empty members
 
 class Parser {
@@ -59,12 +58,12 @@ Parser ..> AddRecipeCommand : creates
 Parser ..> Recipe : creates
 Parser ..> GroceryItem : creates
 AddRecipeCommand ..|> Command
-AddRecipeCommand --> "1\n-recipe" Recipe
+AddRecipeCommand -down-> "1\n-recipe" Recipe
 AddRecipeCommand ..> RecipeBook : execute parameter
 AddRecipeCommand ..> RecipeViewer : creates and uses
-RecipeViewer ..> Recipe : view parameter
-RecipeBook --> "0..*\n-recipes\n{ordered, nonunique}" Recipe
-Recipe --> "1..*\n-ingredients\n{ordered, nonunique}" GroceryItem
+RecipeViewer .left.> Recipe : view parameter
+RecipeBook -right-> "0..*\n-recipes\n{ordered, nonunique}" Recipe
+Recipe -down-> "1..*\n-ingredients\n{ordered, nonunique}" GroceryItem
 
 legend bottom
   Only feature-relevant members and relationships are shown; some parameter types are abbreviated.

@@ -1,5 +1,4 @@
 @startuml
-!include style.iuml
 title Invalid input: zero ingredient quantity and recovery
 autonumber
 

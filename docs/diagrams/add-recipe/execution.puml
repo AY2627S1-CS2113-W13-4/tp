@@ -1,5 +1,4 @@
 @startuml
-!include style.iuml
 title Executing a validated recipe addition
 autonumber
 
