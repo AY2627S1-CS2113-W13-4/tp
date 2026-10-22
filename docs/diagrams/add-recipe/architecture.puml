@@ -1,6 +1,27 @@
 @startuml
 !pragma layout smetana
-!include style.iuml
+' Styling is inline so browser renderers need no neighbouring files.
+' Visual settings matching the existing shortfall diagrams.
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam ArrowColor #475569
+skinparam LineColor #475569
+skinparam classAttributeIconSize 0
+skinparam classBackgroundColor #F5F8FC
+skinparam classBorderColor #475569
+skinparam componentBackgroundColor #F5F8FC
+skinparam componentBorderColor #475569
+skinparam participantBackgroundColor #F5F8FC
+skinparam participantBorderColor #475569
+skinparam sequenceLifeLineBorderColor #94A3B8
+skinparam sequenceGroupBackgroundColor #FFFFFF
+skinparam sequenceGroupBorderColor #94A3B8
+skinparam noteBackgroundColor #FFF9E8
+skinparam noteBorderColor #C4AC70
+skinparam maxMessageSize 240
+hide footbox
 title Adding a recipe: architectural context
 top to bottom direction
 
