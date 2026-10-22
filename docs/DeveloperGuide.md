@@ -75,6 +75,201 @@ Diagnostic logs are written to disk, but they do not save or restore the recipe 
 
 ## Implementation
 
+<!-- @@author peilingggg -->
+### Adding a recipe
+
+#### Purpose and implemented scope
+
+This feature supports the following user story: **As a first-time user, I want to add a recipe with its ingredients and quantities so that I can create a personalised meal.**
+
+The command accepts all five recipe fields and at least one ingredient:
+
+```text
+add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITYUNIT [i/INGREDIENT:QUANTITYUNIT ...]
+```
+
+For example, `add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g` adds one
+recipe. Calories use kcal; protein, carbohydrates, and fats use grams.
+Single-value fields may appear in any order, but each must appear exactly once.
+Each ingredient uses a separate `i/` field. Recipes are stored in memory for the
+current session; adding a recipe does not regenerate an existing plan or grocery list.
+
+#### Architecture-level view
+
+Figure 6 places the feature within the existing command workflow. `MishMash`
+reads input and asks `Parser` for a `Command`. Parsing validates the request and
+constructs the recipe; execution adds that recipe to the session's `RecipeBook`.
+`RecipeViewer` formats the successful addition for display.
+
+![Figure 6. Architecture context for adding a recipe.](images/add-recipe/architecture.svg)
+
+*Figure 6: Dependencies between existing responsibilities. The boxes group the
+named implementation classes; arrows do not represent runtime message order.*
+
+The parser does not receive or modify the recipe book when parsing this command.
+`MishMash` supplies the book later through `Command.execute(recipeBook)`.
+
+#### Class-level responsibilities and relationships
+
+Figure 7 shows the selected classes used for recipe addition.
+
+![Figure 7. Selected classes and relationships used by recipe addition.](images/add-recipe/classes.svg)
+
+*Figure 7: Only relevant members and relationships are shown; some parameter
+types are abbreviated. Solid arrows show stored references with private role
+names and target-end multiplicities. Dashed arrows show dependencies or interface
+realization. Reverse multiplicities are unspecified.*
+
+`Parser` collects single-value fields in a local map and ingredients in a local
+list. `AddRecipeCommand` implements `Command` and retains one validated `Recipe`.
+The recipe book is an execution parameter, and the viewer is created locally;
+neither is stored in the command.
+
+`Recipe` holds the name, four integer nutrition values, and an ordered,
+non-empty list of `GroceryItem` references. It validates its constructor arguments
+and uses `List.copyOf` to protect its ingredient list from external changes.
+`GroceryItem` represents an ingredient's name, `BigDecimal` quantity, and unit;
+there is no separate `Ingredient` class.
+
+Plain associations are used because these objects can be shared. A recipe can
+also appear in a meal plan, and copying an ingredient list does not copy its
+items. The list ends are ordered and nonunique: duplicate recipe names and
+repeated ingredients are allowed. Stored references are shown as association
+ends rather than duplicated as attributes.
+
+#### Successful command parsing
+
+Figure 8 follows the example command through validation and object creation.
+Dispatch through `parseNamedCommand` and `parseAddRecipeCommand` is condensed.
+
+![Figure 8. Sequence for parsing a valid add-recipe command.](images/add-recipe/parsing.svg)
+
+*Figure 8: Dashed arrows represent returns, and constructor messages begin new
+lifelines. Constructor internals, library operations, and logging are condensed.
+The underlined `MishMash` participant represents the class containing the static
+application methods.*
+
+`parseAddRecipe` creates the local collections and calls
+`collectRecipeArguments`. The prefix matcher identifies field boundaries,
+including unknown prefixes, so an unsupported field cannot silently become part
+of a dish name. `readArgument` rejects blank values, embedded slashes, unknown
+prefixes, and repeated single-value fields. Repeated `i/` fields are parsed by
+`parseIngredient` and appended in input order.
+
+`validateRequiredFields` checks for `n/`, `cal/`, `p/`, `c/`, `f/`, and at least
+one ingredient. `parseNutrition` then converts the four nutrition values in the
+order calories, protein, carbohydrates, and fats. Each must contain ASCII digits
+and fit within a non-negative Java `int`.
+
+Only after these checks succeed does the parser construct `Recipe` and
+`AddRecipeCommand`. The `Recipe` constructor independently checks the model's
+constraints, protecting callers that bypass command parsing. Parsing returns a
+command without changing application data, even if some local ingredient
+objects were created before a later validation failure.
+
+#### Execution and confirmation output
+
+Figure 9 starts after parsing. The inherited `confirmationPrompt` method returns
+an empty `Optional`, so the addition proceeds without a confirmation question.
+
+![Figure 9. Sequence for formatting and executing a recipe addition.](images/add-recipe/execution.svg)
+
+*Figure 9: Formatting is treated as a black box. Diagnostic logging, including
+the recipe-count read, is omitted. The next command prompt belongs to the
+application's read loop.*
+
+`AddRecipeCommand.execute` rejects a null recipe book, then creates a
+`RecipeViewer` and prepares the complete confirmation before calling
+`RecipeBook.add(recipe)`. This ordering prevents a formatting failure from
+leaving an addition whose confirmation could not be prepared. `RecipeBook.add`
+rejects null and appends the recipe reference without replacing existing entries.
+
+The command returns:
+
+```text
+New recipe added!
+Rice
+200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g
+Ingredients:
+- Rice: 150g
+```
+
+`MishMash` prints this result and displays the next command prompt. Ingredient
+quantities use plain decimal notation without unnecessary trailing zeros.
+Repeated ingredients remain separate entries; consolidation belongs to grocery
+generation. The parser and addition command record counts at `FINE` level
+without including the full recipe contents in their success messages.
+
+#### Invalid input and recovery
+
+Figure 10 shows the example with `i/Rice:0g`. `parseIngredient` rejects the
+non-positive quantity before constructing a `GroceryItem`.
+
+![Figure 10. Sequence for rejecting an invalid ingredient and recovering.](images/add-recipe/invalid-input.svg)
+
+*Figure 10: Dashed messages labelled as exceptions show exceptional control
+flow. No recipe or addition command is constructed for this request, and the
+recipe book is not accessed.*
+
+`parseAddRecipeCommand` catches `IllegalArgumentException`, appends
+`ADD_RECIPE_USAGE`, and wraps it in `MishMashException` while preserving the
+cause. `MishMash.executeCommand` catches this recoverable exception and calls
+`displayError`. Because the message already contains `Format: `, general command
+usage is not printed again. The read loop then prompts for another command.
+
+| Boundary or invalid condition | Implemented behavior |
+| --- | --- |
+| Missing arguments, unprefixed leading text, missing required field, or no ingredient | Reject with an error and the add-recipe format. |
+| Blank value, unknown prefix, repeated `n/`, `cal/`, `p/`, `c/`, or `f/` | Reject; repeated `i/` fields are allowed. |
+| Nutrition value from 0 to `Integer.MAX_VALUE` | Accept; leading zeros are allowed. |
+| Signed, negative, decimal, non-numeric, unit-suffixed, or overflowing nutrition value | Reject. |
+| Positive integer or decimal ingredient quantity | Accept using `BigDecimal`, preserving decimal precision. |
+| Zero or negative quantity, missing unit, malformed decimal, or extra colon | Reject. Quantities require digits before the decimal point and, when present, after it. |
+| Ingredient unit containing ASCII letters only | Accept without converting units or checking a fixed unit vocabulary. |
+| Spaces within names or around ingredient separators | Accept and trim surrounding name whitespace. Names and field values cannot contain `/`. |
+| Duplicate recipe name or repeated ingredient | Accept and preserve insertion order. |
+| Null recipe, book, or required model argument supplied by Java code | Reject with `NullPointerException`; this is a programming contract violation, not normal CLI input recovery. |
+
+An invalid command leaves existing recipes unchanged. Nutrition values of zero
+are valid, but ingredient quantities must be strictly positive. Although
+`GroceryItem` itself permits zero, the parser and `Recipe` apply the stricter
+recipe constraint.
+
+#### Rationale and alternatives
+
+| Decision | Alternative | Reason for the current design |
+| --- | --- | --- |
+| Validate before executing the addition | Insert a partially populated recipe and validate afterwards | Invalid input cannot leave an incomplete recipe in the book. |
+| Keep input validation and model validation | Rely only on the parser | The parser enforces command syntax; the model also protects direct Java callers. |
+| Use `BigDecimal` for ingredient quantities | Use floating-point values | Decimal quantities retain their precision and match the existing grocery model. |
+| Reuse `RecipeViewer` | Build the same output separately in each command | Addition confirmations and detailed recipe listings use consistent formatting. |
+| Allow repeated names and ingredients | Reject duplicates or merge automatically | The current book identifies recipes by position; ingredient consolidation is handled during grocery generation. |
+
+#### Verification and diagram maintenance
+
+`AddRecipeBoundaryTest` covers nutrition limits, leading zeros, decimal
+precision, units, whitespace, field ordering, and repeated ingredients.
+`AddRecipeEdgeCaseTest` uses `add-recipe-invalid.tsv` to check invalid input,
+unchanged existing data, and a successful addition after rejection.
+`AddRecipeExceptionTest` checks usage messages and preserved exception causes.
+`AddRecipeCommandTest`, `RecipeTest`, and `RecipeBookTest` cover insertion,
+output, constructor constraints, null arguments, and protection against external
+list changes. `MishMashTest` covers console output and continued interaction.
+
+Run the full verification tasks from the repository root using Java 25:
+
+```powershell
+.\gradlew.bat test checkstyleMain checkstyleTest
+```
+
+Editable diagram sources are under
+[`docs/diagrams/add-recipe`](diagrams/add-recipe/README.md). Generate their SVGs
+under `docs/images/add-recipe` and commit both sources and images so the guide
+displays without a PlantUML plugin. After implementation changes, check the
+depicted references, multiplicities, constructors, method order, and failure
+paths against the code. Keep the abstraction notes when omitting implementation
+details, and visually inspect regenerated diagrams.
+<!-- @@author -->
 <!-- @@author oilybikechain -->
 ### Grocery command integration
 
