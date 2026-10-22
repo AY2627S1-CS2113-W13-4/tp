@@ -1,0 +1,65 @@
+@startuml
+title Invalid input: zero ingredient quantity and recovery
+autonumber
+
+participant "<u>MishMash</u>" as App
+participant "parser: Parser" as Parser
+
+App -> Parser : parseCommand(input)
+activate Parser
+note over Parser
+  input = add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:0g
+  parseNamedCommand dispatch is condensed.
+end note
+Parser -> Parser : parseAddRecipeCommand(arguments)
+activate Parser
+Parser -> Parser : parseAddRecipe(arguments)
+activate Parser
+Parser -> Parser : collectRecipeArguments(arguments, fields, ingredients)
+activate Parser
+note right of Parser : Earlier single-value fields have been collected locally.
+Parser -> Parser : readArgument("i", "Rice:0g", fields, ingredients)
+activate Parser
+Parser -> Parser : parseIngredient("Rice:0g")
+activate Parser
+Parser --> Parser : throws IllegalArgumentException(\n"Ingredient quantity must be greater than zero.")
+deactivate Parser
+Parser --> Parser : propagates IllegalArgumentException
+deactivate Parser
+Parser --> Parser : propagates IllegalArgumentException
+deactivate Parser
+Parser --> Parser : propagates IllegalArgumentException
+deactivate Parser
+note right of Parser
+  parseAddRecipeCommand catches the exception,
+  appends ADD_RECIPE_USAGE, and preserves the cause.
+end note
+Parser --> Parser : throws MishMashException(message + usage, cause)
+deactivate Parser
+Parser --> App : propagates MishMashException
+deactivate Parser
+note over App
+  executeCommand catches MishMashException.
+end note
+App -> App : <u>displayError(exception)</u>
+activate App
+note right of App
+  Print "Error: " and the message with add-recipe usage.
+  No extra COMMAND_USAGE is printed because
+  the message already contains "Format: ".
+end note
+App --> App : return
+deactivate App
+note over App : Control returns to readCommands.
+App -> App : <u>displayCommandPrompt()</u>
+activate App
+App --> App : return
+deactivate App
+
+legend bottom
+  Dashed exception messages describe exceptional control flow, not normal return values.
+  Underlining denotes the class participant and static application operations.
+  No GroceryItem, Recipe, or AddRecipeCommand is constructed for this example.
+  The recipe book is not accessed; the session accepts another input line.
+endlegend
+@enduml

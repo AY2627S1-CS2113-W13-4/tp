@@ -1,0 +1,78 @@
+@startuml
+title Successful parsing: add-recipe with one ingredient
+autonumber
+
+participant "<u>MishMash</u>" as App
+participant "parser: Parser" as Parser
+participant "ingredient: GroceryItem" as Ingredient
+participant "recipe: Recipe" as Recipe
+participant "add: AddRecipeCommand" as Add
+
+App -> Parser : parseCommand(input)
+activate Parser
+note over Parser
+  input = add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g
+  Dispatch through parseNamedCommand and
+  parseAddRecipeCommand is condensed.
+end note
+Parser -> Parser : parseAddRecipe(arguments)
+activate Parser
+Parser -> Parser : collectRecipeArguments(arguments, fields, ingredients)
+activate Parser
+loop first five fields: n, cal, p, c, f
+  Parser -> Parser : readArgument(prefix, value, fields, ingredients)
+  activate Parser
+  note right of Parser : Store a unique single-value field.
+  Parser --> Parser : return
+  deactivate Parser
+end
+Parser -> Parser : readArgument("i", "Rice:150g", fields, ingredients)
+activate Parser
+Parser -> Parser : parseIngredient("Rice:150g")
+activate Parser
+note right of Parser
+  Validate syntax and positive decimal quantity.
+  quantity = new BigDecimal("150")
+end note
+create Ingredient
+Parser -> Ingredient : new GroceryItem(\n"Rice", quantity, "g")
+activate Ingredient
+deactivate Ingredient
+Parser --> Parser : ingredient
+deactivate Parser
+note right of Parser : Append ingredient to the local list.
+Parser --> Parser : return
+deactivate Parser
+Parser --> Parser : return
+deactivate Parser
+Parser -> Parser : validateRequiredFields(fields, ingredients)
+activate Parser
+Parser --> Parser : return
+deactivate Parser
+loop nutrition fields: cal, p, c, f, in this order
+  Parser -> Parser : parseNutrition(value, fieldName)
+  activate Parser
+  Parser --> Parser : non-negative int
+  deactivate Parser
+end
+create Recipe
+Parser -> Recipe : new Recipe("Rice", 200, 4, 45, 1, ingredients)
+activate Recipe
+deactivate Recipe
+create Add
+Parser -> Add : new AddRecipeCommand(recipe)
+activate Add
+deactivate Add
+Parser --> Parser : add as Command
+deactivate Parser
+Parser --> App : add as Command
+deactivate Parser
+
+legend bottom
+  Solid filled-arrow messages are synchronous calls; dashed messages are returns.
+  Creation messages begin new lifelines. Constructor returns are consistently omitted.
+  Underlined MishMash denotes the class containing the static application methods.
+  Model constructor internals, standard-library operations, and logging are condensed.
+  RecipeBook is not accessed during parsing.
+endlegend
+@enduml

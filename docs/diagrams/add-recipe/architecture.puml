@@ -1,0 +1,29 @@
+@startuml
+!pragma layout smetana
+title Adding a recipe: architectural context
+top to bottom direction
+
+component "Terminal interaction\nMishMash" as App
+component "Command parsing\nParser" as Parsing
+component "Addition action\nAddRecipeCommand" as Addition
+component "Recipe formatting\nRecipeViewer" as Formatting
+component "Session models\nRecipeBook, Recipe, GroceryItem" as Models
+
+App ..> Parsing : parseCommand(input)
+Parsing ..> Addition : creates validated command
+Parsing ..> Models : creates ingredients and recipe
+App ..> Addition : execute(recipeBook)\nvia Command
+Addition ..> Formatting : creates viewer; view(recipe)
+Formatting ..> Models : reads recipe details
+Addition ..> Models : appends recipe to book
+
+note bottom of Addition
+  Formats the confirmation before insertion.
+  No confirmation question is required.
+end note
+legend bottom
+  Feature-level groupings of existing classes; unrelated features are omitted.
+  Dashed arrows show dependencies, not runtime message order or new interfaces.
+  MishMash displays the returned text and prompts for the next command.
+endlegend
+@enduml
