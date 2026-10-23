@@ -15,6 +15,8 @@ import java.util.Optional;
  */
 public class ActiveMealPlan {
     private MealPlan plan;
+    /** Original generation settings; absent for no plan or a legacy supplied plan. */
+    private Optional<GeneratePlanRequest> request = Optional.empty();
     // Absence means groceries have not been generated for the current plan.
     private Optional<List<GroceryItem>> groceryList = Optional.empty();
 
@@ -26,6 +28,52 @@ public class ActiveMealPlan {
      */
     public void set(MealPlan plan) {
         this.plan = Objects.requireNonNull(plan, "plan");
+        request = Optional.empty();
+        groceryList = Optional.empty();
+    }
+
+    /**
+     * Returns the original settings retained for dietary plan repair.
+     *
+     * @return The generation request, or an empty Optional for no plan or a legacy supplied plan.
+     */
+    public Optional<GeneratePlanRequest> getRequest() {
+        return request;
+    }
+
+    /**
+     * Publishes a generated plan, its original settings, and a copied grocery snapshot.
+     *
+     * <p>All validation and copying finish before existing state changes, so failed validation preserves
+     * the previous plan, request, and groceries. An empty Optional means groceries are not generated.
+     *
+     * @param plan The replacement active plan.
+     * @param request The original number of days and daily nutrition targets.
+     * @param groceries The optional grocery snapshot corresponding to the replacement plan.
+     * @throws NullPointerException If an argument or grocery item is null.
+     * @throws IllegalArgumentException If the plan length differs from the request.
+     */
+    public void setGenerated(MealPlan plan, GeneratePlanRequest request,
+            Optional<List<GroceryItem>> groceries) {
+        Objects.requireNonNull(plan, "plan");
+        Objects.requireNonNull(request, "request");
+        if (plan.getNumberOfDays() != request.days()) {
+            throw new IllegalArgumentException("Plan length must match its generation request.");
+        }
+        Optional<List<GroceryItem>> snapshot = Objects.requireNonNull(groceries, "groceries").map(List::copyOf);
+        this.plan = plan;
+        this.request = Optional.of(request);
+        this.groceryList = snapshot;
+    }
+
+    /**
+     * Clears the plan, its generation request, and all derived groceries.
+     *
+     * <p>Calling this method when no plan is active has no additional effect.
+     */
+    public void clear() {
+        plan = null;
+        request = Optional.empty();
         groceryList = Optional.empty();
     }
 

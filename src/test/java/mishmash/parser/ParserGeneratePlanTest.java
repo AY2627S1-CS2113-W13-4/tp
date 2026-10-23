@@ -69,7 +69,7 @@ class ParserGeneratePlanTest {
     @Test
     void parseCommand_generatePlanInvalidArguments_alwaysIncludesGeneratePlanUsage() {
         for (String arguments : new String[] {"", "cal/2000", "d/0", "d/8", "d/abc", "d/2 cal/0", "d/2 x/1",
-            "d/2 d/3", "d/2 cal/"}) {
+                "d/2 d/3", "d/2 cal/"}) {
             MishMashException exception = assertThrows(MishMashException.class,
                     () -> parser.parseCommand("generate-plan " + arguments), arguments);
             assertTrue(exception.getMessage().contains(Parser.GENERATE_PLAN_USAGE), arguments);
@@ -80,7 +80,7 @@ class ParserGeneratePlanTest {
     @Test
     void commandUsage_listsEveryCommand() {
         for (String usage : new String[] {Parser.ADD_RECIPE_USAGE, Parser.GENERATE_PLAN_USAGE,
-            Parser.VIEW_PLAN_USAGE, Parser.VIEW_LIST_USAGE}) {
+                Parser.VIEW_PLAN_USAGE, Parser.VIEW_LIST_USAGE}) {
             assertTrue(Parser.COMMAND_USAGE.contains(usage), usage);
         }
     }
