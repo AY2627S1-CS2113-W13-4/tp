@@ -20,6 +20,7 @@ import mishmash.logic.GroceryListGenerator;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.DayPlan;
+import mishmash.model.Diet;
 import mishmash.model.DietaryPreferences;
 import mishmash.model.DietarySettings;
 import mishmash.model.FoodInfo;
@@ -205,7 +206,7 @@ class DietaryCommandsTest {
         execute("generate-list");
         MealPlan plan = active.get().orElseThrow();
         List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
-        for (String command : List.of("set-diet", "set-diet diet/unknown", "set-diet avoid/",
+        for (String command : List.of("set-diet", "set-diet unknown", "set-diet diet/unknown", "set-diet avoid/",
                 "view-diet extra", "clear-diet extra")) {
             MishMashException error = assertThrows(MishMashException.class, () -> execute(command));
             assertTrue(error.getMessage().contains("Format: " + command.split(" ")[0]));
@@ -236,6 +237,17 @@ class DietaryCommandsTest {
         assertTrue(help.contains("Format: clear-diet"));
         assertTrue(help.contains("Unclassified recipes are excluded"));
         assertTrue(help.contains("tree-nut"));
+    }
+
+    @Test
+    void parseCommand_unprefixedUnknownDiet_showsValidDietsExampleAndUsage() {
+        MishMashException error = assertThrows(MishMashException.class,
+                () -> parser.parseCommand("set-diet unknown"));
+        assertTrue(error.getMessage().startsWith("Invalid dietary input 'unknown'."));
+        assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
+        assertTrue(error.getMessage().contains("Example: set-diet diet/vegan"));
+        assertTrue(error.getMessage().contains("Format: set-diet"));
+        assertTrue(error.getCause() instanceof IllegalArgumentException);
     }
 
     @Test

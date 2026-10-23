@@ -80,4 +80,24 @@ class FoodInfoTest {
         assertThrows(NullPointerException.class, () -> settings.set(null));
         assertEquals(vegan, settings.get());
     }
+
+    @Test
+    void parse_unknownDiet_explainsInvalidValueAndListsEverySupportedDiet() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> Diet.parse("unknown"));
+        assertEquals("Invalid diet 'unknown'." + System.lineSeparator() + Diet.inputHelp(), error.getMessage());
+        assertTrue(error.getCause() instanceof IllegalArgumentException);
+        for (Diet diet : Diet.values()) {
+            assertTrue(Diet.supportedLabels().contains(diet.label()));
+        }
+        assertTrue(Diet.inputHelp().contains("lacto-ovo-vegetarian (vegetarian)"));
+    }
+
+    @Test
+    void fromField_unknownTag_explainsInvalidValueAndListsEverySupportedTag() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> FoodInfo.fromField("unknown"));
+        assertEquals("Invalid food tag 'unknown'." + System.lineSeparator()
+                + "Valid food tags: " + FoodTag.supportedLabels() + ".", error.getMessage());
+        assertTrue(error.getCause() instanceof IllegalArgumentException);
+    }
 }

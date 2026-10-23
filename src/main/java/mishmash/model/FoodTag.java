@@ -38,8 +38,8 @@ public enum FoodTag {
         try {
             return valueOf(name);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown food tag: " + text
-                    + ". Use 'help' to see supported tags.", e);
+            throw new IllegalArgumentException("Invalid food tag '" + text + "'."
+                    + System.lineSeparator() + "Valid food tags: " + supportedLabels() + ".", e);
         }
     }
 
@@ -49,7 +49,8 @@ public enum FoodTag {
         Set<FoodTag> result = EnumSet.noneOf(FoodTag.class);
         for (String entry : text.split(",", -1)) {
             if (entry.isBlank()) {
-                throw new IllegalArgumentException("Food tags must not be blank.");
+                throw new IllegalArgumentException("Food tags must not be blank."
+                        + System.lineSeparator() + "Valid food tags: " + supportedLabels() + ".");
             }
             FoodTag tag = parse(entry);
             if (!result.add(tag)) {

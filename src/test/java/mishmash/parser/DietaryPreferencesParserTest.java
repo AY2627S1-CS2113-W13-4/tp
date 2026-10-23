@@ -2,6 +2,7 @@ package mishmash.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -56,5 +57,47 @@ class DietaryPreferencesParserTest {
     @Test
     void parse_nullArguments_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> parser.parse(null));
+    }
+
+    @Test
+    void parse_missingOrUnprefixedInput_explainsValidDietsAndCorrectSyntax() {
+        for (String input : Set.of("", "unknown", "vegan", "unknown diet/vegan")) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse(input));
+            assertTrue(error.getMessage().startsWith(input.isEmpty()
+                    ? "Missing dietary input." : "Invalid dietary input '" + input + "'."));
+            assertTrue(error.getMessage().contains("Use diet/, avoid/, or exclude/ before each value."));
+            assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
+            assertTrue(error.getMessage().contains("Example: set-diet diet/vegan"));
+            assertTrue(error.getMessage().contains("omnivore (none)"));
+        }
+    }
+
+    @Test
+    void parse_invalidDietValue_listsSupportedDiets() {
+        for (String input : Set.of("diet/unknown", "diet/", "diet/vegan/extra")) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse(input));
+            assertTrue(error.getMessage().startsWith("Invalid"));
+            for (Diet diet : Diet.values()) {
+                assertTrue(error.getMessage().contains(diet.label()));
+            }
+            assertTrue(error.getMessage().contains("Valid diets:"));
+        }
+    }
+
+    @Test
+    void parse_invalidFoodTag_listsSupportedFoodTags() {
+        for (String input : Set.of("avoid/unknown", "avoid/", "avoid/soy,")) {
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse(input));
+            assertTrue(error.getMessage().contains("Valid food tags: " + FoodTag.supportedLabels() + "."));
+        }
+    }
+
+    @Test
+    void parse_unknownField_listsSupportedFieldsAndDiets() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> parser.parse("unknown/vegan"));
+        assertTrue(error.getMessage().contains("Invalid dietary field 'unknown/'."));
+        assertTrue(error.getMessage().contains("Valid fields: diet/, avoid/, exclude/."));
+        assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
     }
 }

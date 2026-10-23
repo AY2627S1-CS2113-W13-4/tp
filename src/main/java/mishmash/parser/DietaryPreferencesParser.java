@@ -42,7 +42,11 @@ public final class DietaryPreferencesParser {
     private Map<String, String> collectFields(String arguments) {
         Matcher matcher = PREFIX_PATTERN.matcher(arguments);
         if (!matcher.find() || !arguments.substring(0, matcher.start()).isBlank()) {
-            throw new IllegalArgumentException("Supply at least one diet/, avoid/, or exclude/ field.");
+            String problem = arguments.isBlank() ? "Missing dietary input."
+                    : "Invalid dietary input '" + arguments.trim() + "'.";
+            throw new IllegalArgumentException(problem + System.lineSeparator()
+                    + "Use diet/, avoid/, or exclude/ before each value." + System.lineSeparator()
+                    + Diet.inputHelp() + System.lineSeparator() + "Example: set-diet diet/vegan");
         }
         Map<String, String> fields = new HashMap<>();
         String prefix = matcher.group(1);
@@ -59,13 +63,25 @@ public final class DietaryPreferencesParser {
     /** Validates one supported field and rejects repeated prefixes. */
     private void readField(Map<String, String> fields, String prefix, String value) {
         if (!Set.of("diet", "avoid", "exclude").contains(prefix)) {
-            throw new IllegalArgumentException("Unknown dietary field: " + prefix + "/");
+            throw new IllegalArgumentException("Invalid dietary field '" + prefix + "/'."
+                    + System.lineSeparator() + "Valid fields: diet/, avoid/, exclude/."
+                    + System.lineSeparator() + Diet.inputHelp());
         }
         if (value.isBlank() || value.contains("/")) {
-            throw new IllegalArgumentException("Invalid value for " + prefix + "/");
+            throw new IllegalArgumentException("Invalid value for " + prefix + "/."
+                    + System.lineSeparator() + validValues(prefix));
         }
         if (fields.putIfAbsent(prefix, value) != null) {
             throw new IllegalArgumentException("Repeated field: " + prefix + "/");
         }
+    }
+
+    /** Explains the values accepted by the field that failed validation. */
+    private String validValues(String prefix) {
+        return switch (prefix) {
+        case "diet" -> Diet.inputHelp();
+        case "avoid" -> "Valid food tags: " + FoodTag.supportedLabels() + ".";
+        default -> "Provide one or more ingredient names, separated by commas.";
+        };
     }
 }

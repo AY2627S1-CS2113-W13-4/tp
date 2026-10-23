@@ -1,5 +1,6 @@
 package mishmash.command;
 
+import mishmash.model.Diet;
 import mishmash.model.FoodTag;
 import mishmash.model.RecipeBook;
 import mishmash.parser.DietaryPreferencesParser;
@@ -40,7 +41,7 @@ public class HelpCommand implements Command {
                 "set-diet - Replace dietary preferences and update conflicting planned days.",
                 DietaryPreferencesParser.USAGE,
                 "Supply at least one field. Values are case-insensitive; field prefixes are case-sensitive.",
-                "Diets: none, vegetarian, vegan, pescatarian, lacto-vegetarian, ovo-vegetarian.",
+                Diet.inputHelp(),
                 "Food tags: " + FoodTag.supportedLabels(),
                 "Recipes must declare every applicable category, including those in compound ingredients.",
                 "Unclassified recipes are excluded while restrictions are active.",

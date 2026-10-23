@@ -1,9 +1,11 @@
 package mishmash.model;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Named diets expressed as exclusions; MEAT_DERIVATIVE means land-animal meat derivatives. */
 public enum Diet {
@@ -40,6 +42,17 @@ public enum Diet {
         return name().toLowerCase(Locale.ROOT).replace('_', '-');
     }
 
+    /** Lists canonical diet values directly from the supported enum constants. */
+    public static String supportedLabels() {
+        return Arrays.stream(values()).map(Diet::label).collect(Collectors.joining(", "));
+    }
+
+    /** Shares valid values and aliases between command errors and general help. */
+    public static String inputHelp() {
+        return "Valid diets: " + supportedLabels() + "." + System.lineSeparator()
+                + "Aliases: omnivore (none), lacto-ovo-vegetarian (vegetarian).";
+    }
+
     /** Accepts supported diet labels and explicit aliases; unsupported diets are errors. */
     public static Diet parse(String text) {
         String name = Objects.requireNonNull(text, "text").trim()
@@ -53,8 +66,8 @@ public enum Diet {
         try {
             return valueOf(name);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown diet: " + text
-                    + ". Use 'help' to see supported diets.", e);
+            throw new IllegalArgumentException("Invalid diet '" + text + "'."
+                    + System.lineSeparator() + inputHelp(), e);
         }
     }
 }
