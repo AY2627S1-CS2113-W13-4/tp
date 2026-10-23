@@ -252,6 +252,7 @@ class MishMashTest {
                         "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                         "Ingredients:",
                         "- Rice: 150g",
+                        "Food tags: Unclassified",
                         "------------------------------------------------------------",
                         CONTINUE_PROMPT,
                         "Goodbye!") + System.lineSeparator();
@@ -449,6 +450,7 @@ class MishMashTest {
                 "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g",
                 "Ingredients:",
                 "- Rice: 150g",
+                "Food tags: Unclassified",
                 "------------------------------------------------------------",
                 CONTINUE_PROMPT,
                 "Are you sure you want to delete recipe 1: Rice? (y/n)",
@@ -556,6 +558,7 @@ class MishMashTest {
                 "150 kcal | Protein: 5g | Carbs: 27g | Fats: 3g",
                 "Ingredients:",
                 "- Oats: 40g",
+                "Food tags: Unclassified",
                 "------------------------------------------------------------",
                 CONTINUE_PROMPT,
                 "Goodbye!") + System.lineSeparator();
@@ -586,6 +589,7 @@ class MishMashTest {
         assertEquals(6, countOccurrences(output, CONTINUE_PROMPT), output);
         // The last command still works after the errors.
         assertTrue(output.contains("- Rice: 150g" + System.lineSeparator()
+                + "Food tags: Unclassified" + System.lineSeparator()
                 + "------------------------------------------------------------" + System.lineSeparator()
                 + CONTINUE_PROMPT + System.lineSeparator() + "Goodbye!"), output);
     }

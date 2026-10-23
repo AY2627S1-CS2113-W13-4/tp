@@ -1,10 +1,13 @@
 package mishmash.command;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import mishmash.exception.MishMashException;
+import mishmash.logic.DietaryPlanner;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
+import mishmash.model.DietarySettings;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.MealPlan;
 import mishmash.model.RecipeBook;
@@ -17,6 +20,7 @@ public class GeneratePlanCommand implements Command {
     private final GeneratePlanRequest request;
     private final MealPlanGenerator generator;
     private final ActiveMealPlan activePlan;
+    private final DietarySettings dietarySettings;
 
     /**
      * Creates a command for the given request.
@@ -28,9 +32,16 @@ public class GeneratePlanCommand implements Command {
      */
     public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
             ActiveMealPlan activePlan) {
+        this(request, generator, activePlan, new DietarySettings());
+    }
+
+    /** Creates a generation command sharing the current session's dietary requirements. */
+    public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
+            ActiveMealPlan activePlan, DietarySettings dietarySettings) {
         this.request = Objects.requireNonNull(request, "request");
         this.generator = Objects.requireNonNull(generator, "generator");
         this.activePlan = Objects.requireNonNull(activePlan, "activePlan");
+        this.dietarySettings = Objects.requireNonNull(dietarySettings, "dietarySettings");
     }
 
     /**
@@ -50,13 +61,13 @@ public class GeneratePlanCommand implements Command {
 
         MealPlan plan;
         try {
-            plan = generator.generate(recipeBook.getRecipes(), request.days(), request.targets());
+            plan = new DietaryPlanner(generator).generate(recipeBook.getRecipes(), request, dietarySettings.get());
         } catch (IllegalArgumentException e) {
             // The generator reports user-fixable problems this way; show them like any other input error.
             throw new MishMashException(e.getMessage(), e);
         }
 
-        activePlan.set(plan);
+        activePlan.setGenerated(plan, request, Optional.empty());
         return "Meal plan successfully generated for " + plan.getNumberOfDays() + " day(s)!"
                 + System.lineSeparator() + "Use 'view-plan' to inspect your planned meals.";
     }

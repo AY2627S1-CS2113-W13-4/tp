@@ -15,6 +15,7 @@ import java.util.Optional;
  */
 public class ActiveMealPlan {
     private MealPlan plan;
+    private Optional<GeneratePlanRequest> request = Optional.empty();
     // Absence means groceries have not been generated for the current plan.
     private Optional<List<GroceryItem>> groceryList = Optional.empty();
 
@@ -26,6 +27,32 @@ public class ActiveMealPlan {
      */
     public void set(MealPlan plan) {
         this.plan = Objects.requireNonNull(plan, "plan");
+        request = Optional.empty();
+        groceryList = Optional.empty();
+    }
+
+    public Optional<GeneratePlanRequest> getRequest() {
+        return request;
+    }
+
+    /** Validates and copies every replacement before publishing the new plan and its snapshots. */
+    public void setGenerated(MealPlan plan, GeneratePlanRequest request,
+            Optional<List<GroceryItem>> groceries) {
+        Objects.requireNonNull(plan, "plan");
+        Objects.requireNonNull(request, "request");
+        if (plan.getNumberOfDays() != request.days()) {
+            throw new IllegalArgumentException("Plan length must match its generation request.");
+        }
+        Optional<List<GroceryItem>> snapshot = Objects.requireNonNull(groceries, "groceries").map(List::copyOf);
+        this.plan = plan;
+        this.request = Optional.of(request);
+        this.groceryList = snapshot;
+    }
+
+    /** Clears both the active plan and all data derived from it. */
+    public void clear() {
+        plan = null;
+        request = Optional.empty();
         groceryList = Optional.empty();
     }
 

@@ -384,7 +384,8 @@ class ParserTest {
                 + "650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g" + System.lineSeparator()
                 + "Ingredients:" + System.lineSeparator()
                 + "- Chicken Breast: 200g" + System.lineSeparator()
-                + "- White Rice: 150g", result);
+                + "- White Rice: 150g" + System.lineSeparator()
+                + "Food tags: Unclassified", result);
     }
 
     @Test

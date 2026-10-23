@@ -13,6 +13,7 @@ public class Recipe {
     private final int carbs;
     private final int fats;
     private final List<GroceryItem> ingredients;
+    private final FoodInfo foodInfo;
 
     //@@author peilingggg
     /**
@@ -24,6 +25,12 @@ public class Recipe {
      */
     public Recipe(String name, int calories, int protein, int carbs, int fats,
             List<GroceryItem> ingredients) {
+        this(name, calories, protein, carbs, fats, ingredients, FoodInfo.unknown());
+    }
+
+    /** Creates a recipe with a complete food-category declaration or an unknown classification. */
+    public Recipe(String name, int calories, int protein, int carbs, int fats,
+            List<GroceryItem> ingredients, FoodInfo foodInfo) {
         this.name = validateName(name);
         validateNutrition(calories, protein, carbs, fats);
         validateIngredients(ingredients);
@@ -32,6 +39,7 @@ public class Recipe {
         this.carbs = carbs;
         this.fats = fats;
         this.ingredients = List.copyOf(ingredients);
+        this.foodInfo = Objects.requireNonNull(foodInfo, "foodInfo");
     }
 
     /**
@@ -124,6 +132,10 @@ public class Recipe {
      */
     public List<GroceryItem> getIngredients() {
         return ingredients;
+    }
+
+    public FoodInfo getFoodInfo() {
+        return foodInfo;
     }
 }
 

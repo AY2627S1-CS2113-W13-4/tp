@@ -7,12 +7,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import mishmash.model.DayPlan;
 import mishmash.model.GroceryItem;
+import mishmash.model.MealPlan;
+import mishmash.model.Recipe;
 
 /**
  * Combines recipe ingredients into a grocery list for planned meals.
  */
 public class GroceryListGenerator {
+    /** Counts every recipe occurrence before using the existing exact name/unit aggregation. */
+    public List<GroceryItem> generateForPlan(MealPlan plan) {
+        Objects.requireNonNull(plan, "plan");
+        List<GroceryItem> ingredients = new ArrayList<>();
+        for (DayPlan day : plan.getDays()) {
+            for (Recipe recipe : day.getMeals()) {
+                ingredients.addAll(recipe.getIngredients());
+            }
+        }
+        return generate(ingredients);
+    }
+
     /**
      * Combines quantities for ingredients with the same name and unit.
      * The input should contain the ingredients from every recipe in the active meal plan.

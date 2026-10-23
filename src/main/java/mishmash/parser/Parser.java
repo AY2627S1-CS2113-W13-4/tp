@@ -21,11 +21,15 @@ import mishmash.command.GenerateListCommand;
 import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
 import mishmash.command.ListRecipeCommand;
+import mishmash.command.SetDietCommand;
 import mishmash.command.ViewListCommand;
 import mishmash.command.ViewPlanCommand;
 import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
+import mishmash.model.DietaryPreferences;
+import mishmash.model.DietarySettings;
+import mishmash.model.FoodInfo;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
@@ -42,13 +46,16 @@ public class Parser {
      */
     public static final String ADD_RECIPE_USAGE =
             "Format: add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS"
-                    + " i/INGREDIENT:QUANTITYUNIT"
+                    + " i/INGREDIENT:QUANTITYUNIT [food/TAG[,TAG...]]"
                     + System.lineSeparator()
                     + "Include at least one ingredient. To add more, repeat i/INGREDIENT:QUANTITYUNIT,"
                     + " separated by spaces."
                     + System.lineSeparator()
                     + "Example: add-recipe n/Chicken Rice cal/650 p/50 c/70 f/15"
-                    + " i/Chicken:200g i/Rice:150g";
+                    + " i/Chicken:200g i/Rice:150g"
+                    + System.lineSeparator()
+                    + "Optional: food/TAG[,TAG...] declares all applicable food categories."
+                    + " Use food/none if none apply; omitted food/ means unclassified.";
 
     /**
      * Describes how to choose the recipe to delete.
@@ -76,6 +83,7 @@ public class Parser {
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
+            DietaryPreferencesParser.USAGE, "Format: view-diet", "Format: clear-diet",
             "Format: help", "Format: bye");
 
     /**
@@ -123,6 +131,7 @@ public class Parser {
      * constructors that share it.
      */
     private final ActiveMealPlan activeMealPlan;
+    private final DietarySettings dietarySettings = new DietarySettings();
 
     /**
      * Creates a parser sharing one active plan and grocery snapshot across generation and viewing.
@@ -221,6 +230,17 @@ public class Parser {
      * @throws MishMashException If the command name or arguments are invalid.
      */
     private Command parseNamedCommand(String commandWord, String arguments) throws MishMashException {
+        if (commandWord.equals("set-diet")) {
+            return parseSetDiet(arguments);
+        }
+        if (commandWord.equals("view-diet")) {
+            requireNoDietArguments(commandWord, arguments);
+            return recipeBook -> dietarySettings.get().describe();
+        }
+        if (commandWord.equals("clear-diet")) {
+            requireNoDietArguments(commandWord, arguments);
+            return new SetDietCommand(DietaryPreferences.none(), dietarySettings, activeMealPlan, mealPlanGenerator);
+        }
         if (commandWord.equals("help")) {
             if (!arguments.isBlank()) {
                 throw new MishMashException("help does not accept arguments."
@@ -253,6 +273,24 @@ public class Parser {
             return parseAddRecipeCommand(arguments);
         }
         throw new MishMashException("Unknown command: " + commandWord);
+    }
+
+    /** Converts dietary validation failures to recoverable command errors with command-specific usage. */
+    private Command parseSetDiet(String arguments) throws MishMashException {
+        try {
+            DietaryPreferences preferences = new DietaryPreferencesParser().parse(arguments);
+            return new SetDietCommand(preferences, dietarySettings, activeMealPlan, mealPlanGenerator);
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage() + System.lineSeparator() + DietaryPreferencesParser.USAGE, e);
+        }
+    }
+
+    /** Rejects unexpected arguments with usage for the specific dietary command. */
+    private void requireNoDietArguments(String commandWord, String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException(commandWord + " does not accept arguments."
+                    + System.lineSeparator() + "Format: " + commandWord);
+        }
     }
 
     /**
@@ -319,7 +357,7 @@ public class Parser {
         try {
             GeneratePlanRequest request = new GeneratePlanParser().parse(arguments);
             LOGGER.fine(() -> "Parsed generate-plan for " + request.days() + " days");
-            return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan);
+            return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan, dietarySettings);
         } catch (IllegalArgumentException e) {
             String message = e.getMessage();
             if (!message.contains(GENERATE_PLAN_USAGE)) {
@@ -461,7 +499,7 @@ public class Parser {
                 parseNutrition(fields.get("p"), "Protein"),
                 parseNutrition(fields.get("c"), "Carbs"),
                 parseNutrition(fields.get("f"), "Fats"),
-                ingredients);
+                ingredients, FoodInfo.fromField(fields.get("food")));
         LOGGER.fine(() -> "Parsed add-recipe with " + ingredients.size() + " ingredients");
         return new AddRecipeCommand(recipe);
     }
@@ -531,6 +569,12 @@ public class Parser {
         }
         if (prefix.equals("i")) {
             ingredients.add(parseIngredient(value));
+            return;
+        }
+        if (prefix.equals("food")) {
+            if (fields.putIfAbsent(prefix, value) != null) {
+                throw new IllegalArgumentException("Repeated field: food/");
+            }
             return;
         }
         if (!REQUIRED_FIELDS.contains(prefix)) {

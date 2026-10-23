@@ -43,10 +43,14 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
+| `set-diet` | Replace dietary preferences and repair conflicting planned days. |
+| `view-diet` | Display current dietary preferences. |
+| `clear-diet` | Remove all dietary restrictions. |
 | `help` | Display the supported commands and their formats. |
 | `bye` | End the session. |
 
-Commands validate their arguments and relevant application state. Requests that fail validation leave the existing data unchanged. Generation and viewing are separate actions: viewing does not create a new plan or grocery list.
+Commands validate their arguments and relevant application state. Requests that fail validation leave the existing data unchanged. A syntactically valid dietary
+update that cannot repair an incompatible plan saves the new profile and clears both generated lists. Generation and viewing are separate actions: viewing does not create a new plan or grocery list.
 
 ### Model Component
 
@@ -66,6 +70,39 @@ There are no separate `Ingredient` or `GroceryList` classes in the current model
 Recipes remain in insertion order. Their displayed indexes start at 1 and can change after deletion. Duplicate names are permitted. Existing meal plans remain available when a recipe is subsequently added to or removed from the recipe book.
 
 Only one meal plan is active at a time. Successfully generating a replacement plan clears the groceries associated with the previous plan. Failed generation preserves the previous plan and groceries.
+
+### Dietary Filtering and Plan Repair
+
+`FoodInfo` is an immutable complete declaration of supported food categories on a recipe.
+An omitted `food/` field is unclassified; `food/none` is explicitly classified with no listed categories.
+`DietaryPreferences` combines one `Diet`, additional `FoodTag` exclusions, and normalized exact
+ingredient exclusions. Active restrictions exclude unclassified recipes. No ingredient-name guessing
+is used, so completeness and accuracy depend on the supplied declarations.
+
+Each `Parser` owns one `DietarySettings` holder shared by its generated commands. Parsing has no
+side effects. The existing three-argument `GeneratePlanCommand` constructor retains unrestricted
+behavior for callers; the application parser supplies the four-argument constructor with shared settings.
+`DietaryPlanner` filters the recipe pool before delegating to `MealPlanGenerator`, preserving its
+three-distinct-recipes rule, daily target checks, and bounded candidate search.
+
+`ActiveMealPlan.setGenerated` retains the original `GeneratePlanRequest` and copies the optional
+grocery snapshot after validating all arguments. `set(MealPlan)` remains available for legacy
+callers but invalidates any previous generation request and grocery snapshot.
+`SetDietCommand` preserves compatible `DayPlan` objects and regenerates only incompatible days
+using the original targets. It rebuilds an existing grocery list with
+`GroceryListGenerator.generateForPlan`, counting every meal occurrence. If no original request is
+available for a conflicting legacy plan, or replacement generation fails, the new preferences are
+saved and all old plan state is cleared. A compatible plan needs no original request and is preserved.
+
+Exceptions reject malformed inputs and recoverable generation failures even when assertions are
+disabled. Assertions check internal generation and repair invariants: length, dietary compatibility,
+nutrition targets, and replacement consumption. Null dependencies fail immediately. Collections are
+copied before storage so callers cannot change declarations, profiles, or grocery snapshots later.
+
+JUnit tests cover every avoided category, named diets, parser failures and aliases, unknown
+classification, partial updates, original target preservation, replacement failure, grocery quantities,
+null dependencies, immutable snapshots, and assertion failures from a deliberately broken generator.
+Use Java 25 and run `./gradlew check`; assertions are enabled by the existing test configuration.
 
 ### Storage Component
 

@@ -73,6 +73,9 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |
+| [Set dietary preferences](#dietary-preferences-and-restrictions) | `set-diet diet/vegan avoid/peanut` | Classify recipes with `food/` before using restrictions. |
+| View dietary preferences | `view-diet` | No prerequisites. |
+| Clear dietary preferences | `clear-diet` | Removes all current dietary restrictions. |
 | [Show command help](#viewing-available-commands-help) | `help` | No prerequisites. |
 | [Exit](#exiting-mishmash) | `bye` | Session data will be cleared. |
 
@@ -88,6 +91,58 @@ Use this sequence to generate meals and their groceries:
 6. **Check your shopping list** with `view-list`.
 
 After generating a replacement plan, generate the grocery list again so the ingredients match the meals you intend to prepare.
+
+## Dietary Preferences and Restrictions
+
+Use `set-diet [diet/DIET] [avoid/TAG[,TAG...]] [exclude/INGREDIENT[,INGREDIENT...]]`.
+Supply at least one field. Each command replaces all previous dietary preferences; omitted fields
+are cleared. Command names and prefixes are case-sensitive; diet and tag values are case-insensitive.
+
+```text
+set-diet diet/vegan avoid/peanut,soy exclude/mushroom,bell pepper
+view-diet
+clear-diet
+```
+
+Supported diets are `none` (also `omnivore`), `vegetarian` (also `lacto-ovo-vegetarian`),
+`vegan`, `pescatarian`, `lacto-vegetarian`, and `ovo-vegetarian`.
+Supported tags are `milk`, `lactose`, `egg`, `peanut`, `tree-nut`, `soy`, `wheat`, `gluten`,
+`fish`, `crustacean`, `mollusc`, `sesame`, `mustard`, `celery`, `lupin`, `sulphite`, `beef`,
+`pork`, `poultry`, `other-meat`, `meat-derivative`, `gelatin`, `honey`, `other-animal-product`,
+`alcohol`, `coconut`, `corn`, `oat`, `legume`, `allium`, and `mushroom`.
+`dairy` is an alias for `milk`. To exclude both peanuts and tree nuts, use `avoid/peanut,tree-nut`.
+
+Declare **every applicable category** when adding a recipe, including categories in sauces, stocks,
+and compound ingredients. For example:
+
+```text
+add-recipe n/Pancakes cal/400 p/12 c/60 f/10 i/Flour:100g i/Milk:150ml i/Egg:1pc food/milk,lactose,egg,wheat,gluten
+add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g food/none
+```
+
+`food/none` explicitly declares that none of the supported categories apply. Omitting `food/` leaves
+the recipe unclassified. Unclassified recipes are excluded whenever any dietary restriction is active.
+Classification is based on your declarations; MishMash does not identify undeclared allergens or
+cross-contact. Category names describe food content, not certification such as halal or kosher.
+`meat-derivative` covers land-animal meat derivatives such as stock and lard; also declare their source
+category where known. Declare both `gelatin` and its source category for gelatin. Use
+`other-animal-product` for animal-derived ingredients not covered by a more specific category.
+The vegetarian, vegan, and pescatarian presets exclude `other-animal-product` conservatively.
+
+Ingredient exclusions match complete names while ignoring case and repeated spaces. They do not
+match substrings or infer synonyms: `exclude/chicken` does not exclude `Chicken Breast`; use
+`avoid/poultry` for that category. Commas separate entries and cannot be part of an excluded name.
+
+Setting preferences after generation preserves compatible days and regenerates only conflicting days.
+All three meals in a conflicting day may change, and replacements must meet the original daily
+nutrition targets within the existing 15% tolerance. At least three compatible, classified recipes
+are needed for replacement. If a grocery list already exists, it is rebuilt from the updated plan;
+otherwise, use `generate-list` when needed. Compatible plans and their grocery lists stay unchanged.
+
+If no replacement can be found, the new preferences are saved and the old meal plan and grocery list
+are cleared. Add suitable recipes or adjust your generation targets, then run `generate-plan` again.
+Malformed commands leave preferences and lists unchanged. `clear-diet` removes restrictions and
+preserves an existing compatible plan. All dietary preferences are cleared when the session ends.
 
 ## Reading Command Formats
 
