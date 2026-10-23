@@ -83,10 +83,10 @@ class DietaryCommandsTest {
 
     @Test
     void setDiet_partialRepair_preservesDaysAndRebuildsGroceryQuantities() throws MishMashException {
-        List<Recipe> suitable = addSuitableRecipes();
-        DayPlan unchanged = new DayPlan(suitable);
+        List<Recipe> suitableRecipes = addSuitableRecipes();
+        DayPlan unchanged = new DayPlan(suitableRecipes);
         Recipe milk = createRecipe("Milk", 600, "milk");
-        DayPlan conflicting = new DayPlan(List.of(suitable.get(0), suitable.get(1), milk));
+        DayPlan conflicting = new DayPlan(List.of(suitableRecipes.get(0), suitableRecipes.get(1), milk));
         MealPlan original = new MealPlan(List.of(unchanged, conflicting, unchanged));
         GeneratePlanRequest request = new GeneratePlanRequest(3, new NutritionTargets(1800, null, null, null));
         active.setGenerated(original, request,

@@ -49,9 +49,9 @@ class DietaryPlannerTest {
 
     @Test
     void generate_restrictedPlan_meetsDietTargetsAndDailyVariety() {
-        List<Recipe> suitable = createSuitableRecipes();
+        List<Recipe> suitableRecipes = createSuitableRecipes();
         Recipe milk = createRecipe("Milk", 600, "milk,lactose");
-        List<Recipe> recipes = List.of(suitable.get(0), suitable.get(1), suitable.get(2), milk,
+        List<Recipe> recipes = List.of(suitableRecipes.get(0), suitableRecipes.get(1), suitableRecipes.get(2), milk,
                 createRecipe("Unknown", 600, null));
         NutritionTargets targets = new NutritionTargets(1800, 30, 60, 15);
         MealPlan plan = planner.generate(recipes, new GeneratePlanRequest(7, targets), vegan);
@@ -60,7 +60,7 @@ class DietaryPlannerTest {
         for (DayPlan day : plan.getDays()) {
             assertEquals(3, Set.copyOf(day.getMeals()).size());
             assertTrue(targets.isSatisfiedBy(day));
-            assertTrue(day.getMeals().stream().allMatch(suitable::contains));
+            assertTrue(day.getMeals().stream().allMatch(suitableRecipes::contains));
         }
         assertEquals(5, recipes.size());
     }

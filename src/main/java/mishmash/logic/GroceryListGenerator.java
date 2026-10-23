@@ -42,9 +42,9 @@ public class GroceryListGenerator {
      * The input should contain the ingredients from every recipe in the active meal plan.
      * Names and units are matched exactly, and the input list and its items are left unchanged.
      *
-     * @param ingredients ingredients required by the planned meals
-     * @return an unmodifiable list of combined grocery items in the order each ingredient first appears
-     * @throws NullPointerException if the input list or any ingredient is null
+     * @param ingredients Ingredients required by the planned meals.
+     * @return An unmodifiable list of combined grocery items in the order each ingredient first appears.
+     * @throws NullPointerException If the input list or any ingredient is null.
      */
     public List<GroceryItem> generate(List<GroceryItem> ingredients) {
         Objects.requireNonNull(ingredients, "ingredients");
