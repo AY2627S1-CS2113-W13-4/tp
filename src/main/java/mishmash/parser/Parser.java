@@ -83,7 +83,7 @@ public class Parser {
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
-            DietaryPreferencesParser.USAGE,
+            DietaryPreferencesParser.USAGE, "Format: view-diet",
             "Format: help", "Format: bye");
 
     /**
@@ -234,6 +234,10 @@ public class Parser {
         if (commandWord.equals("set-diet")) {
             return parseSetDiet(arguments);
         }
+        if (commandWord.equals("view-diet")) {
+            requireNoDietArguments(commandWord, arguments);
+            return recipeBook -> dietarySettings.get().describe();
+        }
         if (commandWord.equals("help")) {
             if (!arguments.isBlank()) {
                 throw new MishMashException("help does not accept arguments."
@@ -281,6 +285,20 @@ public class Parser {
             return new SetDietCommand(preferences, dietarySettings, activeMealPlan, mealPlanGenerator);
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage() + System.lineSeparator() + DietaryPreferencesParser.USAGE, e);
+        }
+    }
+
+    /**
+     * Rejects arguments for dietary commands that accept none.
+     *
+     * @param commandWord The dietary command whose usage should be shown.
+     * @param arguments The text following the command.
+     * @throws MishMashException If any non-whitespace argument is supplied.
+     */
+    private void requireNoDietArguments(String commandWord, String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException(commandWord + " does not accept arguments."
+                    + System.lineSeparator() + "Format: " + commandWord);
         }
     }
 

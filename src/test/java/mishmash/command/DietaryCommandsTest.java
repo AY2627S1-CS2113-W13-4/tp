@@ -73,6 +73,7 @@ class DietaryCommandsTest {
         book.add(createRecipe("Unknown", 600, null));
         execute("set-diet diet/vegan");
         execute("generate-plan d/7 cal/1800");
+        assertTrue(execute("view-diet").contains("Diet: vegan"));
         for (DayPlan day : active.get().orElseThrow().getDays()) {
             assertEquals(Set.of("Rice", "Beans", "Tofu"),
                     Set.copyOf(day.getMeals().stream().map(Recipe::getName).toList()));
@@ -141,6 +142,7 @@ class DietaryCommandsTest {
         assertTrue(active.get().isEmpty());
         assertTrue(active.getRequest().isEmpty());
         assertTrue(active.getGroceryList().isEmpty());
+        assertTrue(execute("view-diet").contains("Avoided food categories: soy"));
         assertThrows(MishMashException.class, () -> execute("generate-plan d/1"));
         assertTrue(execute("view-plan").contains("No active meal plan"));
     }
@@ -156,6 +158,7 @@ class DietaryCommandsTest {
         assertTrue(message.contains("daily targets"));
         assertTrue(active.get().isEmpty());
         assertTrue(active.getGroceryList().isEmpty());
+        assertTrue(execute("view-diet").contains("Diet: vegan"));
     }
 
     @Test
@@ -163,6 +166,24 @@ class DietaryCommandsTest {
         active.set(new MealPlan(List.of(new DayPlan(List.of(createRecipe("Egg", 600, "egg"))))));
         assertTrue(execute("set-diet diet/vegan").contains("settings are unavailable"));
         assertTrue(active.get().isEmpty());
+        assertTrue(execute("view-diet").contains("Diet: vegan"));
+    }
+
+    @Test
+    void parseDiet_commandsDoNotMutateUntilExecution() throws MishMashException {
+        Command pending = parser.parseCommand("set-diet diet/vegan");
+        assertTrue(execute("view-diet").contains("Diet: none"));
+        assertTrue(pending.confirmationPrompt(book).isEmpty());
+        pending.execute(book);
+        assertTrue(execute("view-diet").contains("Diet: vegan"));
+    }
+
+    @Test
+    void setDiet_repeatedCommands_replacePreviousRequirements() throws MishMashException {
+        execute("set-diet diet/vegan avoid/soy exclude/salt");
+        execute("set-diet avoid/milk");
+        assertEquals(String.join(System.lineSeparator(), "Diet: none",
+                "Avoided food categories: milk", "Excluded ingredients: none"), execute("view-diet"));
     }
 
     @Test
@@ -173,11 +194,13 @@ class DietaryCommandsTest {
         execute("generate-list");
         MealPlan plan = active.get().orElseThrow();
         List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
-        for (String command : List.of("set-diet", "set-diet unknown", "set-diet diet/unknown", "set-diet avoid/")) {
+        for (String command : List.of("set-diet", "set-diet unknown", "set-diet diet/unknown", "set-diet avoid/",
+                "view-diet extra")) {
             MishMashException error = assertThrows(MishMashException.class, () -> execute(command));
             assertTrue(error.getMessage().contains("Format: " + command.split(" ")[0]));
             assertSame(plan, active.get().orElseThrow());
             assertSame(groceries, active.getGroceryList().orElseThrow());
+            assertTrue(execute("view-diet").contains("Diet: vegan"));
         }
     }
 
@@ -198,6 +221,7 @@ class DietaryCommandsTest {
     void help_dietaryCommands_explainsTagsAndClassification() throws MishMashException {
         String help = execute("help");
         assertTrue(help.contains("Format: set-diet"));
+        assertTrue(help.contains("Format: view-diet"));
         assertTrue(help.contains("Unclassified recipes are excluded"));
         assertTrue(help.contains("tree-nut"));
     }
