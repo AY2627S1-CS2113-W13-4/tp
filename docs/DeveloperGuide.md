@@ -353,11 +353,15 @@ and `SetDietCommand`. Parsing creates commands without changing session state.
 `view-diet` is a `Command` lambda reading the current holder at execution time.
 `clear-diet` reuses `SetDietCommand` with `DietaryPreferences.createUnrestricted()`.
 
-The editable architecture diagram is [architecture.puml](diagrams/dietary/architecture.puml).
+Figure 6 shows the feature's architecture; its editable source is
+[architecture.puml](diagrams/dietary/architecture.puml).
 Its dependencies show command creation, shared session data, and generation delegation;
 they do not represent runtime message order.
 
-<!-- Add rendered SVG here: ![Dietary feature architecture.](images/dietary/architecture.svg) -->
+![Figure 6. Architecture context for dietary restrictions.](images/dietary/architecture.svg)
+
+*Figure 6: Dependencies between parsing, commands, planning logic, and shared session data.
+Arrows show selected uses rather than runtime message order.*
 
 #### Class-level responsibilities and relationships
 
@@ -373,17 +377,21 @@ they do not represent runtime message order.
 | `SetDietCommand` | Save preferences and coordinate plan and grocery updates. |
 | `ActiveMealPlan` | Retain the plan, its original request, and an optional grocery snapshot. |
 
-The [class diagram](diagrams/dietary/classes.puml) shows selected stored references and
+Figure 7 ([source](diagrams/dietary/classes.puml)) shows selected stored references and
 dependencies. Associations use private role names and target-end multiplicities; reverse
 multiplicities are unspecified. References are not duplicated as attributes. Parameter-only
 dependencies and interface realization use dashed arrows. Model collection copying protects
 collection structure; shared recipe and day objects are not deep-copied.
 
-<!-- Add rendered SVG here: ![Dietary feature classes.](images/dietary/classes.svg) -->
+![Figure 7. Selected classes and relationships for dietary restrictions.](images/dietary/classes.svg)
+
+*Figure 7: Only feature-relevant members and references are shown; parameter types are abbreviated.
+Solid arrows show stored references with private role names and target-end multiplicities.
+Dashed arrows show dependencies or interface realization; reverse multiplicities are unspecified.*
 
 #### Successful command parsing
 
-The [parsing sequence](diagrams/dietary/parsing.puml) follows `set-diet diet/vegan`.
+Figure 8 ([source](diagrams/dietary/parsing.puml)) follows `set-diet diet/vegan`.
 `Parser.parseSetDiet` delegates to `DietaryPreferencesParser.parse`.
 `collectFields` rejects leading unprefixed text, unsupported or repeated prefixes, blank
 values, and embedded slashes. Diet and tag parsers normalize case, resolve aliases, and
@@ -394,11 +402,14 @@ names using trimming, `Locale.ROOT` lowercasing, and collapsed whitespace. Blank
 normalized names are rejected. The parser then creates a `SetDietCommand`; neither settings
 nor active planning data changes until execution.
 
-<!-- Add rendered SVG here: ![Dietary command parsing.](images/dietary/parsing.svg) -->
+![Figure 8. Sequence for parsing a valid dietary command.](images/dietary/parsing.svg)
+
+*Figure 8: Parsing creates a command without changing session state. Dashed arrows represent returns,
+and constructor messages begin new lifelines. Constructor internals and dispatch helpers are condensed.*
 
 #### Execution and partial plan repair
 
-The [execution sequence](diagrams/dietary/execution.puml) focuses on a conflicting plan with
+Figure 9 ([source](diagrams/dietary/execution.puml)) focuses on a conflicting plan with
 an existing grocery list and successful repair. The command handles these branches:
 
 1. Without an active plan, clear stale derived state and save the profile.
@@ -418,11 +429,14 @@ day, the original +/-15% target tolerance, and the existing bounded candidate se
 groceries. A compatible legacy plan can be preserved without a request. A conflicting legacy
 plan cannot be repaired without its original settings and follows the failure branch below.
 
-<!-- Add rendered SVG here: ![Dietary plan repair.](images/dietary/execution.svg) -->
+![Figure 9. Sequence for repairing a conflicting plan and rebuilding groceries.](images/dietary/execution.svg)
+
+*Figure 9: The successful repair branch with an existing grocery list is shown. Recipe-book lookup,
+library operations, and generation internals are condensed; the other branches are described above.*
 
 #### Invalid input and recovery
 
-The [invalid-input sequence](diagrams/dietary/invalid-input.puml) follows the unsupported
+Figure 10 ([source](diagrams/dietary/invalid-input.puml)) follows the unsupported
 value `diet/keto`. `Diet.parse` throws `IllegalArgumentException` with valid diets and
 aliases. `Parser.parseSetDiet` appends command-specific usage and wraps it in
 `MishMashException`, preserving the cause. The CLI displays the error and continues.
@@ -441,7 +455,10 @@ assertions are disabled. `setGenerated` validates and copies arguments before as
 A failed repair deliberately invalidates old generated data rather than showing an
 incompatible plan under newly saved restrictions.
 
-<!-- Add rendered SVG here: ![Dietary validation and recovery.](images/dietary/invalid-input.svg) -->
+![Figure 10. Sequence for rejecting an unsupported diet and recovering.](images/dietary/invalid-input.svg)
+
+*Figure 10: Exception messages show exceptional control flow. No dietary command is created and no
+session data changes. The application displays the error and continues its command loop.*
 
 #### Rationale and alternatives
 
@@ -470,9 +487,9 @@ With Java 25, run:
 ```
 
 Sources and SVG-generation instructions are in [diagrams/dietary](diagrams/dietary/README.md).
-The SVG insertion comments above are placeholders for locally rendered images; the guide
-currently links to the sources. Generate images under `docs/images/dietary`, inspect spacing
-and labels, then replace each comment with its Markdown image line. Recheck method names,
+The checked-in SVGs under `docs/images/dietary` are embedded as Figures 6 to 10 so the guide
+renders without a PlantUML plugin. After changing a source, regenerate its SVG and inspect spacing
+and labels before committing both files. Recheck method names,
 message order, guards, and relationships after code changes.
 <!-- @@author -->
 
@@ -499,14 +516,14 @@ not saved as personal settings or inferred from a previous generation command.
 
 #### Architecture-level view
 
-Figure 6 shows the enhancement in the existing architecture. `MishMash` reads the input,
+Figure 11 shows the enhancement in the existing architecture. `MishMash` reads the input,
 asks `Parser` for a `Command`, executes it, and displays its returned text. The shortfall
 feature follows that command workflow. Parsing validates syntax and creates the action;
 execution reads the current session models and performs the comparison.
 
-![Figure 6. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
+![Figure 11. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
 
-*Figure 6: Dependencies between existing responsibilities. Each box groups the named
+*Figure 11: Dependencies between existing responsibilities. Each box groups the named
 implementation classes; it does not introduce a new Java component or service.*
 
 The normal `Parser()` constructor shares its `ActiveMealPlan` between plan generation,
@@ -518,11 +535,11 @@ the parser's `ActiveMealPlan`.
 
 #### Class-level responsibilities and relationships
 
-Figure 7 expands the implementation classes and the model references used by the check.
+Figure 12 expands the implementation classes and the model references used by the check.
 
-![Figure 7. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
+![Figure 12. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
 
-*Figure 7: Only members relevant to this enhancement are shown. Solid arrows are
+*Figure 12: Only members relevant to this enhancement are shown. Solid arrows are
 navigable associations with private role names; dashed arrows show dependencies or
 interface realization. Each reference is shown either as a typed attribute or as an
 association end, without duplication. The `addShortfall` parameter list is abbreviated.*
@@ -555,15 +572,15 @@ three distinct recipe entries per day.
 
 #### Successful command parsing
 
-Figure 8 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
+Figure 13 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
 from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
 the parser lifeline. A new target parser is created for the request. Its `parse` method
 collects values by calling `readTarget` for each supplied token, then constructs
 `NutritionTargets(2000, 100, null, null)`.
 
-![Figure 8. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
+![Figure 13. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
 
-*Figure 8: Parsing returns a command without reading any plan. Dashed return arrows
+*Figure 13: Parsing returns a command without reading any plan. Dashed return arrows
 represent returned values; constructor messages start the new objects' lifelines.*
 
 The outer parser creates `CheckShortfallCommand` only after argument validation succeeds.
@@ -573,13 +590,13 @@ altering its data and lets tests inspect or defer a command before running it.
 
 #### Execution and daily comparison
 
-Figure 9 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
+Figure 14 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
 inherited confirmation method returns an empty `Optional`, so this read-only action
 requires no confirmation. That common interface step is omitted from the diagram.
 
-![Figure 9. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
+![Figure 14. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
 
-*Figure 9: The calorie getter/comparison calls are expanded; the equivalent calls for
+*Figure 14: The calorie getter/comparison calls are expanded; the equivalent calls for
 protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
 list indexing, logging, and string-building details are condensed.*
 
@@ -620,15 +637,15 @@ The command's `FINE` log records the number of checked days; it installs no log 
 
 #### Invalid input and recovery
 
-Figure 10 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
+Figure 15 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
 `IllegalArgumentException`; `Parser.parseCheckShortfall` wraps it as `MishMashException`,
 preserves its cause, and appends `CHECK_SHORTFALL_USAGE`. `MishMash.executeCommand` catches
 that recoverable exception and displays the error. The read loop then prints another
 command prompt instead of ending the session.
 
-![Figure 10. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
+![Figure 15. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
 
-*Figure 10: Exception returns are labeled explicitly. For this invalid request, neither
+*Figure 15: Exception returns are labeled explicitly. For this invalid request, neither
 the target object nor the shortfall command is constructed, and the plan is not accessed.*
 
 An invalid request is an input error, whereas a valid request with no active plan returns
