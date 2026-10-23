@@ -71,20 +71,6 @@ Recipes remain in insertion order. Their displayed indexes start at 1 and can ch
 
 Only one meal plan is active at a time. Successfully generating a replacement plan clears the groceries associated with the previous plan. Failed generation preserves the previous plan and groceries.
 
-### Java Coding Conventions
-
-Dietary feature code follows the course's [basic Java coding standard](https://se-education.org/guides/conventions/java/basic.html).
-Use four spaces for block indentation and switch labels, eight additional spaces for wrapped lines,
-explicit imports, and a 120-character hard line limit. Checkstyle's case and line-wrapping indentation
-settings match these conventions.
-
-Document classes and nontrivial methods with multiline Javadocs, starting the description on the
-line after `/**`. Describe parameters, returned values, exceptions, and state-changing behavior where
-these details affect callers. Field comments may remain on one line. Boolean methods and the food
-classification record use predicate names such as `isAllowed`, `isExcluded`, and `isClassified`.
-Diet and food-label accessors use `getLabel`; factory helpers use `createUnrestricted` and
-`createUnknown`. Keep corresponding test calls synchronized when an internal API name changes.
-
 ### Dietary Filtering and Plan Repair
 
 `FoodInfo` is an immutable complete declaration of supported food categories on a recipe.
