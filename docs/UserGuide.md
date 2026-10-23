@@ -64,7 +64,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 
 | I Want To… | Enter | Before Using It |
 | --- | --- | --- |
-| [Add a recipe](#adding-a-recipe) | `add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UNIT` | Include all fields and at least one ingredient. |
+| [Add a recipe](#adding-a-recipe) | `add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITYUNIT` | Include all fields and at least one ingredient. |
 | [List recipes](#listing-recipes) | `list-recipes [INDEX]` | Omit the index to list all recipes; supply one to see its full details. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
@@ -283,7 +283,7 @@ a new plan before viewing groceries again.
 - Uppercase words such as `NAME` and `DAY_NUMBER` are placeholders. Replace them with your own values.
 - Square brackets indicate optional input. Do not type the brackets. For example, `view-plan [d/DAY_NUMBER]` means either `view-plan` or `view-plan d/1`.
 - Separate arguments with spaces. Names may contain spaces without quotation marks, for example `n/Chicken and Rice`.
-- For recipe ingredients, use `NAME:QUANTITY_UNIT`, such as `Chicken Breast:200g` or `Olive Oil:2.5ml`. Repeat `i/` for each ingredient.
+- For recipe ingredients, use `NAME:QUANTITYUNIT`, such as `Chicken Breast:200g` or `Olive Oil:2.5ml`. Repeat `i/` for each ingredient.
 - `/` is reserved for argument prefixes and is not accepted inside recipe field values.
 
 | Prefix or Abbreviation | Meaning |
@@ -307,7 +307,7 @@ a new plan before viewing groceries again.
 **Format:**
 
 ```text
-add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]
+add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITYUNIT [i/INGREDIENT:QUANTITYUNIT ...]
 ```
 
 **Before You Start:** {State prerequisites, or say there are none.}
