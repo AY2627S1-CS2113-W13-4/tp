@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 
 import mishmash.logic.GroceryListGenerator;
 
-/** Checks request retention, snapshot ownership, and atomic validation of generated plan updates. */
+/**
+ * Checks request retention, snapshot ownership, and atomic validation of generated plan updates.
+ */
 class ActiveMealPlanGeneratedTest {
     private final ActiveMealPlan active = new ActiveMealPlan();
     private final MealPlan plan = new MealPlan(List.of(new DayPlan(List.of())));

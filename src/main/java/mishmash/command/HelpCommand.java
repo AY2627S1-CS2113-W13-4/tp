@@ -6,7 +6,9 @@ import mishmash.model.RecipeBook;
 import mishmash.parser.DietaryPreferencesParser;
 import mishmash.parser.Parser;
 
-/** Displays every supported command with its purpose and syntax. */
+/**
+ * Displays every supported command with its purpose and syntax.
+ */
 public class HelpCommand implements Command {
     @Override
     public String execute(RecipeBook recipeBook) {
@@ -41,8 +43,8 @@ public class HelpCommand implements Command {
                 "set-diet - Replace dietary preferences and update conflicting planned days.",
                 DietaryPreferencesParser.USAGE,
                 "Supply at least one field. Values are case-insensitive; field prefixes are case-sensitive.",
-                Diet.inputHelp(),
-                "Food tags: " + FoodTag.supportedLabels(),
+                Diet.getInputHelp(),
+                "Food tags: " + FoodTag.getSupportedLabels(),
                 "Recipes must declare every applicable category, including those in compound ingredients.",
                 "Unclassified recipes are excluded while restrictions are active.",
                 "Ingredient exclusions match complete names, ignoring case and extra spaces.",

@@ -16,7 +16,9 @@ import mishmash.model.Diet;
 import mishmash.model.DietaryPreferences;
 import mishmash.model.FoodTag;
 
-/** Exercises dietary command syntax, spelling errors, duplicate fields, and malformed lists. */
+/**
+ * Exercises dietary command syntax, spelling errors, duplicate fields, and malformed lists.
+ */
 class DietaryPreferencesParserTest {
     private final DietaryPreferencesParser parser = new DietaryPreferencesParser();
 
@@ -34,8 +36,8 @@ class DietaryPreferencesParserTest {
 
     @TestFactory
     Stream<DynamicTest> parse_supportedDietLabels_acceptsEveryDiet() {
-        return Arrays.stream(Diet.values()).map(diet -> DynamicTest.dynamicTest(diet.label(), () ->
-                assertEquals(diet, parser.parse("diet/" + diet.label()).diet())));
+        return Arrays.stream(Diet.values()).map(diet -> DynamicTest.dynamicTest(diet.getLabel(), () ->
+                assertEquals(diet, parser.parse("diet/" + diet.getLabel()).diet())));
     }
 
     @Test
@@ -50,7 +52,7 @@ class DietaryPreferencesParserTest {
         assertEquals(Diet.NONE, parser.parse("avoid/egg").diet());
         assertEquals(Set.of(), parser.parse("diet/vegetarian").excludedIngredients());
         assertEquals(Set.of(), parser.parse("exclude/mushroom").avoidedTags());
-        assertEquals(DietaryPreferences.none(), parser.parse("diet/omnivore"));
+        assertEquals(DietaryPreferences.createUnrestricted(), parser.parse("diet/omnivore"));
         assertEquals(Diet.VEGETARIAN, parser.parse("diet/lacto-ovo-vegetarian").diet());
     }
 
@@ -66,7 +68,7 @@ class DietaryPreferencesParserTest {
             assertTrue(error.getMessage().startsWith(input.isEmpty()
                     ? "Missing dietary input." : "Invalid dietary input '" + input + "'."));
             assertTrue(error.getMessage().contains("Use diet/, avoid/, or exclude/ before each value."));
-            assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
+            assertTrue(error.getMessage().contains("Valid diets: " + Diet.getSupportedLabels() + "."));
             assertTrue(error.getMessage().contains("Example: set-diet diet/vegan"));
             assertTrue(error.getMessage().contains("omnivore (none)"));
         }
@@ -78,7 +80,7 @@ class DietaryPreferencesParserTest {
             IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse(input));
             assertTrue(error.getMessage().startsWith("Invalid"));
             for (Diet diet : Diet.values()) {
-                assertTrue(error.getMessage().contains(diet.label()));
+                assertTrue(error.getMessage().contains(diet.getLabel()));
             }
             assertTrue(error.getMessage().contains("Valid diets:"));
         }
@@ -88,7 +90,7 @@ class DietaryPreferencesParserTest {
     void parse_invalidFoodTag_listsSupportedFoodTags() {
         for (String input : Set.of("avoid/unknown", "avoid/", "avoid/soy,")) {
             IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse(input));
-            assertTrue(error.getMessage().contains("Valid food tags: " + FoodTag.supportedLabels() + "."));
+            assertTrue(error.getMessage().contains("Valid food tags: " + FoodTag.getSupportedLabels() + "."));
         }
     }
 
@@ -98,6 +100,6 @@ class DietaryPreferencesParserTest {
                 () -> parser.parse("unknown/vegan"));
         assertTrue(error.getMessage().contains("Invalid dietary field 'unknown/'."));
         assertTrue(error.getMessage().contains("Valid fields: diet/, avoid/, exclude/."));
-        assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
+        assertTrue(error.getMessage().contains("Valid diets: " + Diet.getSupportedLabels() + "."));
     }
 }

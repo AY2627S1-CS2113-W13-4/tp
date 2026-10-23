@@ -13,31 +13,33 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-/** Checks food-tag declarations and defensive model construction. */
+/**
+ * Checks food-tag declarations and defensive model construction.
+ */
 class FoodInfoTest {
     @Test
-    void fromField_absentAndExplicitNone_haveDifferentMeanings() {
-        assertFalse(FoodInfo.fromField(null).classified());
-        assertTrue(FoodInfo.fromField(" NONE ").classified());
-        assertEquals("Unclassified", FoodInfo.unknown().describe());
-        assertEquals("None declared", FoodInfo.fromField("none").describe());
+    void parseField_absentAndExplicitNone_haveDifferentMeanings() {
+        assertFalse(FoodInfo.parseField(null).isClassified());
+        assertTrue(FoodInfo.parseField(" NONE ").isClassified());
+        assertEquals("Unclassified", FoodInfo.createUnknown().describe());
+        assertEquals("None declared", FoodInfo.parseField("none").describe());
     }
 
     @Test
-    void fromField_validTags_acceptsAliasesAndDisplaysSortedLabels() {
-        FoodInfo info = FoodInfo.fromField(" SOYA, Dairy, tree_nuts ");
+    void parseField_validTags_acceptsAliasesAndDisplaysSortedLabels() {
+        FoodInfo info = FoodInfo.parseField(" SOYA, Dairy, tree_nuts ");
         assertEquals(Set.of(FoodTag.SOY, FoodTag.MILK, FoodTag.TREE_NUT), info.tags());
         assertEquals("milk, soy, tree-nut", info.describe());
         for (FoodTag tag : FoodTag.values()) {
-            assertEquals(tag, FoodTag.parse(tag.label()));
-            assertTrue(FoodTag.supportedLabels().contains(tag.label()));
+            assertEquals(tag, FoodTag.parse(tag.getLabel()));
+            assertTrue(FoodTag.getSupportedLabels().contains(tag.getLabel()));
         }
     }
 
     @Test
-    void fromField_invalidDeclarations_rejectsUnknownBlankAndRepeatedTags() {
+    void parseField_invalidDeclarations_rejectsUnknownBlankAndRepeatedTags() {
         for (String value : List.of("", " ", "milk,", ",milk", "milk,,egg", "milk,dairy", "none,milk", "xyz")) {
-            assertThrows(IllegalArgumentException.class, () -> FoodInfo.fromField(value), value);
+            assertThrows(IllegalArgumentException.class, () -> FoodInfo.parseField(value), value);
         }
     }
 
@@ -50,7 +52,7 @@ class FoodInfoTest {
         assertThrows(NullPointerException.class, () -> FoodTag.parse(null));
         assertThrows(NullPointerException.class, () -> FoodTag.parseCsv(null));
         assertThrows(NullPointerException.class, () -> Diet.parse(null));
-        assertThrows(NullPointerException.class, () -> Diet.VEGAN.excludes(null));
+        assertThrows(NullPointerException.class, () -> Diet.VEGAN.isExcluded(null));
     }
 
     @Test
@@ -65,8 +67,8 @@ class FoodInfoTest {
     @Test
     void recipe_legacyAndNewConstructors_preserveClassification() {
         List<GroceryItem> ingredients = List.of(new GroceryItem("Rice", BigDecimal.ONE, "g"));
-        assertFalse(new Recipe("Rice", 100, 1, 1, 1, ingredients).getFoodInfo().classified());
-        FoodInfo info = FoodInfo.fromField("none");
+        assertFalse(new Recipe("Rice", 100, 1, 1, 1, ingredients).getFoodInfo().isClassified());
+        FoodInfo info = FoodInfo.parseField("none");
         assertEquals(info, new Recipe("Rice", 100, 1, 1, 1, ingredients, info).getFoodInfo());
         assertThrows(NullPointerException.class, () -> new Recipe("Rice", 100, 1, 1, 1, ingredients, null));
     }
@@ -75,7 +77,7 @@ class FoodInfoTest {
     void settings_invalidUpdate_preservesPreviousPreferences() {
         DietarySettings settings = new DietarySettings();
         DietaryPreferences vegan = new DietaryPreferences(Diet.VEGAN, Set.of(), Set.of());
-        assertEquals(DietaryPreferences.none(), settings.get());
+        assertEquals(DietaryPreferences.createUnrestricted(), settings.get());
         settings.set(vegan);
         assertThrows(NullPointerException.class, () -> settings.set(null));
         assertEquals(vegan, settings.get());
@@ -84,20 +86,20 @@ class FoodInfoTest {
     @Test
     void parse_unknownDiet_explainsInvalidValueAndListsEverySupportedDiet() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> Diet.parse("unknown"));
-        assertEquals("Invalid diet 'unknown'." + System.lineSeparator() + Diet.inputHelp(), error.getMessage());
+        assertEquals("Invalid diet 'unknown'." + System.lineSeparator() + Diet.getInputHelp(), error.getMessage());
         assertTrue(error.getCause() instanceof IllegalArgumentException);
         for (Diet diet : Diet.values()) {
-            assertTrue(Diet.supportedLabels().contains(diet.label()));
+            assertTrue(Diet.getSupportedLabels().contains(diet.getLabel()));
         }
-        assertTrue(Diet.inputHelp().contains("lacto-ovo-vegetarian (vegetarian)"));
+        assertTrue(Diet.getInputHelp().contains("lacto-ovo-vegetarian (vegetarian)"));
     }
 
     @Test
-    void fromField_unknownTag_explainsInvalidValueAndListsEverySupportedTag() {
+    void parseField_unknownTag_explainsInvalidValueAndListsEverySupportedTag() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> FoodInfo.fromField("unknown"));
+                () -> FoodInfo.parseField("unknown"));
         assertEquals("Invalid food tag 'unknown'." + System.lineSeparator()
-                + "Valid food tags: " + FoodTag.supportedLabels() + ".", error.getMessage());
+                + "Valid food tags: " + FoodTag.getSupportedLabels() + ".", error.getMessage());
         assertTrue(error.getCause() instanceof IllegalArgumentException);
     }
 }

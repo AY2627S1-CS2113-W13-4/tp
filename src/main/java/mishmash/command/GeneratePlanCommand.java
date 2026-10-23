@@ -35,7 +35,17 @@ public class GeneratePlanCommand implements Command {
         this(request, generator, activePlan, new DietarySettings());
     }
 
-    /** Creates a generation command sharing the current session's dietary requirements. */
+    /**
+     * Creates a generation command sharing the session's current dietary requirements.
+     *
+     * <p>The dietary settings are read during execution, so later preference updates are respected.
+     *
+     * @param request The validated plan length and daily nutrition targets.
+     * @param generator The generator used to select distinct daily recipes.
+     * @param activePlan The destination for the generated plan and original settings.
+     * @param dietarySettings The shared session preferences used to filter recipes.
+     * @throws NullPointerException If any argument is null.
+     */
     public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
             ActiveMealPlan activePlan, DietarySettings dietarySettings) {
         this.request = Objects.requireNonNull(request, "request");

@@ -15,14 +15,24 @@ import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.RecipeBook;
 
-/** Saves dietary requirements, repairs conflicting days, and refreshes existing groceries. */
+/**
+ * Saves dietary requirements, repairs conflicting days, and refreshes existing groceries.
+ */
 public final class SetDietCommand implements Command {
     private final DietaryPreferences preferences;
     private final DietarySettings settings;
     private final ActiveMealPlan activePlan;
     private final DietaryPlanner planner;
 
-    /** Connects an immutable proposed profile to the shared session and generation dependencies. */
+    /**
+     * Creates a command connected to shared dietary settings and active planning state.
+     *
+     * @param preferences The validated replacement profile.
+     * @param settings The session's current dietary settings.
+     * @param activePlan The plan and generated groceries to update.
+     * @param generator The generator used to replace conflicting days.
+     * @throws NullPointerException If any argument is null.
+     */
     public SetDietCommand(DietaryPreferences preferences, DietarySettings settings,
             ActiveMealPlan activePlan, MealPlanGenerator generator) {
         this.preferences = Objects.requireNonNull(preferences, "preferences");
@@ -31,33 +41,45 @@ public final class SetDietCommand implements Command {
         this.planner = new DietaryPlanner(generator);
     }
 
+    /**
+     * Saves the new profile and updates days that conflict with its requirements.
+     *
+     * <p>Compatible days and an already compatible plan are preserved. An existing grocery list is
+     * rebuilt after repair. If replacement generation fails or its original settings are unavailable,
+     * the new profile is still saved and both old lists are cleared, with an explanation returned.
+     *
+     * @param recipeBook The current recipe pool used to generate replacements.
+     * @return A confirmation or a clear explanation that the lists were cleared.
+     * @throws NullPointerException If the recipe book is null.
+     */
     @Override
     public String execute(RecipeBook recipeBook) {
         Objects.requireNonNull(recipeBook, "recipeBook");
-        Optional<MealPlan> current = activePlan.get();
-        if (current.isEmpty()) {
+        Optional<MealPlan> currentPlan = activePlan.get();
+        if (currentPlan.isEmpty()) {
             activePlan.clear();
             settings.set(preferences);
             return "Dietary preferences saved. Future meal plans will use them.";
         }
-        if (planner.isCompatible(current.get(), preferences)) {
+        if (planner.isCompatible(currentPlan.get(), preferences)) {
             settings.set(preferences);
             return "Dietary preferences saved. Your existing meal plan already matches.";
         }
         try {
             GeneratePlanRequest request = activePlan.getRequest().orElseThrow(
                     () -> new IllegalArgumentException("The original meal-plan settings are unavailable."));
-            MealPlan updated = planner.repair(recipeBook.getRecipes(), current.get(), request, preferences);
+            MealPlan updatedPlan = planner.repair(recipeBook.getRecipes(), currentPlan.get(), request, preferences);
             Optional<List<GroceryItem>> groceries = Optional.empty();
             if (activePlan.getGroceryList().isPresent()) {
-                groceries = Optional.of(new GroceryListGenerator().generateForPlan(updated));
+                groceries = Optional.of(new GroceryListGenerator().generateForPlan(updatedPlan));
             }
-            activePlan.setGenerated(updated, request, groceries);
+            activePlan.setGenerated(updatedPlan, request, groceries);
             settings.set(preferences);
-            return "Dietary preferences saved. Conflicting days were replaced."
-                    + System.lineSeparator() + (groceries.isPresent()
+            String groceryMessage = groceries.isPresent()
                     ? "Your grocery list has also been updated."
-                    : "Use 'generate-list' when you need a grocery list.");
+                    : "Use 'generate-list' when you need a grocery list.";
+            return "Dietary preferences saved. Conflicting days were replaced."
+                    + System.lineSeparator() + groceryMessage;
         } catch (IllegalArgumentException e) {
             // Never leave an incompatible plan visible under newly saved restrictions.
             settings.set(preferences);

@@ -16,7 +16,16 @@ import mishmash.model.Recipe;
  * Combines recipe ingredients into a grocery list for planned meals.
  */
 public class GroceryListGenerator {
-    /** Counts every recipe occurrence before using the existing exact name/unit aggregation. */
+    /**
+     * Generates groceries by counting every meal occurrence in the supplied plan.
+     *
+     * <p>Recipes repeated across days contribute their ingredients each time. Existing aggregation
+     * combines exact name/unit matches and preserves separate entries for incompatible units.
+     *
+     * @param plan The plan whose ingredients should be collected.
+     * @return An unmodifiable grocery list in first-appearance order.
+     * @throws NullPointerException If the plan is null.
+     */
     public List<GroceryItem> generateForPlan(MealPlan plan) {
         Objects.requireNonNull(plan, "plan");
         List<GroceryItem> ingredients = new ArrayList<>();

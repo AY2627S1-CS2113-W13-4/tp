@@ -131,6 +131,7 @@ public class Parser {
      * constructors that share it.
      */
     private final ActiveMealPlan activeMealPlan;
+    /** Shares session preferences without changing them during command parsing. */
     private final DietarySettings dietarySettings = new DietarySettings();
 
     /**
@@ -239,7 +240,8 @@ public class Parser {
         }
         if (commandWord.equals("clear-diet")) {
             requireNoDietArguments(commandWord, arguments);
-            return new SetDietCommand(DietaryPreferences.none(), dietarySettings, activeMealPlan, mealPlanGenerator);
+            return new SetDietCommand(DietaryPreferences.createUnrestricted(),
+                    dietarySettings, activeMealPlan, mealPlanGenerator);
         }
         if (commandWord.equals("help")) {
             if (!arguments.isBlank()) {
@@ -275,7 +277,13 @@ public class Parser {
         throw new MishMashException("Unknown command: " + commandWord);
     }
 
-    /** Converts dietary validation failures to recoverable command errors with command-specific usage. */
+    /**
+     * Parses a proposed dietary update and attaches command-specific usage to validation errors.
+     *
+     * @param arguments The text following {@code set-diet}.
+     * @return A command that changes preferences and planning state only when executed.
+     * @throws MishMashException If the supplied dietary arguments are invalid.
+     */
     private Command parseSetDiet(String arguments) throws MishMashException {
         try {
             DietaryPreferences preferences = new DietaryPreferencesParser().parse(arguments);
@@ -285,7 +293,13 @@ public class Parser {
         }
     }
 
-    /** Rejects unexpected arguments with usage for the specific dietary command. */
+    /**
+     * Rejects arguments for dietary commands that accept none.
+     *
+     * @param commandWord The dietary command whose usage should be shown.
+     * @param arguments The text following the command.
+     * @throws MishMashException If any non-whitespace argument is supplied.
+     */
     private void requireNoDietArguments(String commandWord, String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
             throw new MishMashException(commandWord + " does not accept arguments."
@@ -499,7 +513,7 @@ public class Parser {
                 parseNutrition(fields.get("p"), "Protein"),
                 parseNutrition(fields.get("c"), "Carbs"),
                 parseNutrition(fields.get("f"), "Fats"),
-                ingredients, FoodInfo.fromField(fields.get("food")));
+                ingredients, FoodInfo.parseField(fields.get("food")));
         LOGGER.fine(() -> "Parsed add-recipe with " + ingredients.size() + " ingredients");
         return new AddRecipeCommand(recipe);
     }

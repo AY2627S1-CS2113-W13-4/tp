@@ -16,28 +16,36 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
-/** Tests dietary rules, explicit classifications, and defensive collection ownership. */
+/**
+ * Tests dietary rules, explicit classifications, and defensive collection ownership.
+ */
 class DietaryPreferencesTest {
-    private Recipe recipe(String ingredient, FoodInfo info) {
+    /**
+     * Creates a classified or unclassified recipe with one ingredient for dietary-rule tests.
+     */
+    private Recipe createRecipe(String ingredient, FoodInfo info) {
         return new Recipe("Recipe", 300, 10, 30, 5,
                 List.of(new GroceryItem(ingredient, BigDecimal.ONE, "g")), info);
     }
 
-    private DietaryPreferences diet(Diet diet) {
+    /**
+     * Creates a profile containing only the named diet.
+     */
+    private DietaryPreferences createDietPreferences(Diet diet) {
         return new DietaryPreferences(diet, Set.of(), Set.of());
     }
 
     @TestFactory
-    Stream<DynamicTest> allows_eachAvoidedCategory_rejectsMatchingRecipe() {
-        return Arrays.stream(FoodTag.values()).map(tag -> DynamicTest.dynamicTest(tag.label(), () -> {
+    Stream<DynamicTest> isAllowed_eachAvoidedCategory_rejectsMatchingRecipe() {
+        return Arrays.stream(FoodTag.values()).map(tag -> DynamicTest.dynamicTest(tag.getLabel(), () -> {
             DietaryPreferences preferences = new DietaryPreferences(Diet.NONE, Set.of(tag), Set.of());
-            assertFalse(preferences.allows(recipe("Ingredient", new FoodInfo(true, Set.of(tag)))));
-            assertTrue(preferences.allows(recipe("Rice", new FoodInfo(true, Set.of()))));
+            assertFalse(preferences.isAllowed(createRecipe("Ingredient", new FoodInfo(true, Set.of(tag)))));
+            assertTrue(preferences.isAllowed(createRecipe("Rice", new FoodInfo(true, Set.of()))));
         }));
     }
 
     @TestFactory
-    Stream<DynamicTest> allows_namedDiets_enforceDietSpecificRules() {
+    Stream<DynamicTest> isAllowed_namedDiets_enforceDietSpecificRules() {
         Object[][] cases = {
             {Diet.VEGETARIAN, FoodTag.POULTRY, false},
             {Diet.VEGETARIAN, FoodTag.FISH, false},
@@ -61,41 +69,41 @@ class DietaryPreferencesTest {
             {Diet.OVO_VEGETARIAN, FoodTag.MILK, false},
             {Diet.NONE, FoodTag.PORK, true}
         };
-        return Arrays.stream(cases).map(c -> DynamicTest.dynamicTest(c[0] + " " + c[1], () -> {
-            Recipe recipe = recipe("Ingredient", new FoodInfo(true, Set.of((FoodTag) c[1])));
-            assertEquals(c[2], diet((Diet) c[0]).allows(recipe));
+        return Arrays.stream(cases).map(testCase -> DynamicTest.dynamicTest(testCase[0] + " " + testCase[1], () -> {
+            Recipe recipe = createRecipe("Ingredient", new FoodInfo(true, Set.of((FoodTag) testCase[1])));
+            assertEquals(testCase[2], createDietPreferences((Diet) testCase[0]).isAllowed(recipe));
         }));
     }
 
     @Test
-    void allows_unknownClassification_requiresUnrestrictedPreferences() {
-        Recipe unknown = recipe("Rice", FoodInfo.unknown());
-        assertTrue(DietaryPreferences.none().allows(unknown));
-        assertFalse(diet(Diet.VEGAN).allows(unknown));
-        assertFalse(new DietaryPreferences(Diet.NONE, Set.of(), Set.of("Salt")).allows(unknown));
+    void isAllowed_unknownClassification_requiresUnrestrictedPreferences() {
+        Recipe unknown = createRecipe("Rice", FoodInfo.createUnknown());
+        assertTrue(DietaryPreferences.createUnrestricted().isAllowed(unknown));
+        assertFalse(createDietPreferences(Diet.VEGAN).isAllowed(unknown));
+        assertFalse(new DietaryPreferences(Diet.NONE, Set.of(), Set.of("Salt")).isAllowed(unknown));
     }
 
     @Test
-    void allows_dietAndAdditionalExclusions_appliesBoth() {
+    void isAllowed_dietAndAdditionalExclusions_appliesBoth() {
         DietaryPreferences preferences = new DietaryPreferences(Diet.VEGAN, Set.of(FoodTag.SOY), Set.of());
-        assertFalse(preferences.allows(recipe("Tofu", new FoodInfo(true, Set.of(FoodTag.SOY)))));
-        assertFalse(preferences.allows(recipe("Egg", new FoodInfo(true, Set.of(FoodTag.EGG)))));
-        assertTrue(preferences.allows(recipe("Rice", FoodInfo.fromField("none"))));
+        assertFalse(preferences.isAllowed(createRecipe("Tofu", new FoodInfo(true, Set.of(FoodTag.SOY)))));
+        assertFalse(preferences.isAllowed(createRecipe("Egg", new FoodInfo(true, Set.of(FoodTag.EGG)))));
+        assertTrue(preferences.isAllowed(createRecipe("Rice", FoodInfo.parseField("none"))));
     }
 
     @Test
-    void allows_ingredientExclusion_normalizesWholeNameWithoutSubstringMatching() {
+    void isAllowed_ingredientExclusion_normalizesWholeNameWithoutSubstringMatching() {
         DietaryPreferences preferences = new DietaryPreferences(Diet.NONE, Set.of(), Set.of(" BELL   PEPPER "));
-        assertFalse(preferences.allows(recipe("bell pepper", FoodInfo.fromField("none"))));
-        assertTrue(preferences.allows(recipe("pepper", FoodInfo.fromField("none"))));
-        assertTrue(preferences.allows(recipe("Bell Pepper Sauce", FoodInfo.fromField("none"))));
+        assertFalse(preferences.isAllowed(createRecipe("bell pepper", FoodInfo.parseField("none"))));
+        assertTrue(preferences.isAllowed(createRecipe("pepper", FoodInfo.parseField("none"))));
+        assertTrue(preferences.isAllowed(createRecipe("Bell Pepper Sauce", FoodInfo.parseField("none"))));
     }
 
     @Test
-    void allows_plantMilk_usesDeclaredCategoryInsteadOfIngredientSubstring() {
+    void isAllowed_plantMilk_usesDeclaredCategoryInsteadOfIngredientSubstring() {
         DietaryPreferences preferences = new DietaryPreferences(Diet.NONE, Set.of(FoodTag.MILK), Set.of());
-        assertTrue(preferences.allows(recipe("Almond Milk", FoodInfo.fromField("tree-nut"))));
-        assertFalse(preferences.allows(recipe("Lactose-free Milk", FoodInfo.fromField("milk"))));
+        assertTrue(preferences.isAllowed(createRecipe("Almond Milk", FoodInfo.parseField("tree-nut"))));
+        assertFalse(preferences.isAllowed(createRecipe("Lactose-free Milk", FoodInfo.parseField("milk"))));
     }
 
     @Test
@@ -120,7 +128,7 @@ class DietaryPreferencesTest {
         assertThrows(NullPointerException.class, () -> new DietaryPreferences(null, Set.of(), Set.of()));
         assertThrows(NullPointerException.class, () -> new DietaryPreferences(Diet.NONE, null, Set.of()));
         assertThrows(NullPointerException.class, () -> new DietaryPreferences(Diet.NONE, Set.of(), null));
-        assertThrows(NullPointerException.class, () -> DietaryPreferences.none().allows(null));
+        assertThrows(NullPointerException.class, () -> DietaryPreferences.createUnrestricted().isAllowed(null));
         assertThrows(NullPointerException.class,
                 () -> new DietaryPreferences(Diet.NONE, new HashSet<>(Arrays.asList((FoodTag) null)), Set.of()));
         assertThrows(NullPointerException.class,
@@ -134,6 +142,6 @@ class DietaryPreferencesTest {
         assertEquals(String.join(System.lineSeparator(), "Diet: vegan",
                 "Avoided food categories: peanut, soy", "Excluded ingredients: mushroom, salt"),
                 preferences.describe());
-        assertTrue(DietaryPreferences.none().describe().contains("Avoided food categories: none"));
+        assertTrue(DietaryPreferences.createUnrestricted().describe().contains("Avoided food categories: none"));
     }
 }

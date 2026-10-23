@@ -32,25 +32,36 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.parser.Parser;
 
-/** Exercises dietary commands through the same parser and shared state used by the CLI. */
+/**
+ * Exercises dietary commands through the same parser and shared state used by the CLI.
+ */
 class DietaryCommandsTest {
     private final ActiveMealPlan active = new ActiveMealPlan();
     private final MealPlanGenerator generator = new MealPlanGenerator(new Random(42));
     private final Parser parser = new Parser(generator, active);
     private final RecipeBook book = new RecipeBook();
 
-    private Recipe recipe(String name, int calories, String tags) {
+    /**
+     * Creates a recipe with a known ingredient quantity for grocery-update assertions.
+     */
+    private Recipe createRecipe(String name, int calories, String tags) {
         return new Recipe(name, calories, 10, 20, 5,
-                List.of(new GroceryItem(name, new BigDecimal("2"), "g")), FoodInfo.fromField(tags));
+                List.of(new GroceryItem(name, new BigDecimal("2"), "g")), FoodInfo.parseField(tags));
     }
 
+    /**
+     * Adds three compatible recipes to the shared book and returns them in insertion order.
+     */
     private List<Recipe> addSuitableRecipes() {
-        List<Recipe> recipes = List.of(recipe("Rice", 600, "none"), recipe("Beans", 600, "legume"),
-                recipe("Tofu", 600, "soy,legume"));
+        List<Recipe> recipes = List.of(createRecipe("Rice", 600, "none"), createRecipe("Beans", 600, "legume"),
+                createRecipe("Tofu", 600, "soy,legume"));
         recipes.forEach(book::add);
         return recipes;
     }
 
+    /**
+     * Parses and executes one command against the same shared state used by the test.
+     */
     private String execute(String input) throws MishMashException {
         return parser.parseCommand(input).execute(book);
     }
@@ -58,8 +69,8 @@ class DietaryCommandsTest {
     @Test
     void setDiet_beforeGeneration_filtersFuturePlans() throws MishMashException {
         addSuitableRecipes();
-        book.add(recipe("Milk", 600, "milk"));
-        book.add(recipe("Unknown", 600, null));
+        book.add(createRecipe("Milk", 600, "milk"));
+        book.add(createRecipe("Unknown", 600, null));
         execute("set-diet diet/vegan");
         execute("generate-plan d/7 cal/1800");
         assertTrue(execute("view-diet").contains("Diet: vegan"));
@@ -74,7 +85,7 @@ class DietaryCommandsTest {
     void setDiet_partialRepair_preservesDaysAndRebuildsGroceryQuantities() throws MishMashException {
         List<Recipe> suitable = addSuitableRecipes();
         DayPlan unchanged = new DayPlan(suitable);
-        Recipe milk = recipe("Milk", 600, "milk");
+        Recipe milk = createRecipe("Milk", 600, "milk");
         DayPlan conflicting = new DayPlan(List.of(suitable.get(0), suitable.get(1), milk));
         MealPlan original = new MealPlan(List.of(unchanged, conflicting, unchanged));
         GeneratePlanRequest request = new GeneratePlanRequest(3, new NutritionTargets(1800, null, null, null));
@@ -100,7 +111,7 @@ class DietaryCommandsTest {
     void setDiet_noExistingGroceries_updatesPlanWithoutCreatingList() throws MishMashException {
         List<Recipe> recipes = addSuitableRecipes();
         MealPlan plan = new MealPlan(List.of(new DayPlan(
-                List.of(recipes.get(0), recipes.get(1), recipe("Egg", 600, "egg")))));
+                List.of(recipes.get(0), recipes.get(1), createRecipe("Egg", 600, "egg")))));
         active.setGenerated(plan, new GeneratePlanRequest(1, NutritionTargets.none()), Optional.empty());
         assertTrue(execute("set-diet diet/vegan").contains("generate-list"));
         assertTrue(active.getGroceryList().isEmpty());
@@ -140,7 +151,7 @@ class DietaryCommandsTest {
     void setDiet_unreachableTargets_savesPreferencesAndClearsLists() throws MishMashException {
         List<Recipe> recipes = addSuitableRecipes();
         MealPlan plan = new MealPlan(List.of(new DayPlan(
-                List.of(recipes.get(0), recipes.get(1), recipe("Milk", 3800, "milk")))));
+                List.of(recipes.get(0), recipes.get(1), createRecipe("Milk", 3800, "milk")))));
         active.setGenerated(plan, new GeneratePlanRequest(1, new NutritionTargets(5000, null, null, null)),
                 Optional.of(new GroceryListGenerator().generateForPlan(plan)));
         String message = execute("set-diet diet/vegan");
@@ -152,7 +163,7 @@ class DietaryCommandsTest {
 
     @Test
     void setDiet_missingOriginalRequest_savesPreferencesAndClearsIncompatiblePlan() throws MishMashException {
-        active.set(new MealPlan(List.of(new DayPlan(List.of(recipe("Egg", 600, "egg"))))));
+        active.set(new MealPlan(List.of(new DayPlan(List.of(createRecipe("Egg", 600, "egg"))))));
         assertTrue(execute("set-diet diet/vegan").contains("settings are unavailable"));
         assertTrue(active.get().isEmpty());
         assertTrue(execute("view-diet").contains("Diet: vegan"));
@@ -190,12 +201,12 @@ class DietaryCommandsTest {
         book.remove(0);
         book.remove(0);
         book.remove(0);
-        book.add(recipe("Unknown1", 600, null));
-        book.add(recipe("Unknown2", 600, null));
-        book.add(recipe("Unknown3", 600, null));
+        book.add(createRecipe("Unknown1", 600, null));
+        book.add(createRecipe("Unknown2", 600, null));
+        book.add(createRecipe("Unknown3", 600, null));
         execute("generate-plan d/1");
         assertTrue(active.get().orElseThrow().getDays().get(0).getMeals().stream()
-                .allMatch(recipe -> !recipe.getFoodInfo().classified()));
+                .allMatch(recipe -> !recipe.getFoodInfo().isClassified()));
     }
 
     @Test
@@ -244,7 +255,7 @@ class DietaryCommandsTest {
         MishMashException error = assertThrows(MishMashException.class,
                 () -> parser.parseCommand("set-diet unknown"));
         assertTrue(error.getMessage().startsWith("Invalid dietary input 'unknown'."));
-        assertTrue(error.getMessage().contains("Valid diets: " + Diet.supportedLabels() + "."));
+        assertTrue(error.getMessage().contains("Valid diets: " + Diet.getSupportedLabels() + "."));
         assertTrue(error.getMessage().contains("Example: set-diet diet/vegan"));
         assertTrue(error.getMessage().contains("Format: set-diet"));
         assertTrue(error.getCause() instanceof IllegalArgumentException);
@@ -253,7 +264,7 @@ class DietaryCommandsTest {
     @Test
     void constructorAndExecution_nullDependencies_throwWithoutChangingSettings() {
         DietarySettings settings = new DietarySettings();
-        DietaryPreferences preferences = DietaryPreferences.none();
+        DietaryPreferences preferences = DietaryPreferences.createUnrestricted();
         assertThrows(NullPointerException.class, () -> new SetDietCommand(null, settings, active, generator));
         assertThrows(NullPointerException.class, () -> new SetDietCommand(preferences, null, active, generator));
         assertThrows(NullPointerException.class, () -> new SetDietCommand(preferences, settings, null, generator));

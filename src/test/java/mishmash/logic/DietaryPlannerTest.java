@@ -24,27 +24,35 @@ import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
 
-/** Tests dietary selection and partial repair independently of command parsing and display. */
+/**
+ * Tests dietary selection and partial repair independently of command parsing and display.
+ */
 class DietaryPlannerTest {
     private final DietaryPlanner planner = new DietaryPlanner(new MealPlanGenerator(new Random(42)));
     private final DietaryPreferences vegan = new DietaryPreferences(Diet.VEGAN, Set.of(), Set.of());
 
-    private Recipe recipe(String name, int calories, String tags) {
+    /**
+     * Creates a recipe with controlled nutrition and food metadata for planner tests.
+     */
+    private Recipe createRecipe(String name, int calories, String tags) {
         return new Recipe(name, calories, 10, 20, 5,
-                List.of(new GroceryItem(name, BigDecimal.ONE, "g")), FoodInfo.fromField(tags));
+                List.of(new GroceryItem(name, BigDecimal.ONE, "g")), FoodInfo.parseField(tags));
     }
 
-    private List<Recipe> suitableRecipes() {
-        return List.of(recipe("Rice", 600, "none"), recipe("Beans", 600, "legume"),
-                recipe("Tofu", 600, "soy,legume"));
+    /**
+     * Creates three compatible recipes whose combined daily calories total 1800.
+     */
+    private List<Recipe> createSuitableRecipes() {
+        return List.of(createRecipe("Rice", 600, "none"), createRecipe("Beans", 600, "legume"),
+                createRecipe("Tofu", 600, "soy,legume"));
     }
 
     @Test
     void generate_restrictedPlan_meetsDietTargetsAndDailyVariety() {
-        List<Recipe> suitable = suitableRecipes();
-        Recipe milk = recipe("Milk", 600, "milk,lactose");
+        List<Recipe> suitable = createSuitableRecipes();
+        Recipe milk = createRecipe("Milk", 600, "milk,lactose");
         List<Recipe> recipes = List.of(suitable.get(0), suitable.get(1), suitable.get(2), milk,
-                recipe("Unknown", 600, null));
+                createRecipe("Unknown", 600, null));
         NutritionTargets targets = new NutritionTargets(1800, 30, 60, 15);
         MealPlan plan = planner.generate(recipes, new GeneratePlanRequest(7, targets), vegan);
 
@@ -59,9 +67,9 @@ class DietaryPlannerTest {
 
     @Test
     void repair_conflictingDays_preservesCompatibleDaysAndOriginalPositions() {
-        List<Recipe> recipes = suitableRecipes();
+        List<Recipe> recipes = createSuitableRecipes();
         DayPlan unchanged = new DayPlan(recipes);
-        DayPlan conflicting = new DayPlan(List.of(recipes.get(0), recipes.get(1), recipe("Egg", 600, "egg")));
+        DayPlan conflicting = new DayPlan(List.of(recipes.get(0), recipes.get(1), createRecipe("Egg", 600, "egg")));
         MealPlan current = new MealPlan(List.of(unchanged, conflicting, unchanged, conflicting));
         NutritionTargets targets = new NutritionTargets(1800, 30, 60, 15);
 
@@ -78,7 +86,7 @@ class DietaryPlannerTest {
 
     @Test
     void repair_compatiblePlan_returnsSamePlanWithoutNeedingRecipePool() {
-        MealPlan current = new MealPlan(List.of(new DayPlan(suitableRecipes())));
+        MealPlan current = new MealPlan(List.of(new DayPlan(createSuitableRecipes())));
         assertSame(current, planner.repair(List.of(), current,
                 new GeneratePlanRequest(1, NutritionTargets.none()), vegan));
     }
@@ -86,7 +94,7 @@ class DietaryPlannerTest {
     @Test
     void generate_insufficientCompatibleRecipes_reportsCount() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> planner.generate(suitableRecipes().subList(0, 2),
+                () -> planner.generate(createSuitableRecipes().subList(0, 2),
                         new GeneratePlanRequest(1, NutritionTargets.none()), vegan));
         assertTrue(error.getMessage().contains("found 2"));
         assertTrue(error.getMessage().contains("classified"));
@@ -94,14 +102,14 @@ class DietaryPlannerTest {
 
     @Test
     void generate_unreachableNutritionTargets_reportsFailure() {
-        assertThrows(IllegalArgumentException.class, () -> planner.generate(suitableRecipes(),
+        assertThrows(IllegalArgumentException.class, () -> planner.generate(createSuitableRecipes(),
                 new GeneratePlanRequest(1, new NutritionTargets(5000, null, null, null)), vegan));
     }
 
     @Test
     void repair_inconsistentRequest_rejectsBeforeGenerating() {
-        MealPlan current = new MealPlan(List.of(new DayPlan(suitableRecipes())));
-        assertThrows(IllegalArgumentException.class, () -> planner.repair(suitableRecipes(), current,
+        MealPlan current = new MealPlan(List.of(new DayPlan(createSuitableRecipes())));
+        assertThrows(IllegalArgumentException.class, () -> planner.repair(createSuitableRecipes(), current,
                 new GeneratePlanRequest(2, NutritionTargets.none()), vegan));
     }
 
@@ -110,8 +118,8 @@ class DietaryPlannerTest {
         GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
         assertThrows(NullPointerException.class, () -> new DietaryPlanner(null));
         assertThrows(NullPointerException.class, () -> planner.generate(null, request, vegan));
-        assertThrows(NullPointerException.class, () -> planner.generate(suitableRecipes(), null, vegan));
-        assertThrows(NullPointerException.class, () -> planner.generate(suitableRecipes(), request, null));
+        assertThrows(NullPointerException.class, () -> planner.generate(createSuitableRecipes(), null, vegan));
+        assertThrows(NullPointerException.class, () -> planner.generate(createSuitableRecipes(), request, null));
         assertThrows(NullPointerException.class, () -> planner.generate(Arrays.asList((Recipe) null), request, vegan));
         assertThrows(NullPointerException.class, () -> planner.isCompatible(null, vegan));
         assertThrows(NullPointerException.class,
@@ -124,10 +132,10 @@ class DietaryPlannerTest {
         MealPlanGenerator broken = new MealPlanGenerator(new Random(1)) {
             @Override
             public MealPlan generate(List<Recipe> recipes, int days, NutritionTargets targets) {
-                return new MealPlan(List.of(new DayPlan(List.of(recipe("Egg", 600, "egg")))));
+                return new MealPlan(List.of(new DayPlan(List.of(createRecipe("Egg", 600, "egg")))));
             }
         };
-        assertThrows(AssertionError.class, () -> new DietaryPlanner(broken).generate(suitableRecipes(),
+        assertThrows(AssertionError.class, () -> new DietaryPlanner(broken).generate(createSuitableRecipes(),
                 new GeneratePlanRequest(1, NutritionTargets.none()), vegan));
     }
 }

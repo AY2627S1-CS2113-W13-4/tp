@@ -13,6 +13,7 @@ public class Recipe {
     private final int carbs;
     private final int fats;
     private final List<GroceryItem> ingredients;
+    /** Immutable food-category declaration used when dietary filtering is active. */
     private final FoodInfo foodInfo;
 
     //@@author peilingggg
@@ -25,10 +26,22 @@ public class Recipe {
      */
     public Recipe(String name, int calories, int protein, int carbs, int fats,
             List<GroceryItem> ingredients) {
-        this(name, calories, protein, carbs, fats, ingredients, FoodInfo.unknown());
+        this(name, calories, protein, carbs, fats, ingredients, FoodInfo.createUnknown());
     }
 
-    /** Creates a recipe with a complete food-category declaration or an unknown classification. */
+    /**
+     * Creates a recipe with nutrition, ingredients, and an explicit classification state.
+     *
+     * @param name The dish name, trimmed before storage.
+     * @param calories The nonnegative calorie value in kilocalories.
+     * @param protein The nonnegative protein quantity in grams.
+     * @param carbs The nonnegative carbohydrate quantity in grams.
+     * @param fats The nonnegative fat quantity in grams.
+     * @param ingredients The nonempty list of ingredients with strictly positive quantities.
+     * @param foodInfo The complete food declaration, or an explicitly unknown classification.
+     * @throws NullPointerException If the name, ingredients, an ingredient, or food information is null.
+     * @throws IllegalArgumentException If the name is blank, nutrition is negative, or ingredients are invalid.
+     */
     public Recipe(String name, int calories, int protein, int carbs, int fats,
             List<GroceryItem> ingredients, FoodInfo foodInfo) {
         this.name = validateName(name);
@@ -134,6 +147,11 @@ public class Recipe {
         return ingredients;
     }
 
+    /**
+     * Returns the immutable declaration used for dietary filtering.
+     *
+     * @return The food classification, which may explicitly be unclassified.
+     */
     public FoodInfo getFoodInfo() {
         return foodInfo;
     }
