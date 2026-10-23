@@ -28,6 +28,16 @@ public class DayPlan {
     }
 
     /**
+     * Calculates the nutrition totals for every meal occurrence in this day, including repeated recipes.
+     * Returns zero for each nutrient when the day has no meals.
+     *
+     * @return The daily calories in kilocalories and protein, carbohydrates, and fats in grams.
+     */
+    public NutritionTotals calculateDailyNutritionTotals() {
+        return new NutritionTotals(getTotalCalories(), getTotalProtein(), getTotalCarbs(), getTotalFats());
+    }
+
+    /**
      * Returns the total kilocalories of all meals in the day.
      */
     public long getTotalCalories() {
