@@ -1138,7 +1138,8 @@ There should be five displayed entries. Their order follows the meals' first app
    Clearing does not restore the removed plan.
 7. Enter `set-diet avoid/milk,dairy`, `set-diet exclude/Beans, beans`, and `view-diet extra`
    separately. Expect errors and no profile change.
-8. Add an unclassified recipe by omitting `food/`; confirm restricted generation excludes it.
+8. Enter `set-diet diet/vegan` to re-enable restrictions, then add an unclassified recipe by
+   omitting `food/`. Generate a new plan and confirm that it excludes the unclassified recipe.
    Automated partial-repair tests cover mixed compatible/conflicting days deterministically.
 <!-- @@author -->
 
