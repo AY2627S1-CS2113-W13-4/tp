@@ -81,16 +81,120 @@ class CheckShortfallParserTest {
     @TestFactory
     List<DynamicTest> parse_malformedValues_rejectsEveryNutrient() {
         List<String> invalidValues = List.of("", "0", "000", "-1", "+1", "1.5", "1e3", "NaN", "Infinity",
-                "1_000", "1,000", "2000kcal", "\u0661", "2147483648", "99999999999999999999999", "1/2");
+                "1_000", "1,000", "2000kcal", "\u0661", "2147483648", "99999999999999999999999", "1/2",
+                "-0", "+0", "0.0", ".5", "2.", "0x10", "0b10", "1E3", "-2147483648",
+                "\uff11", "\u0967", "1\u200b", "1\u00a0");
         List<DynamicTest> tests = new ArrayList<>();
         for (String prefix : List.of("cal/", "p/", "c/", "f/")) {
             for (String invalidValue : invalidValues) {
                 String arguments = prefix + invalidValue;
                 tests.add(DynamicTest.dynamicTest(arguments,
-                        () -> assertThrows(IllegalArgumentException.class, () -> parser.parse(arguments))));
+                        () -> {
+                            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                                    () -> parser.parse(arguments));
+                            String expected = invalidValue.isEmpty() ? "Missing value after " + prefix + "."
+                                    : "Target for " + prefix
+                                            + " must be a positive whole number from 1 to 2147483647.";
+                            assertEquals(expected, error.getMessage());
+                        }));
             }
         }
         return tests;
+    }
+
+    @TestFactory
+    List<DynamicTest> parse_missingValue_identifiesPrefixInEveryPosition() {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String prefix : List.of("cal", "p", "c", "f")) {
+            String otherTarget = prefix.equals("cal") ? "p/100" : "cal/2000";
+            List<String> arguments = List.of(prefix + "/", prefix + "/   ",
+                    prefix + "/ " + otherTarget, otherTarget + " " + prefix + "/",
+                    prefix + "/ 100");
+            for (String input : arguments) {
+                tests.add(DynamicTest.dynamicTest("Missing value: [" + input + "]", () -> {
+                    IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                            () -> parser.parse(input));
+                    assertEquals("Missing value after " + prefix + "/.", error.getMessage());
+                }));
+            }
+        }
+        return tests;
+    }
+
+    @TestFactory
+    List<DynamicTest> parse_allTargetOrders_preservesNutrientMapping() {
+        List<String> tokens = List.of("cal/2000", "p/100", "c/250", "f/60");
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String first : tokens) {
+            for (String second : tokens) {
+                if (first.equals(second)) {
+                    continue;
+                }
+                for (String third : tokens) {
+                    if (third.equals(first) || third.equals(second)) {
+                        continue;
+                    }
+                    List<String> remaining = new ArrayList<>(tokens);
+                    remaining.removeAll(List.of(first, second, third));
+                    String arguments = String.join(" ", first, second, third, remaining.getFirst());
+                    tests.add(DynamicTest.dynamicTest(arguments, () -> {
+                        NutritionTargets targets = parser.parse(arguments);
+                        assertEquals(2000, targets.getCalories());
+                        assertEquals(100, targets.getProtein());
+                        assertEquals(250, targets.getCarbs());
+                        assertEquals(60, targets.getFats());
+                    }));
+                }
+            }
+        }
+        return tests;
+    }
+
+    @TestFactory
+    List<DynamicTest> parse_nonAdjacentDuplicate_rejectsEvenWhenValuesMatch() {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (String prefix : List.of("cal", "p", "c", "f")) {
+            String otherTarget = prefix.equals("cal") ? "p/100" : "cal/2000";
+            for (String repeatedValue : List.of("1", "2", "")) {
+                String arguments = prefix + "/1 " + otherTarget + " " + prefix + "/" + repeatedValue;
+                tests.add(DynamicTest.dynamicTest(arguments, () -> {
+                    IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                            () -> parser.parse(arguments));
+                    assertEquals("Parameter " + prefix + "/ was given more than once.", error.getMessage());
+                }));
+            }
+        }
+        return tests;
+    }
+
+    @Test
+    void parse_unknownPrefixWithoutValue_reportsUnknownParameter() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> parser.parse("d/"));
+
+        assertEquals("Unrecognized parameter: d/", error.getMessage());
+    }
+
+    @Test
+    void parse_consecutiveCalls_doesNotRetainSuccessfulOrRejectedTargets() {
+        parser.parse("cal/2000 p/100");
+        assertThrows(IllegalArgumentException.class, () -> parser.parse("cal/1500 c/"));
+
+        NutritionTargets next = parser.parse("f/60");
+
+        assertNull(next.getCalories());
+        assertNull(next.getProtein());
+        assertNull(next.getCarbs());
+        assertEquals(60, next.getFats());
+    }
+
+    @Test
+    void parse_multilineWhitespaceAndPaddedMaximum_acceptsValidWholeValues() {
+        NutritionTargets targets = parser.parse("\r\ncal/0002147483647\tp/00100\fc/00250\u000bf/00060\r\n");
+
+        assertEquals(Integer.MAX_VALUE, targets.getCalories());
+        assertEquals(100, targets.getProtein());
+        assertEquals(250, targets.getCarbs());
+        assertEquals(60, targets.getFats());
     }
 
     @Test

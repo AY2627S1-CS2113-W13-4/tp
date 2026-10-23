@@ -88,6 +88,57 @@ class MishMashTest {
     }
 
     @Test
+    void main_shortfallMissingValues_showsSpecificErrorsAndContinuesWithoutConfirmation() {
+        String output = runCli(session("check-shortfall cal/", "check-shortfall p/",
+                "check-shortfall c/", "check-shortfall f/", "check-shortfall cal/2000", "help", "bye"));
+
+        for (String prefix : List.of("cal", "p", "c", "f")) {
+            assertTrue(output.contains("Error: Missing value after " + prefix + "/."
+                    + System.lineSeparator() + Parser.CHECK_SHORTFALL_USAGE), output);
+        }
+        assertEquals(4, countOccurrences(output, "Error: "), output);
+        // Four rejected commands show usage, and the later help command shows it once more.
+        assertEquals(5, countOccurrences(output, Parser.CHECK_SHORTFALL_USAGE), output);
+        assertEquals(1, countOccurrences(output, "No active meal plan. Use 'generate-plan' first."), output);
+        assertEquals(0, countOccurrences(output, "Are you sure"), output);
+        assertEquals(7, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_shortfallErrorsAndRepeatedChecks_keepPlanAndGroceriesUsable() {
+        String output = runCli(session(
+                "add-recipe n/A cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "add-recipe n/B cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "add-recipe n/C cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "generate-plan d/2 cal/2000", "generate-list", "check-shortfall cal/2000",
+                "check-shortfall cal/", "check-shortfall p/", "check-shortfall cal/2000 p/100",
+                "check-shortfall cal/1800", "view-list", "view-plan", "bye"));
+
+        assertEquals(2, countOccurrences(output, "Error: Missing value after"), output);
+        assertEquals(2, countOccurrences(output, "Error: "), output);
+        assertEquals(4, countOccurrences(output, "- Calories: 1800/2000 kcal (short by 200 kcal)."), output);
+        assertEquals(2, countOccurrences(output, "- Protein: 90/100 g (short by 10 g)."), output);
+        assertEquals(1, countOccurrences(output, "Day 1: No shortfalls for the supplied targets."), output);
+        assertEquals(1, countOccurrences(output, "Day 2: No shortfalls for the supplied targets."), output);
+        assertTrue(output.contains("[ ] Rice: 600g"), output);
+        assertEquals(2, countOccurrences(output,
+                "Daily Totals: 1800 kcal | Protein: 90g | Carbs: 150g | Fats: 30g"), output);
+        assertEquals(13, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_endOfInputAfterInvalidShortfall_exitsAfterDisplayingRecoverableError() {
+        String output = runCli(session("check-shortfall cal/"));
+
+        assertEquals(1, countOccurrences(output, "Error: Missing value after cal/."), output);
+        assertEquals(1, countOccurrences(output, Parser.CHECK_SHORTFALL_USAGE), output);
+        assertEquals(2, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertEquals(0, countOccurrences(output, "No active meal plan."), output);
+    }
+
+    @Test
     void main_cancelledDelete_promptsOnceAfterCancellation() {
         String output = runCli(session(ADD_RICE, "delete-recipe 1", "n", "list-recipes", "bye"));
         assertEquals(4, countOccurrences(output, CONTINUE_PROMPT), output);
