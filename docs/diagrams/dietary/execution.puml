@@ -1,0 +1,41 @@
+@startuml
+title Dietary update: successful repair with existing groceries
+autonumber
+participant "command: SetDietCommand" as C
+participant "activePlan: ActiveMealPlan" as A
+participant "planner: DietaryPlanner" as P
+participant "groceries: GroceryListGenerator" as G
+participant "settings: DietarySettings" as S
+[-> C : execute(recipeBook)
+activate C
+C -> A : get()
+A --> C : currentPlan present
+C -> P : isCompatible(currentPlan, preferences)
+P --> C : false
+C -> A : getRequest()
+A --> C : originalRequest present
+C -> P : repair(recipes, currentPlan, originalRequest, preferences)
+activate P
+note over P
+  Count conflicting days.
+  generate() filters eligible recipes and delegates to MealPlanGenerator.
+  Reuse compatible days in their original positions.
+end note
+P --> C : updatedPlan
+deactivate P
+C -> A : getGroceryList()
+A --> C : existing snapshot present
+create G
+C -> G : new GroceryListGenerator()
+C -> G : generateForPlan(updatedPlan)
+G --> C : rebuilt groceries
+C -> A : setGenerated(updatedPlan, originalRequest, groceries)
+C -> S : set(preferences)
+C -->[ : saved and repaired confirmation
+deactivate C
+legend bottom
+  Successful conflicting-plan branch only. RecipeBook getter and Optional operations are condensed.
+  If repair throws IllegalArgumentException, save preferences, clear active state, and return an explanation.
+  No-plan and already-compatible branches are described in the guide.
+endlegend
+@enduml

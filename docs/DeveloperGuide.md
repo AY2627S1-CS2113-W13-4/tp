@@ -9,7 +9,7 @@ MishMash is a command-line meal prep planner for managing recipes, generating me
 - [JUnit Jupiter](https://junit.org/junit5/) provides the automated testing framework.
 - [Checkstyle](https://checkstyle.org/) checks Java coding conventions.
 - [Shadow](https://gradleup.com/shadow/) packages the application JAR.
-- [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams/shortfall`.
+- [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams`.
 
 <!-- TEAM: Add any further sources of reused or adapted code, ideas, and documentation before submission. -->
 
@@ -63,7 +63,10 @@ update that cannot repair an incompatible plan saves the new profile and clears 
 | `MealPlan` | The ordered days of a generated plan. |
 | `NutritionTargets` | Optional daily calorie, protein, carbohydrate, and fat targets. |
 | `GeneratePlanRequest` | The requested number of days and nutrition targets. |
-| `ActiveMealPlan` | The current meal plan and its generated grocery list, if available. |
+| `ActiveMealPlan` | The current meal plan, original generation request, and optional grocery snapshot. |
+| `Diet`, `FoodTag` | Named-diet rules and supported food categories. |
+| `FoodInfo` | Immutable recipe classification and declared food categories. |
+| `DietaryPreferences`, `DietarySettings` | Immutable restriction profile and its shared session holder. |
 
 There are no separate `Ingredient` or `GroceryList` classes in the current model. Recipe ingredients and generated grocery entries use `GroceryItem`.
 
@@ -324,6 +327,155 @@ Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to 
 <!-- @@author -->
 
 <!-- @@author Rixte -->
+<!-- @@author peilingggg -->
+### Applying dietary restrictions
+
+#### Purpose and implemented scope
+
+This feature lets a user select a named diet, avoid declared food categories, and exclude
+complete ingredient names when generating meals. The commands are:
+
+```text
+set-diet [diet/DIET] [avoid/TAG[,TAG...]] [exclude/INGREDIENT[,INGREDIENT...]]
+view-diet
+clear-diet
+```
+
+Each valid `set-diet` replaces the complete profile. Omitted fields revert to unrestricted
+defaults. Recipes receive optional `food/` metadata during addition; unclassified recipes
+are excluded whenever any restriction is active. No ingredient database, allergen inference,
+certification checking, or persistence is implemented.
+
+#### Architecture-level view
+
+`Parser` owns a shared `DietarySettings` holder and connects it to `GeneratePlanCommand`
+and `SetDietCommand`. Parsing creates commands without changing session state.
+`view-diet` is a `Command` lambda reading the current holder at execution time.
+`clear-diet` reuses `SetDietCommand` with `DietaryPreferences.createUnrestricted()`.
+
+The editable architecture diagram is [architecture.puml](diagrams/dietary/architecture.puml).
+Its dependencies show command creation, shared session data, and generation delegation;
+they do not represent runtime message order.
+
+<!-- Add rendered SVG here: ![Dietary feature architecture.](images/dietary/architecture.svg) -->
+
+#### Class-level responsibilities and relationships
+
+| Class | Feature responsibility |
+| --- | --- |
+| `Diet` | Define named-diet category exclusions and parse supported labels and aliases. |
+| `FoodTag` | Define supported recipe categories and validate comma-separated declarations. |
+| `FoodInfo` | Store immutable classification state and declared categories. |
+| `DietaryPreferences` | Combine diet, category exclusions, and normalized ingredient exclusions. |
+| `DietarySettings` | Hold the current immutable profile for one parser session. |
+| `DietaryPreferencesParser` | Validate dietary fields and construct a replacement profile. |
+| `DietaryPlanner` | Filter recipes, delegate generation, and repair incompatible days. |
+| `SetDietCommand` | Save preferences and coordinate plan and grocery updates. |
+| `ActiveMealPlan` | Retain the plan, its original request, and an optional grocery snapshot. |
+
+The [class diagram](diagrams/dietary/classes.puml) shows selected stored references and
+dependencies. Associations use private role names and target-end multiplicities; reverse
+multiplicities are unspecified. References are not duplicated as attributes. Parameter-only
+dependencies and interface realization use dashed arrows. Model collection copying protects
+collection structure; shared recipe and day objects are not deep-copied.
+
+<!-- Add rendered SVG here: ![Dietary feature classes.](images/dietary/classes.svg) -->
+
+#### Successful command parsing
+
+The [parsing sequence](diagrams/dietary/parsing.puml) follows `set-diet diet/vegan`.
+`Parser.parseSetDiet` delegates to `DietaryPreferencesParser.parse`.
+`collectFields` rejects leading unprefixed text, unsupported or repeated prefixes, blank
+values, and embedded slashes. Diet and tag parsers normalize case, resolve aliases, and
+reject unknown values. Food-tag aliases are resolved before duplicate detection.
+
+The `DietaryPreferences` constructor copies both exclusion sets and normalizes ingredient
+names using trimming, `Locale.ROOT` lowercasing, and collapsed whitespace. Blank and repeated
+normalized names are rejected. The parser then creates a `SetDietCommand`; neither settings
+nor active planning data changes until execution.
+
+<!-- Add rendered SVG here: ![Dietary command parsing.](images/dietary/parsing.svg) -->
+
+#### Execution and partial plan repair
+
+The [execution sequence](diagrams/dietary/execution.puml) focuses on a conflicting plan with
+an existing grocery list and successful repair. The command handles these branches:
+
+1. Without an active plan, clear stale derived state and save the profile.
+2. If `DietaryPlanner.isCompatible` accepts the entire plan, save the profile and preserve it.
+3. Otherwise, retrieve the original `GeneratePlanRequest` and call `DietaryPlanner.repair`.
+4. Count incompatible days and generate that many replacements using the original daily targets.
+5. Reuse compatible `DayPlan` objects in their original positions; replace each incompatible day.
+6. If groceries already exist, rebuild them with `GroceryListGenerator.generateForPlan`.
+7. Publish the validated plan, request, and copied grocery snapshot with `setGenerated`, then save preferences.
+
+Filtering calls `DietaryPreferences.isAllowed` before delegation to `MealPlanGenerator`.
+Every active restriction requires classified recipes. All named-diet, explicit-category, and
+exact ingredient-name checks apply together. Generation retains three distinct recipes per
+day, the original +/-15% target tolerance, and the existing bounded candidate search.
+
+`ActiveMealPlan.set(MealPlan)`, used by legacy callers, clears the retained request and
+groceries. A compatible legacy plan can be preserved without a request. A conflicting legacy
+plan cannot be repaired without its original settings and follows the failure branch below.
+
+<!-- Add rendered SVG here: ![Dietary plan repair.](images/dietary/execution.svg) -->
+
+#### Invalid input and recovery
+
+The [invalid-input sequence](diagrams/dietary/invalid-input.puml) follows the unsupported
+value `diet/keto`. `Diet.parse` throws `IllegalArgumentException` with valid diets and
+aliases. `Parser.parseSetDiet` appends command-specific usage and wraps it in
+`MishMashException`, preserving the cause. The CLI displays the error and continues.
+
+| Condition | Implemented behavior |
+| --- | --- |
+| Invalid syntax, unsupported value, blank entry, or duplicate | Reject during parsing; preserve all session data. |
+| Null Java dependency or required model input | Fail immediately with `NullPointerException`. |
+| No compatible replacement or missing original request | Catch `IllegalArgumentException` during execution; save preferences and clear plan, request, and groceries. |
+| Successful repair without an existing grocery list | Keep groceries absent and advise the user to generate them later. |
+| Internal generator or repair invariant fails | Raise `AssertionError` when assertions are enabled; do not treat it as malformed CLI input. |
+
+Assertions check generated length, dietary compatibility, nutrition targets, repaired length,
+and exact consumption of replacement days. Exceptions enforce input contracts even when
+assertions are disabled. `setGenerated` validates and copies arguments before assignments.
+A failed repair deliberately invalidates old generated data rather than showing an
+incompatible plan under newly saved restrictions.
+
+<!-- Add rendered SVG here: ![Dietary validation and recovery.](images/dietary/invalid-input.svg) -->
+
+#### Rationale and alternatives
+
+| Decision | Alternative | Reason for the current design |
+| --- | --- | --- |
+| Explicit complete category declarations | Infer categories from ingredient text | Avoid unreliable synonym and compound-ingredient guessing. |
+| Replace the complete dietary profile | Merge supplied fields silently | Make each command define one complete profile; omitted exclusions are cleared. |
+| Filter before using the existing generator | Add dietary checks throughout the generator | Preserve existing nutrition and daily-variety behavior. |
+| Regenerate complete conflicting days | Replace individual meals | Reuse daily nutrition checks while preserving unaffected days. |
+| Clear generated data after failed repair | Keep an incompatible old plan | Keep the displayed planning state consistent with the newly saved preferences. |
+
+#### Verification and diagram maintenance
+
+`DietaryPreferencesParserTest` covers syntax, valid values, aliases, and malformed lists.
+`DietaryPreferencesTest` and `FoodInfoTest` cover diet rules, category declarations,
+normalized exclusions, null arguments, and defensive collection ownership.
+`DietaryPlannerTest` covers filtering, original targets, day preservation, infeasible requests,
+and assertion failures from a deliberately broken generator.
+`DietaryCommandsTest` covers shared parser state, replacement semantics, grocery rebuilding,
+clearing, and recovery. `ActiveMealPlanGeneratedTest` checks request retention and snapshots.
+
+With Java 25, run:
+
+```powershell
+.\gradlew.bat test checkstyleMain checkstyleTest
+```
+
+Sources and SVG-generation instructions are in [diagrams/dietary](diagrams/dietary/README.md).
+The SVG insertion comments above are placeholders for locally rendered images; the guide
+currently links to the sources. Generate images under `docs/images/dietary`, inspect spacing
+and labels, then replace each comment with its Markdown image line. Recheck method names,
+message order, guards, and relationships after code changes.
+<!-- @@author -->
+
 ### Checking nutrition shortfalls
 
 #### Purpose and implemented scope
@@ -627,6 +779,8 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | Meal prep user | View all planned days or a selected day | Review meals and daily nutrition totals |
 | Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
 | Shopper | View the generated grocery list | See what to purchase |
+| User with dietary requirements | Apply named diets, category exclusions, and ingredient exclusions | Generate compatible meals and repair conflicting planned days |
+| User with dietary requirements | View or clear the active dietary profile | Check or remove restrictions during the session |
 | User who makes a typing mistake | Receive an error and enter another command | Correct the mistake without restarting |
 
 ### User Stories for Future Consideration
@@ -634,7 +788,6 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 The following ideas are not implemented and are not commitments for a particular release:
 
 - Edit or search recipes.
-- Apply dietary restrictions or allergy preferences.
 - Record meals eaten and track progress.
 - Save and restore recipes or meal plans between sessions.
 - Estimate meal or grocery costs.
@@ -772,6 +925,29 @@ Viewing does not regenerate groceries. The displayed `[ ]` markers cannot be tic
 
 Omitted nutrients and excesses are not checked. All plan, recipe, and grocery data remains
 unchanged. A shortfall is any amount below a target, even within generation's tolerance.
+<!-- @@author -->
+
+<!-- @@author peilingggg -->
+#### UC10 Manage dietary preferences
+
+**MSS**
+
+1. The user enters `set-diet` with at least one supported prefixed field.
+2. MishMash validates the complete replacement profile.
+3. MishMash preserves compatible planned days and replaces conflicting days using the original targets.
+4. MishMash rebuilds existing groceries after repair, saves the profile, and displays the outcome.
+
+**Extensions**
+
+- 2a. Syntax or values are invalid: display an error and usage; preserve all data.
+- 3a. No active plan exists: save the profile for future generation.
+- 3b. The complete plan is compatible: preserve the plan and groceries.
+- 3c. Replacement fails or the original request is unavailable: save the profile, clear
+  the plan and groceries, and explain how to generate again.
+- 1a. The user enters `view-diet`: display the current profile without changing data.
+- 1b. The user enters `clear-diet`: remove all restrictions and preserve an existing plan.
+- 1c. Viewing or clearing includes arguments: display the command format without changing data.
+
 <!-- @@author -->
 
 ### Non Functional Requirements
@@ -925,6 +1101,26 @@ There should be five displayed entries. Their order follows the meals' first app
 - Enter `view-list extra`. Expect a format error.
 - Successfully generate a replacement meal plan, then enter `view-list`. Expect a generate-list-first message because the previous groceries were cleared.
 - Generate groceries again, then attempt `generate-plan d/1 cal/1`. After that failure, verify that the previous grocery list is still available.
+
+### Dietary Preferences and Plan Repair
+
+1. In a fresh session, use the [restricted-plan example in the User Guide](UserGuide.md#updating-an-existing-plan).
+   Confirm two days of classified vegan meals and 400 g each of Rice, Beans, and Tofu in groceries.
+2. Enter `view-diet`. Expect vegan with `none` for both explicit exclusion lists.
+3. Enter `set-diet diet/keto`. Expect invalid diet, supported values, aliases, and usage.
+   Confirm the profile, plan, and groceries remain unchanged.
+4. Add `add-recipe n/Lentils cal/600 p/10 c/20 f/5 i/Lentils:200g food/legume`,
+   then enter `set-diet diet/vegan avoid/soy`. Expect repaired days with Rice, Beans, and Lentils.
+   Confirm each day still totals 1800 kcal and groceries contain 400 g of each ingredient.
+5. Enter `set-diet exclude/Beans,Tofu`. This replaces the previous profile and leaves only Rice
+   and Lentils eligible. Expect saved preferences and a cleared plan and grocery list.
+   Confirm with `view-diet`, `view-plan`, and `view-list`.
+6. Enter `clear-diet`, then `view-diet`. Expect diet `none` and empty exclusion lists.
+   Clearing does not restore the removed plan.
+7. Enter `set-diet avoid/milk,dairy`, `set-diet exclude/Beans, beans`, and `view-diet extra`
+   separately. Expect errors and no profile change.
+8. Add an unclassified recipe by omitting `food/`; confirm restricted generation excludes it.
+   Automated partial-repair tests cover mixed compatible/conflicting days deterministically.
 
 ### Help and Recovery
 
