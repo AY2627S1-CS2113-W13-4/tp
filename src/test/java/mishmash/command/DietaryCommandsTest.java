@@ -20,7 +20,6 @@ import mishmash.logic.GroceryListGenerator;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.DayPlan;
-import mishmash.model.Diet;
 import mishmash.model.DietaryPreferences;
 import mishmash.model.DietarySettings;
 import mishmash.model.FoodInfo;
