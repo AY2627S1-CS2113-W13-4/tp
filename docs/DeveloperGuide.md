@@ -326,7 +326,7 @@ Grocery parsing and viewing use `FINE` logs, successful generation logs counts a
 Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
 <!-- @@author -->
 
-<!-- @@author Rixte -->
+
 <!-- @@author peilingggg -->
 ### Applying dietary restrictions
 
@@ -493,6 +493,7 @@ and labels before committing both files. Recheck method names,
 message order, guards, and relationships after code changes.
 <!-- @@author -->
 
+<!-- @@author Rixte -->
 ### Checking nutrition shortfalls
 
 #### Purpose and implemented scope
@@ -1119,6 +1120,7 @@ There should be five displayed entries. Their order follows the meals' first app
 - Successfully generate a replacement meal plan, then enter `view-list`. Expect a generate-list-first message because the previous groceries were cleared.
 - Generate groceries again, then attempt `generate-plan d/1 cal/1`. After that failure, verify that the previous grocery list is still available.
 
+<!-- @@author peilingggg -->
 ### Dietary Preferences and Plan Repair
 
 1. In a fresh session, use the [restricted-plan example in the User Guide](UserGuide.md#updating-an-existing-plan).
@@ -1138,6 +1140,7 @@ There should be five displayed entries. Their order follows the meals' first app
    separately. Expect errors and no profile change.
 8. Add an unclassified recipe by omitting `food/`; confirm restricted generation excludes it.
    Automated partial-repair tests cover mixed compatible/conflicting days deterministically.
+<!-- @@author -->
 
 ### Help and Recovery
 
