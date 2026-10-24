@@ -161,4 +161,154 @@ class EditRecipeCommandTest {
         parser.parseCommand("edit-recipe 1 food/none").execute(book);
         parser.parseCommand("generate-plan d/1").execute(book);
     }
+
+    @Test
+    void execute_afterDeletion_editsRecipeNowAtSelectedPosition() throws MishMashException {
+        Recipe first = TestRecipes.recipe("First", 100, 1, 10, 2);
+        Recipe second = TestRecipes.recipe("Second", 200, 2, 20, 3);
+        Recipe third = TestRecipes.recipe("Third", 300, 3, 30, 4);
+        RecipeBook book = new RecipeBook();
+        book.add(first);
+        book.add(second);
+        book.add(third);
+        EditRecipeCommand pending = new EditRecipeCommand(2, proteinChange());
+
+        book.remove(0);
+        pending.execute(book);
+
+        assertSame(second, book.getRecipes().getFirst());
+        Recipe edited = book.getRecipes().getLast();
+        assertEquals("Third", edited.getName());
+        assertEquals(300, edited.getCalories());
+        assertEquals(25, edited.getProtein());
+        assertEquals(3, third.getProtein());
+        assertEquals(2, book.size());
+    }
+
+    @Test
+    void execute_bookShrinksAfterParsing_rechecksIndexWithoutEditingAnotherRecipe() throws MishMashException {
+        Parser parser = new Parser();
+        RecipeBook book = new RecipeBook();
+        Recipe kept = TestRecipes.recipe("Kept", 100, 1, 10, 2);
+        book.add(kept);
+        book.add(TestRecipes.recipe("Removed", 200, 2, 20, 3));
+        Command pending = parser.parseCommand("edit-recipe 2 p/25");
+        book.remove(1);
+
+        MishMashException error = assertThrows(MishMashException.class, () -> pending.execute(book));
+
+        assertEquals("Recipe index must be between 1 and 1.", error.getMessage());
+        assertEquals(List.of(kept), book.getRecipes());
+        assertEquals(1, kept.getProtein());
+    }
+
+    @Test
+    void execute_failedOnEmptyBook_canBeReusedAfterAddingRecipe() throws MishMashException {
+        RecipeBook book = new RecipeBook();
+        EditRecipeCommand command = new EditRecipeCommand(1, proteinChange());
+        assertThrows(MishMashException.class, () -> command.execute(book));
+        book.add(TestRecipes.recipe("Added Later", 100, 1, 10, 2));
+
+        command.execute(book);
+
+        assertEquals("Added Later", book.getRecipes().getFirst().getName());
+        assertEquals(25, book.getRecipes().getFirst().getProtein());
+        assertEquals(1, book.size());
+    }
+
+    @Test
+    void execute_reusedAcrossBooks_doesNotCarryOverOmittedFields() throws MishMashException {
+        EditRecipeCommand command = new EditRecipeCommand(1, proteinChange());
+        RecipeBook firstBook = new RecipeBook();
+        RecipeBook secondBook = new RecipeBook();
+        firstBook.add(TestRecipes.recipe("Rice", 200, 4, 45, 1));
+        secondBook.add(TestRecipes.recipe("Oats", 500, 10, 60, 8));
+
+        command.execute(firstBook);
+        command.execute(secondBook);
+
+        Recipe first = firstBook.getRecipes().getFirst();
+        Recipe second = secondBook.getRecipes().getFirst();
+        assertEquals("Rice", first.getName());
+        assertEquals(200, first.getCalories());
+        assertEquals(25, first.getProtein());
+        assertEquals("Oats", second.getName());
+        assertEquals(500, second.getCalories());
+        assertEquals(25, second.getProtein());
+        assertEquals(60, second.getCarbs());
+        assertEquals(8, second.getFats());
+    }
+
+    @Test
+    void execute_renameToExistingName_keepsBothEntriesAndTheirNutrition() throws MishMashException {
+        RecipeBook book = new RecipeBook();
+        book.add(TestRecipes.recipe("Rice", 200, 4, 45, 1));
+        Recipe oats = TestRecipes.recipe("Oats", 150, 5, 27, 3);
+        book.add(oats);
+
+        new Parser().parseCommand("edit-recipe 1 n/Oats").execute(book);
+
+        assertEquals(2, book.size());
+        assertEquals("Oats", book.getRecipes().getFirst().getName());
+        assertEquals(200, book.getRecipes().getFirst().getCalories());
+        assertSame(oats, book.getRecipes().getLast());
+    }
+
+    @Test
+    void execute_editMakesTargetsUnreachable_failedRegenerationPreservesOldPlan() throws MishMashException {
+        ActiveMealPlan active = new ActiveMealPlan();
+        Parser parser = new Parser(new MealPlanGenerator(new Random(2)), active);
+        RecipeBook book = new RecipeBook();
+        for (String name : List.of("A", "B", "C")) {
+            parser.parseCommand("add-recipe n/" + name + " cal/600 p/30 c/50 f/10 i/Rice:100g")
+                    .execute(book);
+        }
+        parser.parseCommand("generate-plan d/2 cal/1700").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+        var plan = active.get().orElseThrow();
+        var request = active.getRequest().orElseThrow();
+        var groceries = active.getGroceryList().orElseThrow();
+        String before = parser.parseCommand("view-plan").execute(book);
+        assertTrue(before.contains("Warning: Calories exceed target by 100 kcal"), before);
+
+        parser.parseCommand("edit-recipe 1 cal/1000").execute(book);
+        Recipe edited = book.getRecipes().getFirst();
+        assertThrows(MishMashException.class,
+                () -> parser.parseCommand("generate-plan d/1 cal/1700").execute(book));
+
+        assertSame(plan, active.get().orElseThrow());
+        assertSame(request, active.getRequest().orElseThrow());
+        assertSame(groceries, active.getGroceryList().orElseThrow());
+        assertEquals(before, parser.parseCommand("view-plan").execute(book));
+        assertSame(edited, book.getRecipes().getFirst());
+        assertEquals(1000, edited.getCalories());
+    }
+
+    @Test
+    void execute_editedIngredientIsExcluded_futureGenerationUsesCurrentIngredients() throws MishMashException {
+        ActiveMealPlan active = new ActiveMealPlan();
+        Parser parser = new Parser(new MealPlanGenerator(new Random(3)), active);
+        RecipeBook book = new RecipeBook();
+        for (String name : List.of("A", "B", "C")) {
+            parser.parseCommand("add-recipe n/" + name + " cal/600 p/30 c/50 f/10 i/Rice:100g food/none")
+                    .execute(book);
+        }
+        parser.parseCommand("set-diet exclude/Tofu").execute(book);
+        parser.parseCommand("generate-plan d/1").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+        var originalPlan = active.get().orElseThrow();
+        var originalGroceries = active.getGroceryList().orElseThrow();
+
+        parser.parseCommand("edit-recipe 1 i/Tofu:200g").execute(book);
+        assertThrows(MishMashException.class, () -> parser.parseCommand("generate-plan d/1").execute(book));
+
+        assertSame(originalPlan, active.get().orElseThrow());
+        assertSame(originalGroceries, active.getGroceryList().orElseThrow());
+        assertEquals(FoodInfo.parseField("none"), book.getRecipes().getFirst().getFoodInfo());
+        parser.parseCommand("edit-recipe 1 i/Rice:200g").execute(book);
+        parser.parseCommand("generate-plan d/1").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+        assertEquals(List.of("Rice: 400g"), active.getGroceryList().orElseThrow().stream()
+                .map(Object::toString).toList());
+    }
 }

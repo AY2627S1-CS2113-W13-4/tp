@@ -72,6 +72,63 @@ class MishMashTest {
     }
 
     @Test
+    void main_editAfterDeletion_usesNewIndexWithoutAnotherConfirmation() {
+        String output = runCli(session(ADD_RICE, ADD_OATS, "delete-recipe 1", "y",
+                "edit-recipe 1 n/Protein Oats p/12", "list-recipes 1", "bye"));
+
+        String editedDetails = String.join(System.lineSeparator(), "Protein Oats",
+                "150 kcal | Protein: 12g | Carbs: 27g | Fats: 3g", "Ingredients:", "- Oats: 40g");
+        assertEquals(2, countOccurrences(output, editedDetails), output);
+        assertEquals(1, countOccurrences(output, "Are you sure"), output);
+        assertEquals(1, countOccurrences(output, "Recipe updated!"), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_lateEditErrors_preserveDetailsAndAllowSuccessfulRetry() {
+        String output = runCli(session(ADD_RICE, "edit-recipe 1 n/Changed i/Water:100ml food/milk,",
+                "edit-recipe 1 n/Changed cal/250 i/Rice:0g", "list-recipes 1",
+                "edit-recipe 1 p/10", "list-recipes 1", "bye"));
+
+        String originalDetails = "Rice" + System.lineSeparator()
+                + "200 kcal | Protein: 4g | Carbs: 45g | Fats: 1g";
+        String editedDetails = "Rice" + System.lineSeparator()
+                + "200 kcal | Protein: 10g | Carbs: 45g | Fats: 1g";
+        assertEquals(2, countOccurrences(output, originalDetails), output);
+        assertEquals(2, countOccurrences(output, editedDetails), output);
+        assertEquals(2, countOccurrences(output, "Error: "), output);
+        assertEquals(0, countOccurrences(output, "Changed"), output);
+        assertEquals(0, countOccurrences(output, "Are you sure"), output);
+        assertEquals(1, countOccurrences(output, "Recipe updated!"), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_editBetweenGenerations_keepsOldWarningsAndGroceriesUntilNewPlan() {
+        String output = runCli(session(
+                "add-recipe n/A cal/600 p/30 c/50 f/10 i/Rice:100g food/none",
+                "add-recipe n/B cal/600 p/30 c/50 f/10 i/Rice:100g food/none",
+                "add-recipe n/C cal/600 p/30 c/50 f/10 i/Rice:100g food/none",
+                "generate-plan d/1 cal/1700", "generate-list", "view-plan", "view-list",
+                "edit-recipe 1 n/Updated A cal/800 i/Tofu:200g", "view-plan", "view-list",
+                "generate-plan d/1 cal/2000", "view-plan", "view-list", "generate-list", "view-list", "bye"));
+
+        assertEquals(2, countOccurrences(output,
+                "Daily Totals: 1800 kcal | Protein: 90g | Carbs: 150g | Fats: 30g"), output);
+        assertEquals(2, countOccurrences(output,
+                "Warning: Calories exceed target by 100 kcal (1800 kcal actual; 1700 kcal target)."), output);
+        assertEquals(2, countOccurrences(output, "[ ] Rice: 300g"), output);
+        assertEquals(1, countOccurrences(output,
+                "Daily Totals: 2000 kcal | Protein: 90g | Carbs: 150g | Fats: 30g"), output);
+        assertEquals(1, countOccurrences(output, "[ ] Rice: 200g"), output);
+        assertEquals(1, countOccurrences(output, "[ ] Tofu: 200g"), output);
+        assertEquals(1, countOccurrences(output, "No grocery list generated. Use 'generate-list' first."), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
     void main_helpAndRecovery_promptAfterEveryCommand() {
         String output = runCli(session("help", "list-recipes", "view-plan", "view-list",
                 "generate-list", "generate-plan d/1", "unknown", "", "help extra", "bye"));

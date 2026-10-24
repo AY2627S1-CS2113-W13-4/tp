@@ -1,6 +1,7 @@
 package mishmash.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -109,6 +110,119 @@ class ParserEditRecipeTest {
         assertEquals(Integer.MAX_VALUE, edited.getProtein());
         assertEquals(0, edited.getCarbs());
         assertEquals(0, edited.getFats());
+    }
+
+    /** Checks every nutrition prefix independently, including zero, leading zeros, and integer limits. */
+    @TestFactory
+    Stream<DynamicTest> parse_singleNutritionField_preservesAllOtherValues() {
+        return Stream.of("cal", "p", "c", "f").flatMap(prefix ->
+                Stream.of("0", "00042", "2147483647").map(value ->
+                        DynamicTest.dynamicTest(prefix + "/" + value, () -> {
+                            RecipeBook book = createBook();
+                            Recipe original = book.getRecipes().getFirst();
+                            parser.parseCommand("edit-recipe 1 " + prefix + "/" + value).execute(book);
+
+                            Recipe edited = book.getRecipes().getFirst();
+                            int expectedValue = Integer.parseInt(value);
+                            assertEquals(prefix.equals("cal") ? expectedValue : 200, edited.getCalories());
+                            assertEquals(prefix.equals("p") ? expectedValue : 4, edited.getProtein());
+                            assertEquals(prefix.equals("c") ? expectedValue : 45, edited.getCarbs());
+                            assertEquals(prefix.equals("f") ? expectedValue : 1, edited.getFats());
+                            assertEquals("Rice", edited.getName());
+                            assertEquals(original.getIngredients(), edited.getIngredients());
+                            assertEquals(original.getFoodInfo(), edited.getFoodInfo());
+                        })));
+    }
+
+    /** Guards consistent numeric validation across all four optional nutrition fields. */
+    @TestFactory
+    Stream<DynamicTest> parse_invalidNutritionForEachPrefix_keepsRecipeUnchanged() {
+        return Stream.of("cal", "p", "c", "f").flatMap(prefix ->
+                Stream.of("-1", "+1", "1.5", "2147483648", "\u0661").map(value ->
+                        DynamicTest.dynamicTest(prefix + "/" + value, () -> {
+                            RecipeBook book = createBook();
+                            Recipe original = book.getRecipes().getFirst();
+                            MishMashException error = assertThrows(MishMashException.class,
+                                    () -> parser.parseCommand("edit-recipe 1 " + prefix + "/" + value));
+
+                            assertTrue(error.getMessage().endsWith(Parser.EDIT_RECIPE_USAGE), error.getMessage());
+                            assertSame(original, book.getRecipes().getFirst());
+                        })));
+    }
+
+    @Test
+    void parse_multipleFoodTags_replacesOldDeclarationAndAcceptsAliases() throws MishMashException {
+        RecipeBook book = createBook();
+        parser.parseCommand("edit-recipe 1 food/MILK, eggs").execute(book);
+        Recipe firstEdit = book.getRecipes().getFirst();
+        assertEquals(FoodInfo.parseField("milk,egg"), firstEdit.getFoodInfo());
+
+        parser.parseCommand("edit-recipe 1 food/SoYa, tree-nuts").execute(book);
+
+        Recipe edited = book.getRecipes().getFirst();
+        assertEquals(FoodInfo.parseField("soy,tree-nut"), edited.getFoodInfo());
+        assertEquals(FoodInfo.parseField("milk,egg"), firstEdit.getFoodInfo());
+        assertEquals(200, edited.getCalories());
+        assertEquals(firstEdit.getIngredients(), edited.getIngredients());
+    }
+
+    @Test
+    void parse_ingredientsWithoutFood_doesNotInferClassification() throws MishMashException {
+        RecipeBook book = new RecipeBook();
+        parser.parseCommand("add-recipe n/Drink cal/100 p/5 c/10 f/3 i/Water:100ml").execute(book);
+
+        parser.parseCommand("edit-recipe 1 i/Milk:200ml").execute(book);
+
+        Recipe edited = book.getRecipes().getFirst();
+        assertFalse(edited.getFoodInfo().isClassified());
+        assertEquals(FoodInfo.createUnknown(), edited.getFoodInfo());
+        assertEquals("Milk: 200ml", edited.getIngredients().getFirst().toString());
+        parser.parseCommand("edit-recipe 1 food/milk").execute(book);
+        assertEquals(FoodInfo.parseField("milk"), book.getRecipes().getFirst().getFoodInfo());
+    }
+
+    @Test
+    void parse_repeatedIngredients_keepsEntriesOrderUnitsAndDecimalPrecision() throws MishMashException {
+        RecipeBook book = createBook();
+        parser.parseCommand("edit-recipe 1 i/Rice:100g i/Rice:50g i/rice:25g"
+                + " i/Rice:1kg i/Oil:0.000000001ml").execute(book);
+
+        assertEquals(List.of("Rice: 100g", "Rice: 50g", "rice: 25g", "Rice: 1kg", "Oil: 0.000000001ml"),
+                book.getRecipes().getFirst().getIngredients().stream().map(Object::toString).toList());
+        assertEquals(200, book.getRecipes().getFirst().getCalories());
+    }
+
+    @Test
+    void parse_successiveIngredientEdits_replacesRatherThanAppends() throws MishMashException {
+        RecipeBook book = createBook();
+        parser.parseCommand("edit-recipe 1 i/Chicken:200g i/Water:100ml").execute(book);
+        Recipe firstEdit = book.getRecipes().getFirst();
+
+        parser.parseCommand("edit-recipe 1 i/Tofu:150g").execute(book);
+
+        assertEquals(List.of("Tofu: 150g"), book.getRecipes().getFirst().getIngredients().stream()
+                .map(Object::toString).toList());
+        assertEquals(List.of("Chicken: 200g", "Water: 100ml"), firstEdit.getIngredients().stream()
+                .map(Object::toString).toList());
+    }
+
+    /** Rejects late errors after otherwise valid changes, including invalid food declarations. */
+    @TestFactory
+    Stream<DynamicTest> parse_lateInvalidFields_doesNotApplyEarlierFields() {
+        return Stream.of("food/none,milk", "food/milk,", "food/,milk", "food/milk,dairy",
+                "i/Valid:1g i/Invalid:0g", "P/30", "i/Rice:1e2g", "i/Rice:1g/2")
+                .map(invalidFields -> DynamicTest.dynamicTest(invalidFields, () -> {
+                    RecipeBook book = createBook();
+                    Recipe original = book.getRecipes().getFirst();
+
+                    MishMashException error = assertThrows(MishMashException.class,
+                            () -> parser.parseCommand("edit-recipe 1 n/Changed cal/250 " + invalidFields));
+
+                    assertTrue(error.getMessage().endsWith(Parser.EDIT_RECIPE_USAGE), error.getMessage());
+                    assertEquals(List.of(original), book.getRecipes());
+                    assertEquals("Rice", original.getName());
+                    assertEquals(200, original.getCalories());
+                }));
     }
 
     /** Exercises malformed edits that must never publish a partially changed recipe. */
