@@ -17,6 +17,7 @@ import mishmash.command.AddRecipeCommand;
 import mishmash.command.CheckShortfallCommand;
 import mishmash.command.Command;
 import mishmash.command.DeleteRecipeCommand;
+import mishmash.command.EditRecipeCommand;
 import mishmash.command.GenerateListCommand;
 import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
@@ -35,6 +36,7 @@ import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
+import mishmash.model.RecipeChanges;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
 /**
@@ -62,6 +64,16 @@ public class Parser {
      */
     public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
+    /** Describes partial recipe edits and complete ingredient-list replacement. */
+    public static final String EDIT_RECIPE_USAGE =
+            "Format: edit-recipe INDEX [n/DISHNAME] [cal/CALORIES] [p/PROTEIN] [c/CARBS] [f/FATS]"
+                    + " [i/INGREDIENT:QUANTITYUNIT ...] [food/TAG[,TAG...]]"
+                    + System.lineSeparator()
+                    + "Supply at least one field. Omitted fields are unchanged."
+                    + " Each i/ supplies one item in the entire replacement ingredient list."
+                    + System.lineSeparator()
+                    + "Example: edit-recipe 1 p/55 i/Chicken:220g i/Rice:150g";
+
     /**
      * Describes how to list all recipes or show one in full.
      */
@@ -81,7 +93,7 @@ public class Parser {
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
+            ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
             DietaryPreferencesParser.USAGE,
             "Format: help", "Format: bye");
@@ -269,6 +281,9 @@ public class Parser {
         if (commandWord.equals(COMMAND_DELETE_RECIPE)) {
             return parseDeleteRecipe(arguments);
         }
+        if (commandWord.equals("edit-recipe")) {
+            return parseEditRecipe(arguments);
+        }
         if (commandWord.equals(COMMAND_ADD_RECIPE)) {
             return parseAddRecipeCommand(arguments);
         }
@@ -306,6 +321,40 @@ public class Parser {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
         }
+    }
+
+    /**
+     * Parses only supplied edits using the same field and ingredient validation as recipe addition.
+     *
+     * @param arguments The index followed by one or more prefixed fields.
+     * @return An edit that leaves recipe lookup until execution.
+     * @throws MishMashException If the index or any supplied field is invalid.
+     */
+    private Command parseEditRecipe(String arguments) throws MishMashException {
+        try {
+            String[] parts = arguments.trim().split("\\s+", 2);
+            int index = parseRecipeIndex(parts[0]);
+            if (parts.length < 2) {
+                throw new IllegalArgumentException("Provide at least one recipe field to edit.");
+            }
+            Map<String, String> fields = new HashMap<>();
+            List<GroceryItem> ingredients = new ArrayList<>();
+            collectRecipeArguments(parts[1], fields, ingredients);
+            RecipeChanges changes = new RecipeChanges(fields.get("n"),
+                    parseOptionalNutrition(fields, "cal", "Calories"),
+                    parseOptionalNutrition(fields, "p", "Protein"),
+                    parseOptionalNutrition(fields, "c", "Carbs"),
+                    parseOptionalNutrition(fields, "f", "Fats"), ingredients,
+                    fields.containsKey("food") ? FoodInfo.parseField(fields.get("food")) : null);
+            return new EditRecipeCommand(index, changes);
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage() + System.lineSeparator() + EDIT_RECIPE_USAGE, e);
+        }
+    }
+
+    /** Returns validated nutrition when supplied, or null to preserve the current recipe value. */
+    private Integer parseOptionalNutrition(Map<String, String> fields, String prefix, String fieldName) {
+        return fields.containsKey(prefix) ? parseNutrition(fields.get(prefix), fieldName) : null;
     }
 
     //@@author peilingggg
