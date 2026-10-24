@@ -37,6 +37,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | --- | --- |
 | `add-recipe` | Add a recipe with nutrition information and ingredients. |
 | `list-recipes` | List stored recipes or display one recipe in full. |
+| `edit-recipe` | Replace selected fields of a recipe at its displayed index. |
 | `delete-recipe` | Remove a recipe by its displayed index after confirmation. |
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. |
 | `view-plan` | Display the active meal plan or one selected day. |
@@ -54,6 +55,7 @@ Commands validate their arguments and relevant application state. Requests that 
 | --- | --- |
 | `Recipe` | A recipe name, calorie and macronutrient values, and ingredient entries. |
 | `RecipeBook` | The session's ordered collection of recipes. |
+| `RecipeChanges` | Validated optional edits, applied to the current recipe during execution. |
 | `GroceryItem` | An ingredient name, decimal quantity, and unit. |
 | `DayPlan` | The meals selected for one day and their nutrition totals. |
 | `MealPlan` | The ordered days of a generated plan. |
@@ -63,7 +65,7 @@ Commands validate their arguments and relevant application state. Requests that 
 
 There are no separate `Ingredient` or `GroceryList` classes in the current model. Recipe ingredients and generated grocery entries use `GroceryItem`.
 
-Recipes remain in insertion order. Their displayed indexes start at 1 and can change after deletion. Duplicate names are permitted. Existing meal plans remain available when a recipe is subsequently added to or removed from the recipe book.
+Recipes remain in insertion order. Their displayed indexes start at 1 and can change after deletion. Duplicate names are permitted. Editing replaces the recipe at its position without changing indexes. Existing meal plans retain their recipe snapshots when recipes are added, edited, or removed from the recipe book.
 
 Only one meal plan is active at a time. Successfully generating a replacement plan clears the groceries associated with the previous plan. Failed generation preserves the previous plan and groceries.
 
@@ -74,6 +76,48 @@ Persistent application-data storage is not implemented. Recipes, meal plans, and
 Diagnostic logs are written to disk, but they do not save or restore the recipe book or generated data.
 
 ## Implementation
+
+### Editing a recipe
+
+#### Purpose and command contract
+
+This feature implements the story: **As a returning user, I want to update an existing recipe's ingredients, quantities, and nutrition values so that my recipe information reflects how I prepare the dish.**
+
+`edit-recipe INDEX` takes at least one optional recipe field: `n/`, `cal/`, `p/`, `c/`, `f/`, repeated `i/`, or `food/`. Nutrition and ingredient syntax use the same validation as `add-recipe`. Omitted fields are preserved, and supplied ingredients replace the complete list. For example, `edit-recipe 1 p/55 i/Chicken:220g i/Rice:150g` replaces protein and ingredients, preserving the name, calories, carbs, fats, and food declaration.
+
+The index is one-based, matching `list-recipes` and `delete-recipe`. Duplicate names do not affect selection. Editing neither inserts nor removes entries. No persistent storage or undo history is introduced.
+
+#### Responsibilities and execution sequence
+
+`Parser.parseEditRecipe` splits the index from the prefixed fields. It reuses `collectRecipeArguments`, `parseNutrition`, and `parseIngredient` rather than duplicating recipe syntax rules. Single-value prefixes cannot repeat; ingredients may repeat. Unknown prefixes, blank values, invalid numbers, zero ingredient quantities, and malformed indexes fail before a command is created. Parsing wraps validation errors in `MishMashException` with edit-specific usage and the original cause.
+
+`RecipeChanges` is an immutable record containing only the requested changes. Nullable scalar fields mean unchanged; an empty ingredient list means unchanged. Its constructor rejects an empty edit, blank names, negative nutrition, and invalid ingredient quantities, and defensively copies ingredients. Nullable nutrition distinguishes an omitted value from a requested zero.
+
+`EditRecipeCommand` retains the displayed index and changes. It resolves the recipe from the book during execution, so omitted fields come from the current recipe rather than a stale parsing-time copy. It checks the book and index before calling `RecipeChanges.applyTo(original)`. That method builds a new `Recipe` through its existing constructor. The command formats confirmation with `RecipeViewer` before calling `RecipeBook.replace(index - 1, edited)`, so validation or formatting failure cannot leave a partially applied edit. `replace` validates both index and replacement before updating one list element.
+
+![Sequence for a successful partial recipe edit.](images/edit-recipe/execution.svg)
+
+*The diagram condenses constructor validation, index checks, and recipe getters. Failures before replacement leave the recipe book unchanged.*
+
+#### Snapshots and dietary information
+
+`Recipe` objects remain immutable. Replacing the book entry preserves references already held by `DayPlan`, earlier recipe-book snapshots, and the original recipe itself. The command does not access `ActiveMealPlan`; active meals, original generation settings, nutrition totals, and generated groceries therefore remain consistent. Even regenerating groceries from an existing plan uses that plan's old recipes. Users must generate a new plan and then groceries to incorporate edits; confirmation explains this.
+
+Future generation reads the edited book entry, including its food tags and ingredients for dietary filtering. Omitted `food/` preserves its previous declaration. Ingredient edits do not infer food categories; users provide a complete updated declaration when needed. Existing plans do not undergo dietary repair as a side effect of recipe editing.
+
+#### Design choices and alternatives
+
+Replacing an immutable recipe keeps editing local to the recipe book and avoids silently changing previously planned meals or invalidating a saved grocery list. Mutating recipes in place would require coordinating nutrition, dietary compatibility, and grocery regeneration throughout active plans. Automatic plan repair could be added separately if its behavior is specified.
+
+Complete ingredient-list replacement provides addition, quantity changes, and removal without inventing ingredient identifiers or separate subcommands. Requiring every recipe field would be simpler but would make small corrections tedious. The changes record keeps optional edits separate from the complete, validated `Recipe` model.
+
+#### Verification and maintenance
+
+`ParserEditRecipeTest` checks single-field edits, all-field edits in a different order, ingredient replacement, food declarations, whitespace, nutrition boundaries, help, and invalid input. `EditRecipeCommandTest` covers duplicate names, first/middle/last positions, missing targets, execution-time lookup, dietary filtering, and snapshot preservation through plan and grocery regeneration. `RecipeChangesTest` checks defensive copying and model validation. `RecipeBookTest` checks replacement failure and snapshot behavior. `MishMashTest` checks CLI recovery and subsequent detailed listing.
+
+For manual verification, run the User Guide's [editing example](UserGuide.md#editing-a-recipe), inspect `list-recipes 1`, and try `edit-recipe 1 p/-5`. The failed command must preserve the last valid recipe. With three recipes, generate meals and groceries, edit one recipe, and verify that viewing still shows the original plan. Generate the plan and groceries again to see the edited recipe.
+
+The sequence diagram source and rendering instructions are in [`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md).
 
 <!-- @@author peilingggg -->
 ### Adding a recipe
@@ -707,6 +751,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | New user | View available commands and formats | Learn how to use the application |
 | Meal prep user | Add a recipe with nutrition, ingredients, and quantities | Make it available for planning |
 | User managing recipes | List recipes and inspect a selected recipe | Find and check its stored details |
+| Returning user | Update an existing recipe's ingredients, quantities, and nutrition | Keep recipe information consistent with how I prepare the dish |
 | User managing recipes | Confirm deletion of a selected recipe | Check that I am removing the intended entry |
 | Meal prep user | Generate a random meal plan | Reduce manual meal selection |
 | User tracking nutrition | Supply daily calorie and macronutrient targets | Generate meals within the supported tolerance |
@@ -721,7 +766,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 
 The following ideas are not implemented and are not commitments for a particular release:
 
-- Edit or search recipes.
+- Search recipes.
 - Apply dietary restrictions or allergy preferences.
 - Record meals eaten and track progress.
 - Save and restore recipes or meal plans between sessions.
