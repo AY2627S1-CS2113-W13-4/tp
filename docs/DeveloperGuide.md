@@ -625,6 +625,132 @@ render; accuracy also requires checking every depicted call and branch against t
 
 <!-- @@author -->
 
+<!-- @@author GauthamNandi -->
+### Recording meals and tracking nutrition
+
+#### Purpose and scope
+
+This V2.0 enhancement supports two user stories:
+
+* **As a returning user, I want to record meals that I have eaten so that I can keep track of my
+  actual food intake.**
+* **As a user tracking nutrition, I want to calculate the total calories and macronutrients for each
+  meal so that I know the nutritional content of what I am eating.**
+
+It adds two commands:
+
+```text
+record-meal INDEX
+view-meals
+```
+
+`INDEX` is the position of a recipe in the `list-recipes` output, counting from 1, as for
+`delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal) and protein, carbs and
+fats (g), followed by the totals for all recorded meals. Unlike `check-shortfall`, which examines the
+*planned* meals of the active plan, this feature records meals the user *has eaten*. The recorded meals
+are kept in memory for the session only, matching the product's current data boundary.
+
+#### Architecture-level view
+
+The feature follows the existing command workflow. `MishMash` reads input, asks `Parser` for a
+`Command`, executes it, and prints the returned text. Parsing validates syntax and creates the action;
+execution reads or changes session data. A new model class, `MealLog`, holds the recorded meals, in the
+same way `ActiveMealPlan` holds the active plan.
+
+![Figure 11. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
+
+*Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
+associations with private role names; dashed arrows show dependencies or interface realization.
+`NutritionTotals` is a value record created by `MealLog`.*
+
+* `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
+  a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
+  `NutritionTotals`. The commands never add up nutrition values themselves.
+* `RecordMealCommand` and `ViewMealsCommand` implement `Command`. Each retains the shared `MealLog`.
+* `MealLogViewer` (ui) turns the meals and totals into text, in the same way `MealPlanViewer` formats a
+  meal plan. Keeping formatting out of the model and commands lets them be tested without comparing
+  layout text.
+* `Parser` creates one `MealLog` in its normal constructor and passes it to the commands it builds,
+  because `Command.execute` only receives the `RecipeBook`.
+
+#### Recording a meal
+
+Figure 12 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
+`parseRecordMeal` is condensed into the parser lifeline.
+
+![Figure 12. Sequence for recording a meal.](images/record-meal/record-meal.svg)
+
+*Figure 12: Parsing returns a command without reading any data. The inherited confirmation step is
+omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
+`alt` fragment.*
+
+`Parser` checks that the argument is a single positive whole number. A missing, non-numeric, signed,
+zero or extra argument is rejected with the usage line `Format: record-meal INDEX`; nothing is read or
+changed. The command is created only after validation succeeds.
+
+During execution the command converts the index to a zero-based position, as `DeleteRecipeCommand`
+does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
+exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
+`MealLog.record(recipe)` and `MealLog.getTotals()`, and returns the recorded meal's calories and macros
+with the running totals, so the user sees the effect immediately. Recording a meal needs no confirmation:
+it is quick to repeat, and it changes only the log.
+
+#### Viewing recorded meals and totals
+
+![Figure 13. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
+
+*Figure 13: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
+fragment.*
+
+`view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
+the meals from the `MealLog`. An empty log is a valid state, not an error, so the command returns
+`No meals recorded yet.` Otherwise it asks the log for the totals and delegates formatting to
+`MealLogViewer`. Each meal appears with its own calories and macros, which gives the per-meal nutrition
+required by the second user story, followed by one totals line. Viewing never changes the log.
+
+#### Invalid input and recovery
+
+The recoverable errors reuse the existing path: `Parser` or the command throws `MishMashException`,
+`MishMash.executeCommand` catches it, displays the message, and prompts for another command.
+
+| Boundary or invalid condition | Proposed behavior |
+| --- | --- |
+| `record-meal` with no argument, a non-numeric, signed, zero or decimal index, or an extra token | Reject with the command format; no data is read or changed. |
+| Index larger than the number of recipes | Reject with `Recipe index must be between 1 and N.`; nothing is recorded. |
+| `record-meal` while the recipe book is empty | Reject with a message that there are no recipes to record; nothing is recorded. |
+| `view-meals` with any argument | Reject with the command format. |
+| `view-meals` before any meal is recorded | Return `No meals recorded yet.` |
+| Recipe deleted or recipe book changed after a meal was recorded | The recorded meal keeps its original calories and macros. |
+| Same recipe recorded twice | Two entries are kept, and both count toward the totals. |
+
+#### Rationale and alternatives considered
+
+| Decision | Alternative considered | Reason for the current choice |
+| --- | --- | --- |
+| Store the `Recipe` itself in the log | Store the recipe's index | `Recipe` is immutable, so the log keeps the nutrition as it was when the meal was eaten. Indexes shift whenever `delete-recipe` runs, so an old entry could silently point to a different recipe. |
+| `MealLog.getTotals()` sums the meals on every call | Keep running totals updated by `record` | The meal list is the single source of truth, so totals cannot drift out of step with it. Sessions are small, so the repeated sum costs nothing noticeable. Running totals would need extra care if removing meals is added later. |
+| `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | This follows how `ActiveMealPlan` is already shared and leaves the `Command` interface and every existing command unchanged. A context object becomes worthwhile if many more data holders are added. |
+| Pick a meal by recipe index | Type nutrition values in directly | Reusing stored recipes avoids duplicating the input and validation of `add-recipe` and keeps unchecked numbers out of the log. Free-text entry would help when eating out, so it is a possible extension. |
+| Return formatted text through `Command.execute`, using a small viewer | Print from the command or the model | The viewer matches `MealPlanViewer` and keeps layout out of the logic, so the model and commands can be tested without comparing layout text. |
+
+#### Limitations and possible extensions
+
+* The log lives in memory for one session and is lost when the application exits.
+* All meals form one list. A later version could add `d/DATE` to record meals against a day and show
+  daily totals, or compare the totals with the targets given to `check-shortfall`.
+* There is no command to remove or correct a recorded meal yet.
+* Each meal counts as one whole recipe; portion sizes are not supported, as for meal plans.
+
+#### Diagram maintenance
+
+Editable sources for the three figures are under
+[`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
+`docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
+regeneration commands. After the feature is implemented, check every depicted call, branch and
+message against the code, and update the sources and images together.
+
+<!-- @@author -->
+
 ## Documentation Logging Testing Configuration and DevOps
 
 ### Documentation
@@ -723,7 +849,9 @@ The following ideas are not implemented and are not commitments for a particular
 
 - Edit or search recipes.
 - Apply dietary restrictions or allergy preferences.
-- Record meals eaten and track progress.
+- Record meals eaten (`record-meal`) and see the calories and macronutrients of each meal and their
+  totals (`view-meals`). The design is described in
+  [Recording meals and tracking nutrition](#recording-meals-and-tracking-nutrition).
 - Save and restore recipes or meal plans between sessions.
 - Estimate meal or grocery costs.
 

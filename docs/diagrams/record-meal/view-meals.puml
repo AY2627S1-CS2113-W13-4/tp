@@ -1,0 +1,35 @@
+@startuml
+!include style.iuml
+title Viewing recorded meals: view-meals
+autonumber
+
+participant "MishMash" as App
+participant "cmd:\nViewMealsCommand" as Cmd
+participant "mealLog: MealLog" as Log
+participant "viewer:\nMealLogViewer" as Viewer
+
+note over App, Cmd
+  Parsing mirrors record-meal: Parser accepts no arguments
+  and creates ViewMealsCommand(mealLog). It is omitted here.
+end note
+
+App -> Cmd : execute(recipeBook)
+activate Cmd
+Cmd -> Log : getMeals()
+Log --> Cmd : meals
+alt meals is empty
+  Cmd --> App : "No meals recorded yet."
+else at least one meal
+  Cmd -> Log : getTotals()
+  Log --> Cmd : totals: NutritionTotals
+  create Viewer
+  Cmd -> Viewer : new MealLogViewer()
+  Cmd -> Viewer : view(meals, totals)
+  Viewer --> Cmd : formatted text
+  Cmd --> App : each meal's calories and macros,\nthen the totals
+end
+deactivate Cmd
+note over App, Log
+  No model data is changed. RecipeBook is not read by this command.
+end note
+@enduml

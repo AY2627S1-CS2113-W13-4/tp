@@ -1,0 +1,43 @@
+@startuml
+!include style.iuml
+title Recording a meal: record-meal 2
+autonumber
+
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+participant "cmd:\nRecordMealCommand" as Cmd
+participant "recipeBook:\nRecipeBook" as Book
+participant "mealLog: MealLog" as Log
+
+App -> Parser : parseCommand("record-meal 2")
+activate Parser
+note over Parser
+  parseNamedCommand dispatches to
+  parseRecordMeal(arguments), which accepts
+  exactly one positive whole number.
+end note
+create Cmd
+Parser -> Cmd : new RecordMealCommand(2, mealLog)
+Parser --> App : cmd
+deactivate Parser
+
+note over App, Cmd
+  The inherited confirmationPrompt returns an empty Optional,
+  so the command runs without confirmation. That step is omitted.
+end note
+
+App -> Cmd : execute(recipeBook)
+activate Cmd
+Cmd -> Book : getRecipes()
+Book --> Cmd : recipes
+alt recipes is empty or index > recipes.size()
+  Cmd --> App : throws MishMashException
+else index is valid
+  note over Cmd, Book : Select recipe = recipes.get(index - 1).
+  Cmd -> Log : record(recipe)
+  Cmd -> Log : getTotals()
+  Log --> Cmd : totals: NutritionTotals
+  Cmd --> App : meal name, its calories and macros,\nand the running totals
+end
+deactivate Cmd
+@enduml
