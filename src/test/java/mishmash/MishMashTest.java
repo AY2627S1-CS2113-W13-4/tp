@@ -54,6 +54,24 @@ class MishMashTest {
     private static final String CONTINUE_PROMPT = "Enter a command, or type 'help' for all commands or 'bye' to exit.";
 
     @Test
+    void main_editRecipe_recoversFromErrorsAndShowsUpdatedDetails() {
+        String output = runCli(session("edit-recipe 1 p/10", ADD_RICE, "edit-recipe 1 n/Changed p/bad",
+                "list-recipes", "edit-recipe 2 p/10", "edit-recipe 1 n/Brown Rice p/10 i/Brown Rice:175g",
+                "list-recipes 1", "help", "bye"));
+
+        assertTrue(output.contains("There are no recipes to edit."), output);
+        assertTrue(output.contains("Recipe index must be between 1 and 1."), output);
+        assertTrue(output.contains("1. Rice (200 kcal)"), output);
+        assertTrue(output.contains("Recipe updated!"), output);
+        assertTrue(output.contains("Brown Rice: 175g"), output);
+        assertTrue(output.contains("Protein: 10g"), output);
+        assertTrue(output.contains("edit-recipe - Update selected fields"), output);
+        assertEquals(3, countOccurrences(output, "Error: "), output);
+        assertEquals(9, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
     void main_helpAndRecovery_promptAfterEveryCommand() {
         String output = runCli(session("help", "list-recipes", "view-plan", "view-list",
                 "generate-list", "generate-plan d/1", "unknown", "", "help extra", "bye"));
