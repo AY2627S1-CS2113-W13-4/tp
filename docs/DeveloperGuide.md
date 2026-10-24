@@ -271,6 +271,36 @@ paths against the code. Keep the abstraction notes when omitting implementation
 details, and visually inspect regenerated diagrams.
 <!-- @@author -->
 <!-- @@author oilybikechain -->
+### Detecting exceeded nutrition targets
+
+`ActiveMealPlan` already retains the original `GeneratePlanRequest` alongside a generated plan for dietary
+repair. Exceedance warnings reuse this request's immutable `NutritionTargets` rather than storing another
+copy in `MealPlan`. Successful generation replaces both meals and targets through `setGenerated`; failed
+generation preserves them. Dietary repair retains the request, and clearing a plan clears its request.
+Legacy plans published with `set(MealPlan)` have no request and therefore no targets for warnings.
+
+`NutritionTargets.calculateExcesses(NutritionTotals)` returns each nutrient's positive excess over its exact
+target, or zero if the target is omitted or not exceeded. It uses `long` arithmetic, matching daily totals,
+so sums beyond the integer range remain valid. This comparison does not use `TOLERANCE`: generation still
+accepts days within ±15%, while viewing warns for any total strictly above the supplied target.
+
+`Parser` supplies the current plan's meals and request targets to `ViewPlanCommand` at execution time.
+Commands parsed before generation or replacement therefore display the latest meals and targets.
+Legacy supplier-based parser and command constructors default to no targets. The new command constructor
+accepts meal and target suppliers plus a nullable day number (null selects every day). The suppliers must
+return corresponding meals and targets; omitted targets are represented by `NutritionTargets.none()`.
+
+`MealPlanViewer` provides target-aware overloads for all days and one selected day; its original overloads
+delegate with no targets. It sums each day's meals, requests excesses, and places warnings before the day's
+closing separator in calories, protein, carbohydrates, and fats order. Warnings include the excess, actual
+total, and target, using kcal for calories and g for the macronutrients. They do not change application state.
+`check-shortfall` continues to use its explicitly supplied targets independently of this display.
+
+Tests cover exact comparison boundaries, omitted targets, simultaneous excesses, large totals, exact output,
+and day selection. Integration tests verify the generation tolerance, replacement after success or failure,
+legacy plans without requests, dietary repair and clearing, and independence from `check-shortfall`.
+Run `gradlew.bat test checkstyleMain checkstyleTest` with Java 25.
+
 ### Grocery command integration
 
 `Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
@@ -831,6 +861,32 @@ After generating a two-day plan:
 - In a fresh session with no plan, enter `view-plan`. Expect the generate-first message.
 
 <!-- @@author Rixte -->
+### Nutrition Target Warnings
+
+In a fresh session with no dietary restrictions, enter:
+
+```text
+add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:100g
+add-recipe n/B cal/600 p/30 c/60 f/15 i/Rice:100g
+add-recipe n/C cal/700 p/40 c/70 f/20 i/Rice:100g
+generate-plan d/2 cal/1700 p/85 c/180 f/45
+view-plan
+view-plan d/2
+```
+
+Each day must total 1800 kcal, 90 g protein, 180 g carbohydrates, and 45 g fats, regardless of meal order.
+Expect exactly these warnings below each displayed day's totals:
+
+```text
+Warning: Calories exceed target by 100 kcal (1800 kcal actual; 1700 kcal target).
+Warning: Protein exceeds target by 5 g (90 g actual; 85 g target).
+```
+
+`view-plan d/2` must show only day 2. Then try `generate-plan d/1 cal/1`: generation must fail and
+`view-plan` must still display the previous two days and their warnings. Run `check-shortfall cal/1900`
+and verify that a subsequent `view-plan` retains those warnings. Finally run `generate-plan d/1` and
+`view-plan`: the replacement must show one day with no warnings because no targets were supplied.
+
 ### Check Nutrition Shortfalls
 
 1. In a fresh session, enter `check-shortfall cal/2000` before generating a plan. Expect

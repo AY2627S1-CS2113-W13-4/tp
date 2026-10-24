@@ -177,9 +177,8 @@ delete-recipe INDEX
 
 ## Generating a Meal Plan
 
-<!-- OWNER: Gautham. Document the final merged behavior: minimum recipe count, day limits, target tolerance, daily meal count, replacement, and failed generation. -->
-
-**Purpose:** {Explain how recipes become a multi-day plan.}
+Builds a plan containing three distinct recipes per day, using recipes from your recipe book.
+Recipes may appear again on different days. Current dietary preferences apply to recipe selection.
 
 **Format:**
 
@@ -187,15 +186,37 @@ delete-recipe INDEX
 generate-plan d/DAYS [cal/DAILY_CALORIES] [p/DAILY_PROTEIN] [c/DAILY_CARBS] [f/DAILY_FATS]
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+**Before You Start:** Add at least three recipes using `add-recipe`. If dietary restrictions are active,
+at least three classified recipes must satisfy them.
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:**
 
-**Result:** {Show the actual output from the application.}
+```text
+generate-plan d/2 cal/1700 p/85
+```
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+**Result, when matching recipes are available:**
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+```text
+Meal plan successfully generated for 2 day(s)!
+Use 'view-plan' to inspect your planned meals.
+```
+
+**Rules:**
+
+- Request between 1 and 7 days. Each optional daily target must be a positive whole number up to 2147483647.
+- Calories use kcal; protein, carbohydrates, and fats use grams. Omitted nutrients have no target.
+- Without targets, meals are selected randomly. With targets, every day's totals must be within ±15% of
+  every supplied target. For large recipe books, generation searches a bounded sample of combinations.
+- The application retains your supplied targets. `view-plan` warns whenever a daily total exceeds its exact
+  target, even when that day is within the generation tolerance. These warnings are informational.
+- Successful generation replaces the active plan and its targets and clears its generated grocery list.
+  A replacement generated without targets has no nutrition warnings. Plans and targets last only for this session.
+
+**Errors and Recovery:** If generation reports that it cannot find three recipes meeting your daily targets
+within 15%, try different targets or add recipes. If fewer than three eligible recipes are available, add
+or classify suitable recipes before retrying. Failed generation leaves the previous plan, targets, and
+grocery list intact.
 
 ## Viewing a Meal Plan
 
@@ -262,6 +283,29 @@ Enter a command, or type 'help' for all commands or 'bye' to exit.
 ```
 
 The application remains open. Enter `view-plan d/2` to select a valid day. If there is no active plan, a syntactically valid command such as `view-plan d/2` shows the no-plan message instead.
+
+### Nutrition Target Warnings
+
+Each day is compared with the daily targets supplied to `generate-plan`. A total strictly greater than its
+target produces a warning after the daily totals, before the closing separator. Equal or lower totals and
+nutrients without a target produce no warning. Warnings appear in calories, protein, carbohydrates, and fats
+order and show the excess, actual total, and target. Selecting a day displays only that day's warnings.
+
+For example, if the illustrated day above was generated with
+`generate-plan d/1 cal/1500 p/120`, its daily footer would be:
+
+```text
+--------------------------------------
+Daily Totals: 1650 kcal | Protein: 127g | Carbs: 150g | Fats: 55g
+Warning: Calories exceed target by 150 kcal (1650 kcal actual; 1500 kcal target).
+Warning: Protein exceeds target by 7 g (127 g actual; 120 g target).
+======================================
+```
+
+Both totals are within the generator's ±15% tolerance but exceed the exact targets. Viewing does not change
+meals or targets. To use different targets, generate a replacement plan. If `set-diet` repairs a plan,
+warnings use the repaired meals and the original generation targets; if it clears the plan, no warnings remain.
+`check-shortfall` uses its own explicit targets and does not change these warnings.
 
 ## Checking Nutrition Shortfalls
 

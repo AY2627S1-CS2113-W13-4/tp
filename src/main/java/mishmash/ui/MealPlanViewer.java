@@ -3,6 +3,9 @@ package mishmash.ui;
 import java.util.List;
 import java.util.Objects;
 
+import mishmash.model.NutritionTargets;
+import mishmash.model.NutritionTotals;
+
 /**
  * Formats an existing meal plan for the {@code view-plan} display without changing its meals.
  */
@@ -18,7 +21,20 @@ public class MealPlanViewer {
      * @throws NullPointerException If the plan, any day, or any meal is null.
      */
     public String view(List<List<MealSummary>> mealsByDay) {
+        return view(mealsByDay, NutritionTargets.none());
+    }
+
+    /**
+     * Returns every day with warnings for daily totals that exceed supplied targets.
+     *
+     * @param mealsByDay The plan's meals grouped by day, starting with day 1.
+     * @param targets The exact daily targets to compare against.
+     * @return The formatted plan, or a message if there is no active plan.
+     * @throws NullPointerException If the plan, any day, any meal, or the targets are null.
+     */
+    public String view(List<List<MealSummary>> mealsByDay, NutritionTargets targets) {
         Objects.requireNonNull(mealsByDay, "mealsByDay");
+        Objects.requireNonNull(targets, "targets");
         if (mealsByDay.isEmpty()) {
             return NO_PLAN_MESSAGE;
         }
@@ -28,7 +44,7 @@ public class MealPlanViewer {
             if (dayIndex > 0) {
                 result.append(System.lineSeparator()).append(System.lineSeparator());
             }
-            result.append(formatDay(mealsByDay.get(dayIndex), dayIndex + 1));
+            result.append(formatDay(mealsByDay.get(dayIndex), dayIndex + 1, targets));
         }
         return result.toString();
     }
@@ -43,7 +59,22 @@ public class MealPlanViewer {
      * @throws NullPointerException If the plan, selected day, or a selected meal is null.
      */
     public String view(List<List<MealSummary>> mealsByDay, int dayNumber) {
+        return view(mealsByDay, dayNumber, NutritionTargets.none());
+    }
+
+    /**
+     * Returns one selected day with warnings for totals that exceed supplied targets.
+     *
+     * @param mealsByDay The plan's meals grouped by day.
+     * @param dayNumber The selected day, starting at 1.
+     * @param targets The exact daily targets to compare against.
+     * @return The formatted day, or a message if there is no active plan.
+     * @throws IllegalArgumentException If the day number is outside a non-empty plan.
+     * @throws NullPointerException If the plan, selected day, selected meal, or targets are null.
+     */
+    public String view(List<List<MealSummary>> mealsByDay, int dayNumber, NutritionTargets targets) {
         Objects.requireNonNull(mealsByDay, "mealsByDay");
+        Objects.requireNonNull(targets, "targets");
         if (mealsByDay.isEmpty()) {
             return NO_PLAN_MESSAGE;
         }
@@ -51,7 +82,7 @@ public class MealPlanViewer {
             throw new IllegalArgumentException("Day number must be between 1 and " + mealsByDay.size() + ".");
         }
 
-        return formatDay(mealsByDay.get(dayNumber - 1), dayNumber);
+        return formatDay(mealsByDay.get(dayNumber - 1), dayNumber, targets);
     }
 
     /**
@@ -59,16 +90,17 @@ public class MealPlanViewer {
      *
      * @param meals The meals in their planned order for the selected day.
      * @param dayNumber The validated day number in the plan, starting at 1.
+     * @param targets The daily targets used for excess warnings.
      * @return The day's meal breakdown and nutrition totals.
      */
-    private String formatDay(List<MealSummary> meals, int dayNumber) {
+    private String formatDay(List<MealSummary> meals, int dayNumber, NutritionTargets targets) {
         assert dayNumber > 0 : "A displayed day must have a positive number: " + dayNumber;
         Objects.requireNonNull(meals, "meals");
 
         StringBuilder result = new StringBuilder("================ Day ")
                 .append(dayNumber).append(" ================");
         result.append(formatMeals(meals));
-        result.append(formatDailyTotals(meals));
+        result.append(formatDailyTotals(meals, targets));
         return result.toString();
     }
 
@@ -99,9 +131,10 @@ public class MealPlanViewer {
      * Sums a day's nutrition and formats the footer, including zero totals for an empty day.
      *
      * @param meals The meals already checked while formatting their display lines.
+     * @param targets The daily targets used for excess warnings.
      * @return The daily totals and separators, preceded by a line separator.
      */
-    private String formatDailyTotals(List<MealSummary> meals) {
+    private String formatDailyTotals(List<MealSummary> meals, NutritionTargets targets) {
         // Sum as long values so several valid integer values cannot overflow an int.
         long calories = meals.stream().mapToLong(MealSummary::calories).sum();
         long protein = meals.stream().mapToLong(MealSummary::protein).sum();
@@ -114,9 +147,32 @@ public class MealPlanViewer {
                 .append("Daily Totals: ").append(calories).append(" kcal | Protein: ")
                 .append(protein).append("g | Carbs: ").append(carbs)
                 .append("g | Fats: ").append(fats).append("g")
+                .append(formatWarnings(new NutritionTotals(calories, protein, carbs, fats), targets))
                 .append(System.lineSeparator())
                 .append("======================================");
         return result.toString();
+    }
+
+    /**
+     * Formats only exceeded targets, in the same nutrient order as the daily totals.
+     */
+    private String formatWarnings(NutritionTotals totals, NutritionTargets targets) {
+        NutritionTotals excesses = targets.calculateExcesses(totals);
+        return formatWarning("Calories exceed", "kcal", totals.calories(), targets.getCalories(), excesses.calories())
+                + formatWarning("Protein exceeds", "g", totals.protein(), targets.getProtein(), excesses.protein())
+                + formatWarning("Carbs exceed", "g", totals.carbs(), targets.getCarbs(), excesses.carbs())
+                + formatWarning("Fats exceed", "g", totals.fats(), targets.getFats(), excesses.fats());
+    }
+
+    /**
+     * Formats one warning with its excess, actual total, and supplied target, or nothing for zero excess.
+     */
+    private String formatWarning(String subject, String unit, long actual, Integer target, long excess) {
+        if (excess == 0) {
+            return "";
+        }
+        return System.lineSeparator() + "Warning: " + subject + " target by " + excess + " " + unit
+                + " (" + actual + " " + unit + " actual; " + target + " " + unit + " target).";
     }
 
     /**

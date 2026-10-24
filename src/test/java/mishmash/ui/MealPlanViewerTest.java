@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import mishmash.model.NutritionTargets;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
 /**
@@ -35,6 +36,64 @@ class MealPlanViewerTest {
             "================ Day 2 ================" + System.lineSeparator() + DAY_TWO_BODY;
 
     private final MealPlanViewer viewer = new MealPlanViewer();
+
+    @Test
+    void view_exceededTargets_placesWarningsAfterTotalsInNutrientOrder() {
+        NutritionTargets targets = new NutritionTargets(1500, 120, 140, 50);
+        String warnings = String.join(System.lineSeparator(),
+                "Warning: Calories exceed target by 150 kcal (1650 kcal actual; 1500 kcal target).",
+                "Warning: Protein exceeds target by 7 g (127 g actual; 120 g target).",
+                "Warning: Carbs exceed target by 10 g (150 g actual; 140 g target).",
+                "Warning: Fats exceed target by 5 g (55 g actual; 50 g target).");
+        String expected = DAY_ONE_DISPLAY.replace("======================================",
+                warnings + System.lineSeparator() + "======================================");
+
+        assertEquals(expected, viewer.view(List.of(createMealsByDay().get(0)), targets));
+        assertEquals(expected, viewer.view(createMealsByDay(), 1, targets));
+    }
+
+    @Test
+    void view_multipleDays_checksTotalsIndependentlyAndSelectsOnlyRequestedDay() {
+        NutritionTargets targets = new NutritionTargets(1700, null, null, null);
+        String warning = "Warning: Calories exceed target by 50 kcal (1750 kcal actual; 1700 kcal target).";
+        String expectedDayTwo = DAY_TWO_DISPLAY.replace("======================================",
+                warning + System.lineSeparator() + "======================================");
+
+        assertEquals(DAY_ONE_DISPLAY + System.lineSeparator() + System.lineSeparator() + expectedDayTwo,
+                viewer.view(createMealsByDay(), targets));
+        assertEquals(expectedDayTwo, viewer.view(createMealsByDay(), 2, targets));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(createMealsByDay(), 1, targets));
+    }
+
+    @Test
+    void view_unsetEqualOrHigherTargets_preservesExistingDisplay() {
+        List<List<MealSummary>> meals = List.of(createMealsByDay().get(0));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(meals, NutritionTargets.none()));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(meals, new NutritionTargets(1650, 127, 150, 55)));
+        assertEquals(DAY_ONE_DISPLAY, viewer.view(meals, new NutritionTargets(1800, 150, 200, 80)));
+    }
+
+    @Test
+    void view_largeTotals_formatsExcessWithoutOverflow() {
+        MealSummary huge = new MealSummary("Huge", Integer.MAX_VALUE, 0, 0, 0);
+        List<List<MealSummary>> meals = List.of(List.of(huge, huge));
+        String expected = String.join(System.lineSeparator(),
+                "================ Day 1 ================",
+                "Meal 1: Huge (2147483647 kcal | P: 0g, C: 0g, F: 0g)",
+                "Meal 2: Huge (2147483647 kcal | P: 0g, C: 0g, F: 0g)",
+                "--------------------------------------",
+                "Daily Totals: 4294967294 kcal | Protein: 0g | Carbs: 0g | Fats: 0g",
+                "Warning: Calories exceed target by 2147483647 kcal"
+                        + " (4294967294 kcal actual; 2147483647 kcal target).",
+                "======================================");
+        assertEquals(expected, viewer.view(meals, new NutritionTargets(Integer.MAX_VALUE, null, null, null)));
+    }
+
+    @Test
+    void view_nullTargets_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> viewer.view(createMealsByDay(), null));
+        assertThrows(NullPointerException.class, () -> viewer.view(createMealsByDay(), 1, null));
+    }
 
     /**
      * Creates two days with different totals and a repeated meal on day 2.

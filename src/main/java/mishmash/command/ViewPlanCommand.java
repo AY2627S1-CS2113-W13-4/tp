@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import java.util.logging.Logger;
 
 import mishmash.exception.MishMashException;
+import mishmash.model.NutritionTargets;
 import mishmash.model.RecipeBook;
 import mishmash.ui.MealPlanViewer;
 import mishmash.ui.MealPlanViewer.MealSummary;
@@ -26,6 +27,9 @@ public class ViewPlanCommand implements Command {
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
 
+    /** Reads daily targets belonging to the current plan at execution time. */
+    private final Supplier<NutritionTargets> targetsSource;
+
     /**
      * The selected one-based day number, or null when all days were requested.
      */
@@ -39,8 +43,7 @@ public class ViewPlanCommand implements Command {
      * @throws NullPointerException If the source is null.
      */
     public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource) {
-        this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
-        dayNumber = null;
+        this(mealPlanSource, NutritionTargets::none, null);
     }
 
     /**
@@ -53,8 +56,23 @@ public class ViewPlanCommand implements Command {
      * @throws NullPointerException If the source is null.
      */
     public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource, int dayNumber) {
+        this(mealPlanSource, NutritionTargets::none, dayNumber);
+    }
+
+    /**
+     * Creates a command that reads meals and their daily targets when executed.
+     *
+     * @param mealPlanSource The current plan's meals, or an empty list if no plan is active.
+     * @param targetsSource The current plan's targets, or unset targets if no request is retained.
+     * @param dayNumber The selected one-based day, or null to display all days.
+     * @throws IllegalArgumentException If a supplied day number is not positive.
+     * @throws NullPointerException If either source is null.
+     */
+    public ViewPlanCommand(Supplier<List<List<MealSummary>>> mealPlanSource,
+            Supplier<NutritionTargets> targetsSource, Integer dayNumber) {
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
-        if (dayNumber < 1) {
+        this.targetsSource = Objects.requireNonNull(targetsSource, "targetsSource");
+        if (dayNumber != null && dayNumber < 1) {
             throw new IllegalArgumentException("Day number must be a positive integer.");
         }
         this.dayNumber = dayNumber;
@@ -67,7 +85,7 @@ public class ViewPlanCommand implements Command {
      * @return The formatted plan or a prompt when no plan is available.
      * @throws MishMashException If the selected day exceeds the active plan's size.
      * @throws IllegalStateException If the source returns {@code null} instead of a list.
-     * @throws NullPointerException If a displayed day or meal is null.
+     * @throws NullPointerException If a displayed day, meal, or supplied targets are null.
      */
     @Override
     public String execute(RecipeBook recipeBook) throws MishMashException {
@@ -81,7 +99,7 @@ public class ViewPlanCommand implements Command {
             return viewer.view(mealsByDay);
         }
         if (dayNumber == null) {
-            String result = viewer.view(mealsByDay);
+            String result = viewer.view(mealsByDay, targetsSource.get());
             LOGGER.fine(() -> "view-plan displayed all " + mealsByDay.size() + " days");
             return result;
         }
@@ -91,7 +109,7 @@ public class ViewPlanCommand implements Command {
             throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + "."
                     + System.lineSeparator() + USAGE);
         }
-        String result = viewer.view(mealsByDay, dayNumber);
+        String result = viewer.view(mealsByDay, dayNumber, targetsSource.get());
         LOGGER.fine(() -> "view-plan displayed day " + dayNumber);
         return result;
     }
