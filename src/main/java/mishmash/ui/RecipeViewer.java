@@ -30,6 +30,7 @@ public class RecipeViewer {
             result.append(System.lineSeparator())
                     .append("- ").append(ingredient);
         }
+        result.append(System.lineSeparator()).append("Food tags: ").append(recipe.getFoodInfo().describe());
         return result.toString();
     }
 }

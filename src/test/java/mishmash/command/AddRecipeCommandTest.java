@@ -42,7 +42,8 @@ class AddRecipeCommandTest {
                 "Ingredients:",
                 "- Chicken Breast: 200g",
                 "- White Rice: 150g",
-                "- Olive Oil: 10ml");
+                "- Olive Oil: 10ml",
+                "Food tags: Unclassified");
 
         assertEquals(List.of(recipe), book.getRecipes());
         assertEquals(expected, result);

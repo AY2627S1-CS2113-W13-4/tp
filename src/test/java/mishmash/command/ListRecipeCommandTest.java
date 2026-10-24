@@ -100,7 +100,8 @@ class ListRecipeCommandTest {
                 "Ingredients:",
                 "- Chicken Breast: 200g",
                 "- White Rice: 150g",
-                "- Olive Oil: 2.5ml");
+                "- Olive Oil: 2.5ml",
+                "Food tags: Unclassified");
         assertEquals(expected, result);
     }
 
