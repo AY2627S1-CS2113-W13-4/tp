@@ -21,6 +21,25 @@ import mishmash.parser.Parser;
  */
 class MishMashGeneratePlanTest {
     @Test
+    void main_targetedPlan_displaysWarningsOnlyForViewedDays() {
+        String output = runCli(String.join(System.lineSeparator(), "Tester",
+                "add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:100g",
+                "add-recipe n/B cal/600 p/30 c/60 f/15 i/Rice:100g",
+                "add-recipe n/C cal/700 p/40 c/70 f/20 i/Rice:100g",
+                "generate-plan d/2 cal/1700 p/85 c/180 f/45",
+                "view-plan d/2", "generate-plan d/1", "view-plan", "bye") + System.lineSeparator());
+
+        assertEquals(1, countOccurrences(output,
+                "Warning: Calories exceed target by 100 kcal (1800 kcal actual; 1700 kcal target)."), output);
+        assertEquals(1, countOccurrences(output,
+                "Warning: Protein exceeds target by 5 g (90 g actual; 85 g target)."), output);
+        assertEquals(2, countOccurrences(output, "Warning:"), output);
+        assertEquals(1, countOccurrences(output, "================ Day 2 ================"), output);
+        assertEquals(1, countOccurrences(output, "================ Day 1 ================"), output);
+        assertFalse(output.contains("Error:"), output);
+    }
+
+    @Test
     void main_groceryGeneration_connectsToViewingAndRecoversFromInvalidArguments() {
         String output = runCli(String.join(System.lineSeparator(), "Tester",
                 "generate-list",

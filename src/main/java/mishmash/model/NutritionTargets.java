@@ -66,6 +66,29 @@ public class NutritionTargets {
     }
 
     /**
+     * Calculates how far each daily total exceeds its exact target, without applying generation tolerance.
+     *
+     * @param totals The day's nutrition totals.
+     * @return The positive excess for each nutrient, or zero when its target is unset or not exceeded.
+     * @throws NullPointerException If the totals are null.
+     */
+    public NutritionTotals calculateExcesses(NutritionTotals totals) {
+        Objects.requireNonNull(totals, "totals");
+        return new NutritionTotals(excess(calories, totals.calories()), excess(protein, totals.protein()),
+                excess(carbs, totals.carbs()), excess(fats, totals.fats()));
+    }
+
+    /**
+     * Returns the positive excess over a supplied target, or zero if no excess exists.
+     */
+    private static long excess(Integer target, long actual) {
+        if (target == null || actual <= target) {
+            return 0;
+        }
+        return actual - target;
+    }
+
+    /**
      * Returns the daily calorie target in kcal, or null if none was set.
      */
     public Integer getCalories() {

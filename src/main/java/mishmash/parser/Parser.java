@@ -116,6 +116,9 @@ public class Parser {
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
 
+    /** Supplies targets corresponding to the meals returned by the viewing source. */
+    private final Supplier<NutritionTargets> targetsSource;
+
     /**
      * Supplies the generated list without making viewing responsible for generation or storage.
      */
@@ -166,7 +169,8 @@ public class Parser {
      */
     public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
-        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource);
+        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource,
+                NutritionTargets::none);
     }
 
     /**
@@ -183,7 +187,8 @@ public class Parser {
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
         this(mealPlanGenerator, activeMealPlan,
                 () -> activeMealPlan.get().map(MealPlan::toMealSummaries).orElse(List.of()),
-                groceryListSource);
+                groceryListSource,
+                () -> activeMealPlan.getRequest().map(GeneratePlanRequest::targets).orElseGet(NutritionTargets::none));
     }
 
     /**
@@ -193,15 +198,17 @@ public class Parser {
      * @param activeMealPlan The destination for newly generated plans and groceries.
      * @param mealPlanSource The source read by meal-plan viewing commands.
      * @param groceryListSource The source of generated groceries, if available.
+     * @param targetsSource The daily targets associated with the displayed meals.
      * @throws NullPointerException If any dependency is null.
      */
     private Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan,
             Supplier<List<List<MealSummary>>> mealPlanSource,
-            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+            Supplier<Optional<List<GroceryItem>>> groceryListSource, Supplier<NutritionTargets> targetsSource) {
         this.mealPlanGenerator = Objects.requireNonNull(mealPlanGenerator, "mealPlanGenerator");
         this.activeMealPlan = Objects.requireNonNull(activeMealPlan, "activeMealPlan");
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
         this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
+        this.targetsSource = Objects.requireNonNull(targetsSource, "targetsSource");
     }
 
     /**
@@ -454,7 +461,7 @@ public class Parser {
     private Command parseViewPlan(String arguments) throws MishMashException {
         if (arguments.isBlank()) {
             LOGGER.fine("Parsed view-plan for all days");
-            return new ViewPlanCommand(mealPlanSource);
+            return new ViewPlanCommand(mealPlanSource, targetsSource, null);
         }
         Matcher matcher = DAY_PATTERN.matcher(arguments.trim());
         if (!matcher.matches()) {
@@ -463,7 +470,7 @@ public class Parser {
         }
         try {
             int dayNumber = Integer.parseInt(matcher.group(1));
-            ViewPlanCommand command = new ViewPlanCommand(mealPlanSource, dayNumber);
+            ViewPlanCommand command = new ViewPlanCommand(mealPlanSource, targetsSource, dayNumber);
             LOGGER.fine(() -> "Parsed view-plan for day " + dayNumber);
             return command;
         } catch (IllegalArgumentException e) {
