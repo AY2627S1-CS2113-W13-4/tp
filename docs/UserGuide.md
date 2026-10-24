@@ -256,6 +256,15 @@ Daily Totals: 1650 kcal | Protein: 127g | Carbs: 150g | Fats: 55g
 
 This is an illustrative day. Your meals and their order depend on the generated plan. `view-plan` displays a block like this for each day, separated by a blank line. Meal numbering starts again at 1 for each day.
 
+<!-- @@author oilybikechain -->
+**Daily Nutrition Totals:** Each nutrient is added independently for the displayed day, using the
+full nutrition values entered for its meals. In the example, calories are `450 + 650 + 550 = 1650`
+kcal, protein is `35 + 50 + 42 = 127` g, carbohydrates are `60 + 70 + 20 = 150` g, and fats are
+`8 + 15 + 32 = 55` g. Calories are measured in kcal; all three macronutrients are measured in grams.
+Totals describe planned meals rather than food recorded as eaten. Values are not rounded or adjusted
+to fit a target, and large daily sums can exceed a single recipe's maximum value of 2147483647.
+<!-- @@author -->
+
 **Rules:**
 
 - Day numbers start at **1**, rather than 0. Day 1 is the first day in the plan, not a calendar date.
@@ -284,6 +293,7 @@ Enter a command, or type 'help' for all commands or 'bye' to exit.
 
 The application remains open. Enter `view-plan d/2` to select a valid day. If there is no active plan, a syntactically valid command such as `view-plan d/2` shows the no-plan message instead.
 
+<!-- @@author oilybikechain -->
 ### Nutrition Target Warnings
 
 Each day is compared with the daily targets supplied to `generate-plan`. A total strictly greater than its
@@ -306,6 +316,9 @@ Both totals are within the generator's ±15% tolerance but exceed the exact targ
 meals or targets. To use different targets, generate a replacement plan. If `set-diet` repairs a plan,
 warnings use the repaired meals and the original generation targets; if it clears the plan, no warnings remain.
 `check-shortfall` uses its own explicit targets and does not change these warnings.
+There is no separate excess-checking command: use `view-plan` or `view-plan d/DAY_NUMBER` after
+generating a plan with targets. Generating without targets produces daily totals without warnings.
+<!-- @@author -->
 
 ## Checking Nutrition Shortfalls
 
@@ -399,6 +412,7 @@ Supply the targets each time; the check does not save them as personal settings 
 
 Invalid input also displays the command format. Enter the corrected command at the next prompt; errors leave your existing data unchanged.
 
+<!-- @@author oilybikechain -->
 ## Generating a Grocery List
 
 Combines the ingredients of every meal in the active plan into one shopping list.
@@ -449,10 +463,38 @@ Generate a plan and then retry `generate-list`. Unexpected arguments such as `ge
 ```text
 Error: generate-list does not accept arguments.
 Format: generate-list
-Please enter another command, or type 'bye' to exit.
+------------------------------------------------------------
+Enter a command, or type 'help' for all commands or 'bye' to exit.
 ```
 
 Retry without arguments. Invalid syntax does not change an existing grocery list.
+
+### Ingredient Combining Example
+
+In a fresh session, enter the following commands after supplying your name:
+
+```text
+add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:0.1g
+add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:0.2g
+add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:1kg i/rice:50g
+generate-plan d/2
+generate-list
+view-list
+```
+
+There are exactly three recipes, so each appears once per day. The generated list contains these
+three entries; their display order depends on the order of the meals:
+
+| Ingredient | Unit | Quantity for two days | Reason |
+| --- | --- | --- | --- |
+| Rice | g | 0.6 | `(0.1 + 0.2) × 2`; decimal quantities add exactly. |
+| Rice | kg | 2 | `1 × 2`; kg is kept separate from g. |
+| rice | g | 100 | `50 × 2`; lowercase `rice` is a different name from `Rice`. |
+
+Running `generate-list` again keeps these totals. It recomputes the ingredients of the current plan,
+so it does not double the previously generated shopping quantities. Use consistent ingredient names
+and units when you want entries combined. Nutrition warnings do not prevent grocery generation.
+<!-- @@author -->
 
 ## Viewing a Grocery List
 
@@ -538,8 +580,35 @@ MishMash displays `Goodbye!` and closes. In the current application, all session
 | `Error: Enter a command.` | Enter a supported command instead of a blank line. |
 | A plan or grocery list is missing | Run `generate-plan d/2` after adding at least three recipes. Run `generate-list` before `view-list`, including after replacing a plan. |
 | A generated plan still shows a nutrition shortfall | Generation accepts daily totals within +/-15% of supplied targets; `check-shortfall` reports any amount below its supplied targets. See [Checking Nutrition Shortfalls](#checking-nutrition-shortfalls). |
+| A generated plan shows an excess warning | A daily total is above an exact generation target, even if it is within the accepted 15% tolerance. See [Nutrition Target Warnings](#nutrition-target-warnings). |
+| Ingredients that look similar appear separately | `generate-list` combines exact ingredient names and units only. Check capitalization and units; see the [ingredient combining example](#ingredient-combining-example). |
 
 Invalid viewing input displays an error or a generate-first message; you can enter another command without restarting.
+
+<!-- @@author oilybikechain -->
+### Recovering from Invalid Plan or Recipe Arguments
+
+For `generate-plan`, `list-recipes`, and `delete-recipe`, invalid arguments include the relevant
+`Format:` line with the error. For example:
+
+```text
+generate-plan d/0
+```
+
+produces:
+
+```text
+Error: DAYS must be a whole number from 1 to 7.
+Format: generate-plan d/DAYS [cal/DAILY_CALORIES] [p/DAILY_PROTEIN] [c/DAILY_CARBS] [f/DAILY_FATS]
+------------------------------------------------------------
+Enter a command, or type 'help' for all commands or 'bye' to exit.
+```
+
+Correct the value and retry, for example `generate-plan d/1` after adding enough eligible recipes.
+This invalid request does not change your existing plan or grocery list. If reporting a problem,
+include the command, displayed error, and relevant diagnostic log; the application retains the
+underlying validation cause for troubleshooting.
+<!-- @@author -->
 
 <!-- TEAM: Add feature-specific troubleshooting once listing, deletion, and generation behavior is confirmed. -->
 

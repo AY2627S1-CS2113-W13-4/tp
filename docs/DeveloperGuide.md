@@ -271,6 +271,67 @@ paths against the code. Keep the abstraction notes when omitting implementation
 details, and visually inspect regenerated diagrams.
 <!-- @@author -->
 <!-- @@author oilybikechain -->
+### Contribution history: oilybikechain
+
+The following non-merge commits reachable from the current branch establish the scope of these
+contributions. Merge authorship does not imply ownership of the merged feature; the original
+meal-plan generator, plan viewer, grocery formatter, dietary repair, and shortfall command have
+separate contributors. The sections below describe the current integration with those components.
+
+| Commit | Contribution documented here |
+| --- | --- |
+| `667d642` | Ingredient quantity model and grocery aggregation by exact name and unit. |
+| `c3f6e95` | Grocery aggregation regression tests and API documentation. |
+| `6b960ad` | `generate-list` parsing, command execution, and shared grocery snapshot integration. |
+| `ba80853` | Preserved exception causes, generator assertions, and generation diagnostics. |
+| `4c82e81` | Combined daily nutrition totals through `DayPlan` and `NutritionTotals`. |
+| `f81dc10` | Daily warnings when planned nutrition exceeds exact generation targets. |
+
+Earlier implementations on other branches are not additional features: `5ff6c3f` is the earlier
+grocery integration, and `b814afb` is the pre-update nutrition-warning implementation. The current
+guide describes their integrated replacements above. Profile and README edits are not product features.
+
+### Combined daily nutrition totals
+
+`DayPlan.calculateDailyNutritionTotals()` returns one immutable `NutritionTotals` record containing
+`calories()`, `protein()`, `carbs()`, and `fats()`. Calories are measured in kcal; the macronutrients
+are measured in grams. It delegates to the existing individual total getters, giving callers a
+single result without changing the plan, recipes, or the individual-getter API.
+
+Every meal occurrence contributes its full nutrition, including repeated recipes. Each day is
+calculated independently; these are not totals across the entire plan. An empty day returns four
+zeros. All four record components use `long`, so sums of valid integer recipe values can exceed
+`Integer.MAX_VALUE` without wrapping.
+
+For example, a day containing the User Guide's Protein Oatmeal, Chicken and Rice, and Salmon Salad
+has `new NutritionTotals(1650, 127, 150, 55)`. The record represents calculated data; it does not
+apply target tolerance, validate a nutrition goal, or introduce a new console command. The existing
+plan viewer computes its display totals from `MealSummary` values separately.
+
+`DayPlanTest` covers ordinary meals, one meal, zero nutrition, an empty day, repeated recipes,
+independent days and repeated calls, unchanged meals, and totals above the integer range.
+
+### Defensive checks and generation diagnostics
+
+`GeneratePlanCommand` retains an `IllegalArgumentException` as the cause when wrapping a generation
+failure in `MishMashException`. Parser validation for `generate-plan`, `delete-recipe`, and
+`list-recipes` likewise preserves the cause while adding the relevant command usage. Users receive
+the existing recoverable error and can retry; developers can inspect the original exception through
+`getCause()` or the application's rejection log. This does not add new command syntax.
+
+`MealPlanGenerator` uses assertions to check two internal invariants: the returned number of days
+matches the request, and candidate construction starts with enough recipes. Normal argument validation
+still handles user mistakes; assertions diagnose programming errors. Tests enable assertions through
+the existing Gradle configuration. Enable them in a direct application run with
+`java -ea -jar build/libs/MishMash.jar` when investigating invariants.
+
+Generation logs at `FINE` record the requested day count, recipe count, whether targets were supplied,
+and how many candidate combinations matched. They use the existing logger configuration and do not
+record recipe contents. `ParserTest.parseCommand_invalidArguments_preservesCauseAndUsage` checks
+the cause and usage for all three parsing paths; `GeneratePlanCommandTest` verifies the original
+generation cause is retained. These changes strengthen diagnostics around teammates' commands rather
+than implementing those commands.
+
 ### Detecting exceeded nutrition targets
 
 `ActiveMealPlan` already retains the original `GeneratePlanRequest` alongside a generated plan for dietary
@@ -303,6 +364,26 @@ Run `gradlew.bat test checkstyleMain checkstyleTest` with Java 25.
 
 ### Grocery command integration
 
+#### Ingredient aggregation
+
+`GroceryItem` holds a trimmed, non-blank ingredient name and unit plus a nonnegative `BigDecimal`
+quantity. Recipe input separately requires strictly positive ingredient quantities; zero is supported
+by the grocery model and aggregation API. `toString()` uses plain decimal notation and removes
+insignificant trailing zeros, for example `Oil: 0.3ml`.
+
+`GroceryListGenerator.generate(List<GroceryItem>)` uses a `LinkedHashMap` keyed by an `ItemKey`
+record containing the ingredient name and unit. Each occurrence is merged with `BigDecimal::add`.
+Exact decimal addition avoids floating-point rounding, and insertion order preserves the first
+appearance of each key. `Rice:200g` and `Rice:100g` combine; `Rice:1kg`, `rice:100g`, and
+`Rice:1cups` remain separate. No unit conversion, spelling normalization, or portion scaling occurs.
+
+The method rejects a null list or item, returns an empty list for empty input, and publishes an
+unmodifiable result with `List.copyOf`. Inputs remain unchanged, and successive calls do not reuse
+previous totals. `GroceryListGeneratorTest` checks exact matching, incompatible units, different
+names, decimal precision, zero quantities, ordering, immutable output, repeated calls, and null inputs.
+
+#### Command parsing and shared state
+
 `Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
 
 The parser accepts `generate-list` without arguments and returns `GenerateListCommand` without reading or modifying the plan. During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator` combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and keeping incompatible units separate.
@@ -310,6 +391,19 @@ The parser accepts `generate-list` without arguments and returns `GenerateListCo
 `ActiveMealPlan.setGroceryList` copies the completed result into a read-only snapshot. `getGroceryList` returns an optional: absence means no list has been generated for the current plan, whereas a present empty list is valid. `ViewListCommand` reads this snapshot during execution and delegates formatting to `GroceryListViewer`; viewing never regenerates data.
 
 Successfully storing a replacement plan clears its old groceries. Failed plan generation or invalid command syntax leaves the previous state intact. All state is kept in memory for one session.
+
+The parse step rejects arguments with `generate-list does not accept arguments.` and
+`Format: generate-list`; it does not inspect the active plan. The command reads the latest plan
+when executed, so a command parsed before generation can use a subsequently generated plan. Without
+a plan it returns `No active meal plan. Use 'generate-plan' first.` without publishing a snapshot.
+Successful generation returns `Grocery list generated. Use 'view-list' to view it.` Only the finished
+result is stored, preserving any previous snapshot if generation fails.
+
+`GenerateListCommandTest`, `ParserGenerateListTest`, and `ActiveMealPlanTest` cover missing plans,
+execution-time plan lookup, every recipe occurrence, repeated generation, syntax rejection, copying,
+and snapshot replacement. `MishMashGeneratePlanTest` exercises the generation-to-viewing connection
+through the console. Grocery-list formatting is supplied by the existing viewer rather than this
+aggregation contribution.
 
 Grocery parsing and viewing use `FINE` logs, successful generation logs counts at `INFO`, and rejected generation requests use `WARNING`. These loggers inherit the existing application configuration; no additional handlers are installed. New diagnostics exclude ingredient names and raw input.
 
@@ -616,6 +710,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | User managing recipes | Confirm deletion of a selected recipe | Check that I am removing the intended entry |
 | Meal prep user | Generate a random meal plan | Reduce manual meal selection |
 | User tracking nutrition | Supply daily calorie and macronutrient targets | Generate meals within the supported tolerance |
+| User tracking nutrition | See daily excesses above my generation targets | Identify days that exceed an exact target despite the generation tolerance |
 | User tracking nutrition | Detect when planned meals fall short of calorie or macronutrient targets | Add or adjust meals accordingly |
 | Meal prep user | View all planned days or a selected day | Review meals and daily nutrition totals |
 | Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
@@ -767,6 +862,29 @@ Omitted nutrients and excesses are not checked. All plan, recipe, and grocery da
 unchanged. A shortfall is any amount below a target, even within generation's tolerance.
 <!-- @@author -->
 
+<!-- @@author oilybikechain -->
+#### UC10 Detect exceeded nutrition targets
+
+**Precondition:** An active plan was generated with at least one daily nutrition target.
+
+**MSS**
+
+1. The user enters `view-plan`, optionally selecting a day.
+2. MishMash calculates each displayed day's nutrition totals and compares them with the saved generation targets.
+3. For each exceeded target, MishMash displays a warning with the excess, actual total, and target below that day's totals.
+
+**Extensions**
+
+- 2a. A target is omitted, equal to the total, or above it: no warning is shown for that nutrient.
+- 2b. No generation request is retained, or the plan was generated without targets: only the normal plan display is shown.
+- 2c. No plan exists or a selected day is invalid: the existing `view-plan` messages apply.
+
+The comparison is strict and does not apply the generator's 15% tolerance. Viewing leaves the meals,
+targets, and groceries unchanged. A successful replacement uses its new targets; failed generation
+preserves the previous warnings. Dietary repair recalculates warnings using the repaired meals and
+the retained generation targets. Clearing the plan removes the warnings.
+<!-- @@author -->
+
 ### Non Functional Requirements
 
 - The application requires Java 25 and provides a command-line interface.
@@ -860,7 +978,17 @@ After generating a two-day plan:
 - Enter `view-plan d/3`. Expect a day-range error and another prompt.
 - In a fresh session with no plan, enter `view-plan`. Expect the generate-first message.
 
-<!-- @@author Rixte -->
+<!-- @@author oilybikechain -->
+### Combined Daily Nutrition Totals
+
+Using exactly the three [sample recipes](#sample-recipes), run `generate-plan d/2` and `view-plan`.
+Both days must show `Daily Totals: 1500 kcal | Protein: 80g | Carbs: 180g | Fats: 37g` regardless
+of meal order. Run `view-plan d/2`: its totals must match the second day's previous display, rather
+than adding the two days together. Repeating the command must not change the plan or totals.
+
+The combined `NutritionTotals` API's empty-day, repeated-meal, and integer-overflow cases are tested
+by `DayPlanTest`; ordinary generation always supplies three distinct recipes per day.
+
 ### Nutrition Target Warnings
 
 In a fresh session with no dietary restrictions, enter:
@@ -887,6 +1015,8 @@ Warning: Protein exceeds target by 5 g (90 g actual; 85 g target).
 and verify that a subsequent `view-plan` retains those warnings. Finally run `generate-plan d/1` and
 `view-plan`: the replacement must show one day with no warnings because no targets were supplied.
 
+<!-- @@author -->
+<!-- @@author Rixte -->
 ### Check Nutrition Shortfalls
 
 1. In a fresh session, enter `check-shortfall cal/2000` before generating a plan. Expect
@@ -937,6 +1067,27 @@ There should be five displayed entries. Their order follows the meals' first app
 - Run `generate-list` again. Expect unchanged quantities rather than doubled totals.
 - Enter `generate-list extra`. Expect rejection without changing the stored list.
 - In a fresh session without a plan, enter `generate-list`. Expect guidance to generate a plan first.
+
+<!-- @@author oilybikechain -->
+For aggregation edge cases, use the User Guide's [ingredient combining example](UserGuide.md#ingredient-combining-example)
+in a fresh session. Expect exactly `Rice: 0.6g`, `Rice: 2kg`, and `rice: 100g`, with no rounding,
+unit conversion, or case normalization. Repeat `generate-list` and check that quantities stay the same.
+Then enter `generate-list extra` and `view-list`: syntax rejection must leave those entries unchanged.
+Generate a replacement plan and confirm that groceries must be regenerated before viewing.
+
+### Defensive Diagnostics and Recovery
+
+With a plan and grocery list already generated, enter `generate-plan d/0`, `list-recipes 0`, and
+`delete-recipe 0`. Each must display its own command format, then allow another command. Verify
+with valid viewing commands that no recipes, meals, or groceries changed. Attempt
+`generate-plan d/1 cal/1` with the standard sample recipes and confirm that generation fails while
+the previous plan and grocery list remain available.
+
+Exception causes and assertion invariants are developer diagnostics, not extra console output.
+Verify cause preservation with `ParserTest` and `GeneratePlanCommandTest` under Java 25 with
+assertions enabled. Inspect `FINE` generation records only when that level is enabled in the
+existing logging configuration; absence of a `FINE` record at a higher log level is expected.
+<!-- @@author -->
 
 ### View a Grocery List
 
