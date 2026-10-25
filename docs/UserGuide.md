@@ -630,7 +630,7 @@ Total so far: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
 | `record-meal 0` | `Error: Recipe index must be at least 1.` | Recipe numbers start at 1, for example `record-meal 1`. |
 | `record-meal two`, `record-meal -1`, or `record-meal 1 2` | `Error: Recipe index must be a single positive whole number.` | Enter one whole number, for example `record-meal 2`. |
 
-Invalid input also displays `Format: record-meal INDEX`. Enter the corrected command at the next prompt; errors leave your recorded meals unchanged.
+Errors in the index also display `Format: record-meal INDEX`. The "no recipes" error and the "index too large" error display the list of all command formats instead. Enter the corrected command at the next prompt; errors leave your recorded meals unchanged.
 
 ## Viewing Recorded Meals
 
