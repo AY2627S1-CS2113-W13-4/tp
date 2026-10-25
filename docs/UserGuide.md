@@ -66,6 +66,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | --- | --- | --- |
 | [Add a recipe](#adding-a-recipe) | `add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UNIT` | Include all fields and at least one ingredient. |
 | [List recipes](#listing-recipes) | `list-recipes [INDEX]` | Omit the index to list all recipes; supply one to see its full details. |
+| [Edit a recipe](#editing-a-recipe) | `edit-recipe INDEX p/55` | Use an index from the latest recipe list and supply at least one field. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
@@ -152,6 +153,63 @@ list-recipes
 **Rules:** {Describe required values, limits, and effects on existing data.}
 
 **Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+
+## Editing a Recipe
+
+Update a saved recipe's name, nutrition, ingredients, quantities, or food tags when you change how you prepare it.
+
+**Before You Start:** Add a recipe, then use `list-recipes` to find its current index. Indexes start at 1. If names are duplicated, choose by index; use `list-recipes INDEX` to check the details.
+
+**Format:**
+
+```text
+edit-recipe INDEX [n/NAME] [cal/CALORIES] [p/PROTEIN] [c/CARBS] [f/FATS] [i/INGREDIENT:QUANTITYUNIT ...] [food/TAG[,TAG...]]
+```
+
+Supply at least one field. Omitted fields keep their current values. Fields can appear in any order, separated by spaces. Repeat only `i/`; each other prefix can appear once.
+
+**Example:** In a fresh session, enter these commands after your name:
+
+```text
+add-recipe n/Chicken Rice cal/650 p/50 c/70 f/15 i/Chicken:200g i/Rice:150g food/poultry
+edit-recipe 1 cal/700 p/55 i/Chicken:220g i/Rice:150g
+```
+
+The edit produces:
+
+```text
+Recipe updated!
+Chicken Rice
+700 kcal | Protein: 55g | Carbs: 70g | Fats: 15g
+Ingredients:
+- Chicken: 220g
+- Rice: 150g
+Food tags: poultry
+Existing meal plans and grocery lists are unchanged. Generate a new plan and grocery list to use this edit.
+```
+
+For a smaller correction, `edit-recipe 1 p/60` changes only the protein value.
+
+**Rules:**
+
+- Nutrition values are whole numbers from 0 to 2,147,483,647. Calories use kcal; protein, carbs, and fats use grams. MishMash uses the nutrition you enter and does not calculate it from ingredients.
+- If you supply any `i/` fields, they replace the **entire ingredient list**. Include every ingredient you want to keep. To remove an ingredient, omit it from the replacement list. Every ingredient needs a name, a positive whole or decimal quantity, and a unit containing letters, such as `g` or `ml`.
+- Names can contain spaces and must not be blank. `/` is reserved for prefixes.
+- `food/` replaces the complete food-category declaration. Use the supported tags listed by `help`, such as `poultry`, `milk`, `egg`, or `soy`, separated by commas. Use `food/none` when none apply. Omitted `food/` preserves the old declaration, including an unclassified declaration. When changing ingredients, supply updated tags if the applicable categories change; tags are not inferred from ingredient names.
+- Editing preserves recipe indexes and the number of recipes. Existing plans, nutrition shortfall results, and groceries continue to use the recipes chosen when the plan was generated. To use edited recipes, run `generate-plan` again, followed by `generate-list`. Running only `generate-list` still uses the existing plan.
+- Edits are held for the current session and are lost when the app closes.
+
+**Errors and recovery:** Invalid edits leave the recipe unchanged; correct the command and try again.
+
+| Input or situation | Message and recovery |
+| --- | --- |
+| No recipes have been added | `There are no recipes to edit.` Add a recipe first. |
+| `edit-recipe 1` | `Provide at least one recipe field to edit.` Add a field such as `p/55`. |
+| `edit-recipe 0 p/55` | `Recipe index must be at least 1.` Use the latest numbered recipe list. |
+| Index exceeds the recipe count | `Recipe index must be between 1 and N.` Here `N` is the number of recipes. |
+| `edit-recipe 1 p/-5` | `Protein must be a non-negative integer.` Use a whole number such as `p/55`. |
+| `edit-recipe 1 i/Rice:0g` | `Ingredient quantity must be greater than zero.` Supply a positive quantity and the complete replacement ingredient list. |
+| A prefix is blank, unknown, or repeated | The error identifies the invalid field and shows edit usage. Supply a nonblank value and use each prefix once, except repeated `i/`. |
 
 ## Deleting a Recipe
 
@@ -637,7 +695,7 @@ The current `[ ]` markers are display-only. No shopping-item marking command is 
 ### Viewing available commands: `help`
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
-`add-recipe`, `list-recipes`, `delete-recipe`, `generate-plan`, `view-plan`,
+`add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`,
 `check-shortfall`, `generate-list`, `view-list`, `help`, and `bye`.
 The `help` command takes no arguments.
 

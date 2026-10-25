@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+!include ../shortfall/style.iuml
+
+title Recipe editing: selected classes and relationships
+top to bottom direction
+skinparam nodesep 55
+skinparam ranksep 85
+hide empty members
+
+class Parser {
+  + parseCommand(input: String): Command
+  - parseEditRecipe(arguments: String): Command
+}
+interface Command {
+  + execute(recipeBook: RecipeBook): String
+}
+class EditRecipeCommand {
+  - index: int
+  + execute(recipeBook: RecipeBook): String
+}
+class RecipeChanges <<record>> {
+  - name: String [0..1]
+  - calories: Integer [0..1]
+  - protein: Integer [0..1]
+  - carbs: Integer [0..1]
+  - fats: Integer [0..1]
+  - ingredients: List<GroceryItem>
+  - foodInfo: FoodInfo [0..1]
+  + applyTo(original: Recipe): Recipe
+}
+class RecipeBook {
+  + size(): int
+  + getRecipes(): List<Recipe>
+  + replace(index: int, recipe: Recipe): void
+}
+class Recipe {
+  - name: String
+  - calories: int
+  - protein: int
+  - carbs: int
+  - fats: int
+  - ingredients: List<GroceryItem>
+  - foodInfo: FoodInfo
+  + getName(): String
+  + getIngredients(): List<GroceryItem>
+  + getFoodInfo(): FoodInfo
+}
+class RecipeViewer {
+  + view(recipe: Recipe): String
+}
+
+Parser ..> EditRecipeCommand : creates
+Parser ..> RecipeChanges : creates
+EditRecipeCommand .up.|> Command
+EditRecipeCommand --> "1" RecipeChanges : -changes
+EditRecipeCommand ..> RecipeBook : execution parameter
+EditRecipeCommand ..> RecipeViewer : creates
+RecipeChanges ..> Recipe : creates replacement
+RecipeBook --> "0..*" Recipe : -recipes\n{ordered, nonunique}
+RecipeViewer ..> Recipe : reads
+Parser -[hidden]right-> Command
+
+legend bottom
+  Only feature-relevant members are shown; constructors and most recipe getters are omitted.
+  RecipeChanges and Recipe hold immutable values and copied, read-only ingredient lists.
+  RecipeChanges: a null scalar or empty ingredient list means keep the original field.
+  Recipe: nutrition is nonnegative and ingredients contain at least one positive-quantity item.
+  Solid arrows show stored references; dashed arrows show dependencies or interface realization.
+  RecipeBook is passed to execute, not retained by EditRecipeCommand.
+  The displayed index starts at 1; RecipeBook.replace uses a zero-based index.
+endlegend
+@enduml
