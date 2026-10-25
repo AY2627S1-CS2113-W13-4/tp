@@ -1,8 +1,7 @@
 # Meal recording UML diagrams
 
-These sources document the proposed `record-meal` and `view-meals` enhancement in
+These sources document the `record-meal` and `view-meals` enhancement in
 [the Developer Guide](../../DeveloperGuide.md#recording-meals-and-tracking-nutrition).
-The feature is not implemented yet, so the diagrams show the intended design.
 
 | Source | View |
 | --- | --- |
@@ -27,5 +26,5 @@ java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/recor
 The class diagram selects the built-in Java Smetana layout engine, so no separate Graphviz
 installation is required.
 
-Once the feature is implemented, check every depicted method, message order, association,
-and guard against the code, then render again and inspect the images.
+After changing the code, check every depicted method, message order, association, and guard
+against the implementation, then render again and inspect the images.

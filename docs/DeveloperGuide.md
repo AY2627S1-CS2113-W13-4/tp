@@ -661,7 +661,8 @@ same way `ActiveMealPlan` holds the active plan.
 
 *Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
 associations with private role names; dashed arrows show dependencies or interface realization.
-`NutritionTotals` is a value record created by `MealLog`.*
+`NutritionTotals` is a value record created by `MealLog`; its values are `long` so that adding many
+recipes cannot overflow.*
 
 * `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
   a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
@@ -691,8 +692,8 @@ changed. The command is created only after validation succeeds.
 During execution the command converts the index to a zero-based position, as `DeleteRecipeCommand`
 does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
 exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
-`MealLog.record(recipe)` and `MealLog.getTotals()`, and returns the recorded meal's calories and macros
-with the running totals, so the user sees the effect immediately. Recording a meal needs no confirmation:
+`MealLog.record(recipe)` and `MealLog.getTotals()`, then asks `MealLogViewer.viewRecorded` to format the
+recorded meal's calories and macros with the running totals, so the user sees the effect immediately. Recording a meal needs no confirmation:
 it is quick to repeat, and it changes only the log.
 
 #### Viewing recorded meals and totals
@@ -713,7 +714,7 @@ required by the second user story, followed by one totals line. Viewing never ch
 The recoverable errors reuse the existing path: `Parser` or the command throws `MishMashException`,
 `MishMash.executeCommand` catches it, displays the message, and prompts for another command.
 
-| Boundary or invalid condition | Proposed behavior |
+| Boundary or invalid condition | Behavior |
 | --- | --- |
 | `record-meal` with no argument, a non-numeric, signed, zero or decimal index, or an extra token | Reject with the command format; no data is read or changed. |
 | Index larger than the number of recipes | Reject with `Recipe index must be between 1 and N.`; nothing is recorded. |
@@ -746,8 +747,8 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 Editable sources for the three figures are under
 [`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
 `docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
-regeneration commands. After the feature is implemented, check every depicted call, branch and
-message against the code, and update the sources and images together.
+regeneration commands. Check every depicted call, branch and message against the code after any change, and update the
+sources and images together.
 
 <!-- @@author -->
 

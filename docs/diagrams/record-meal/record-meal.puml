@@ -8,6 +8,7 @@ participant "parser: Parser" as Parser
 participant "cmd:\nRecordMealCommand" as Cmd
 participant "recipeBook:\nRecipeBook" as Book
 participant "mealLog: MealLog" as Log
+participant "viewer:\nMealLogViewer" as Viewer
 
 App -> Parser : parseCommand("record-meal 2")
 activate Parser
@@ -37,6 +38,10 @@ else index is valid
   Cmd -> Log : record(recipe)
   Cmd -> Log : getTotals()
   Log --> Cmd : totals: NutritionTotals
+  create Viewer
+  Cmd -> Viewer : new MealLogViewer()
+  Cmd -> Viewer : viewRecorded(recipe, totals)
+  Viewer --> Cmd : formatted text
   Cmd --> App : meal name, its calories and macros,\nand the running totals
 end
 deactivate Cmd

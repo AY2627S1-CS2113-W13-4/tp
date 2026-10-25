@@ -28,13 +28,14 @@ class MealLog {
   + getTotals(): NutritionTotals
 }
 class NutritionTotals <<record>> {
-  + calories: int
-  + protein: int
-  + carbs: int
-  + fats: int
+  + calories: long
+  + protein: long
+  + carbs: long
+  + fats: long
 }
 class MealLogViewer {
   + view(meals: List<Recipe>, totals: NutritionTotals): String
+  + viewRecorded(meal: Recipe, totals: NutritionTotals): String
 }
 class RecipeBook {
   + getRecipes(): List<Recipe>
@@ -47,6 +48,7 @@ RecordMealCommand ..|> Command
 ViewMealsCommand ..|> Command
 RecordMealCommand --> "1\n-mealLog" MealLog
 RecordMealCommand ..> RecipeBook : reads
+RecordMealCommand ..> MealLogViewer : formats with
 ViewMealsCommand --> "1\n-mealLog" MealLog
 ViewMealsCommand ..> MealLogViewer : formats with
 MealLog ..> NutritionTotals : creates
@@ -54,6 +56,6 @@ MealLog --> "0..*\n-meals" Recipe
 RecipeBook --> "0..*\n-recipes" Recipe
 
 legend bottom
-  Proposed design. Only members relevant to this enhancement are shown.
+  Only members relevant to this enhancement are shown.
 endlegend
 @enduml
