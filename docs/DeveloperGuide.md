@@ -87,17 +87,59 @@ This feature implements the story: **As a returning user, I want to update an ex
 
 The index is one-based, matching `list-recipes` and `delete-recipe`. Duplicate names do not affect selection. Editing neither inserts nor removes entries. No persistent storage or undo history is introduced.
 
-#### Responsibilities and execution sequence
+#### Class responsibilities and relationships
 
-`Parser.parseEditRecipe` splits the index from the prefixed fields. It reuses `collectRecipeArguments`, `parseNutrition`, and `parseIngredient` rather than duplicating recipe syntax rules. Single-value prefixes cannot repeat; ingredients may repeat. Unknown prefixes, blank values, invalid numbers, zero ingredient quantities, and malformed indexes fail before a command is created. Parsing wraps validation errors in `MishMashException` with edit-specific usage and the original cause.
+The class diagram shows how parsing, edit data, execution, storage, and formatting fit together.
+`Parser` creates `RecipeChanges` and `EditRecipeCommand`. The command retains the requested changes
+and a displayed index; the recipe book is supplied only when `execute` runs.
+
+![Selected classes and relationships for recipe editing.](images/edit-recipe/classes.svg)
+
+*Only feature-relevant members are shown. Solid arrows identify stored references; dashed arrows
+show dependencies or interface realization. The book's recipe list is ordered and permits repeated
+references. It does not exclusively own recipe objects: existing meal plans can retain the same objects.*
 
 `RecipeChanges` is an immutable record containing only the requested changes. Nullable scalar fields mean unchanged; an empty ingredient list means unchanged. Its constructor rejects an empty edit, blank names, negative nutrition, and invalid ingredient quantities, and defensively copies ingredients. Nullable nutrition distinguishes an omitted value from a requested zero.
 
+#### Successful command parsing
+
+`Parser.parseEditRecipe` splits the index from the prefixed fields. It reuses `collectRecipeArguments`, `parseNutrition`, and `parseIngredient` rather than duplicating recipe syntax rules. Single-value prefixes cannot repeat; ingredients may repeat. Unknown prefixes, blank values, invalid numbers, zero ingredient quantities, and malformed indexes fail before a command is created. Parsing wraps validation errors in `MishMashException` with edit-specific usage and the original cause.
+
+The parsing sequence uses `edit-recipe 2 p/55 i/Chicken:220g i/Rice:150g`. Ingredient fields
+become a local replacement list, protein becomes 55, and omitted scalar fields remain null.
+Only after validation succeeds are the immutable changes and command constructed. The parser
+does not look up recipe 2; the recipe book may change before the command executes.
+
+![Successful parsing and construction of a recipe edit.](images/edit-recipe/parsing.svg)
+
+*Map/list creation, ingredient construction, and repeated validation calls are condensed. The diagram
+shows nutrition parsing separately from collecting the prefixed values. Omitted food information
+is preserved later; it is not inferred or reset during parsing.*
+
+#### Execution and replacement
+
 `EditRecipeCommand` retains the displayed index and changes. It resolves the recipe from the book during execution, so omitted fields come from the current recipe rather than a stale parsing-time copy. It checks the book and index before calling `RecipeChanges.applyTo(original)`. That method builds a new `Recipe` through its existing constructor. The command formats confirmation with `RecipeViewer` before calling `RecipeBook.replace(index - 1, edited)`, so validation or formatting failure cannot leave a partially applied edit. `replace` validates both index and replacement before updating one list element.
 
-![Sequence for a successful partial recipe edit.](images/edit-recipe/execution.svg)
+![Execution, position checks, and replacement of a recipe.](images/edit-recipe/execution.svg)
 
-*The diagram condenses constructor validation, index checks, and recipe getters. Failures before replacement leave the recipe book unchanged.*
+*Execution is shown for index 1 and `p/55`, after successful parsing. Most getter calls, repeated
+size checks, logging, and formatting details are condensed. Empty books and out-of-range indexes
+raise `MishMashException` before replacement. The current index is resolved at execution time,
+including any renumbering caused by earlier deletions.*
+
+#### Invalid input and recovery
+
+For `edit-recipe 1 n/Changed p/-5`, collecting the local fields succeeds, but `parseNutrition`
+rejects the negative protein value. `parseEditRecipe` wraps the `IllegalArgumentException` in
+`MishMashException`, retaining its cause and attaching edit-specific usage. `MishMash` displays
+the error and then prompts for another command.
+
+![Validation failure and recovery without applying a partial edit.](images/edit-recipe/invalid-input.svg)
+
+*Dispatch and the omitted calorie field are condensed. No changes record, command, or replacement
+recipe is created for this input, so even the otherwise valid `n/Changed` field is never applied.
+The recipe book, active meals, and groceries remain unchanged. A later valid command follows
+the normal parsing and execution paths.*
 
 #### Snapshots and dietary information
 
@@ -117,7 +159,10 @@ Complete ingredient-list replacement provides addition, quantity changes, and re
 
 For manual verification, run the User Guide's [editing example](UserGuide.md#editing-a-recipe), inspect `list-recipes 1`, and try `edit-recipe 1 p/-5`. The failed command must preserve the last valid recipe. With three recipes, generate meals and groceries, edit one recipe, and verify that viewing still shows the original plan. Generate the plan and groceries again to see the edited recipe.
 
-The sequence diagram source and rendering instructions are in [`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md).
+The class diagram and three sequence diagrams have editable sources and rendering instructions in
+[`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md). When updating the implementation,
+check method names, object creation, message order, exception paths, and relationship multiplicities
+against the code, then regenerate and visually inspect all four SVGs.
 
 <!-- @@author peilingggg -->
 ### Adding a recipe

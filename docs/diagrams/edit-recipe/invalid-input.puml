@@ -1,0 +1,48 @@
+@startuml
+!include ../shortfall/style.iuml
+
+title Invalid input: edit-recipe 1 n/Changed p/-5
+autonumber
+
+actor User
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+
+User -> App : edit-recipe 1 n/Changed p/-5
+App -> Parser : parseCommand(input)
+activate Parser
+note right of Parser : Dispatch to parseEditRecipe(arguments).
+Parser -> Parser : parseRecipeIndex("1")
+Parser --> Parser : 1
+Parser -> Parser : collectRecipeArguments(prefixedFields, fields, ingredients)
+note right of Parser
+  Store n/Changed and p/-5 only in local fields.
+  The original recipe has not been read or changed.
+end note
+Parser -> Parser : parseOptionalNutrition(fields, "p", "Protein")
+activate Parser
+Parser -> Parser : parseNutrition("-5", "Protein")
+Parser --> Parser : throws IllegalArgumentException
+deactivate Parser
+note right of Parser
+  parseEditRecipe catches the error and wraps it in
+  MishMashException, retaining the cause and edit usage.
+  The omitted calorie field is condensed here.
+end note
+Parser --> App : throws MishMashException
+deactivate Parser
+App -> App : displayError(exception)
+App --> User : Error: Protein must be a non-negative integer.\nFollowed by edit-recipe usage.
+note over App : executeCommand returns to the command-reading loop.
+App -> App : displayCommandPrompt()
+App --> User : Divider and next command prompt
+User -> App : edit-recipe 1 p/55
+ref over App, Parser
+  The next command follows the normal successful parsing flow.
+end ref
+
+note over App, Parser
+  No RecipeChanges, EditRecipeCommand, or replacement Recipe is created for the rejected input.
+  The valid n/Changed field is not applied. Recipes, plans, and groceries remain unchanged.
+end note
+@enduml
