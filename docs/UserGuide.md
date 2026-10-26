@@ -2,9 +2,9 @@
 
 MishMash is a command-line meal prep planner. Add your recipes, use them to plan meals, and check the ingredients you need to buy.
 
-**Start Here:** [Set up and launch](#quick-start) · [Find a command](#commands-at-a-glance) · [View meals](#viewing-a-meal-plan) · [Check nutrition](#checking-nutrition-shortfalls) · [View groceries](#viewing-a-grocery-list) · [Fix a problem](#troubleshooting)
+**Start Here:** [Set up and launch](#quick-start) · [Find a command](#commands-at-a-glance) · [View meals](#viewing-a-meal-plan) · [Check nutrition](#checking-nutrition-shortfalls) · [View groceries](#viewing-a-grocery-list) · [Record meals](#recording-a-meal) · [Fix a problem](#troubleshooting)
 
-This guide covers the current team version, including meal-plan viewing, grocery-list viewing, and nutrition shortfall checking.
+This guide covers the current team version, including meal-plan viewing, grocery-list viewing, nutrition shortfall checking, and meal recording.
 
 ## Quick Start
 
@@ -56,7 +56,7 @@ MishMash confirms the addition and shows the recipe's nutrition and ingredients.
 bye
 ```
 
-> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, and grocery list. There is no save or load command.
+> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, grocery list, and recorded meals. There is no save or load command.
 
 ## Commands at a Glance
 
@@ -74,6 +74,8 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |
+| [Record a meal I ate](#recording-a-meal) | `record-meal INDEX` | Add at least one recipe; use an index from the latest recipe list. |
+| [View recorded meals](#viewing-recorded-meals) | `view-meals` | Record at least one meal to see nutrition totals. |
 | [Show command help](#viewing-available-commands-help) | `help` | No prerequisites. |
 | [Exit](#exiting-mishmash) | `bye` | Session data will be cleared. |
 
@@ -89,6 +91,12 @@ Use this sequence to generate meals and their groceries:
 6. **Check your shopping list** with `view-list`.
 
 After generating a replacement plan, generate the grocery list again so the ingredients match the meals you intend to prepare.
+
+To track what you actually eat, use this separate sequence at any time after adding recipes:
+
+1. **Find the recipe** you ate with `list-recipes` and note its number.
+2. **Record the meal** with `record-meal 1`, replacing `1` with that number.
+3. **Review your intake** with `view-meals`, which shows each recorded meal's nutrition and the totals.
 
 ## Reading Command Formats
 
@@ -616,6 +624,123 @@ Total items to purchase: 0
 
 This differs from having no generated list at all, which displays the generate-first message.
 
+## Recording a Meal
+
+Records a recipe as a meal you have eaten, so you can keep track of your actual food intake. Each time you record a meal, MishMash shows its calories and macronutrients, how its energy divides between protein, carbohydrates, and fats, and the totals of everything you have recorded so far. Recording a meal does not change your recipes, meal plan, or grocery list.
+
+**Before You Start:** Add at least one recipe, then use `list-recipes` to see each recipe's number.
+
+**Format:**
+
+```text
+record-meal INDEX
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `INDEX` | The number of the recipe you ate, as shown by `list-recipes`. The first recipe is number 1. |
+
+**Example:**
+
+In a fresh session, after entering your name, enter these commands one line at a time:
+
+```text
+add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/White Rice:150g i/Olive Oil:10ml
+add-recipe n/Protein Oatmeal cal/450 p/35 c/60 f/8 i/Rolled Oats:50g i/Whey Protein:30g
+record-meal 1
+record-meal 2
+```
+
+**Example Output:**
+
+After `record-meal 1`:
+
+```text
+Meal recorded!
+Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)
+    Macro split: P 32% | C 46% | F 22%
+Total so far: 650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
+```
+
+After `record-meal 2`:
+
+```text
+Meal recorded!
+Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)
+    Macro split: P 31% | C 53% | F 16%
+Total so far: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
+```
+
+**Rules:**
+
+- Supply exactly **one** index, written as a positive whole number such as `2`. Signs, decimals, and extra words are rejected.
+- The index must match a recipe in your current recipe list. If you delete a recipe, the numbers of the recipes after it change, so check `list-recipes` again.
+- The meal is recorded with the recipe's calories and macronutrients as stored when you record it. Deleting or editing that recipe later (for example with `edit-recipe`) does not change a meal you have already recorded.
+- The `Macro split` line shows what share of the meal's macronutrient energy comes from protein (P), carbohydrates (C), and fats (F). MishMash estimates it from the grams you entered, using 4 kcal per gram of protein and carbohydrates and 9 kcal per gram of fat, so it can differ from the share of the calories you entered. The three whole-number percentages add up to 100. A meal with no protein, carbohydrates, or fats shows `Macro split: n/a`.
+- You can record the same recipe more than once. Each entry counts separately toward the totals.
+- Recorded meals are kept only for the current session. They are separate from the meals in a generated plan.
+- MishMash does not ask for confirmation. There is currently no command to remove a recorded meal.
+
+**Errors and Recovery:**
+
+| Situation or Input | Response | What to Do |
+| --- | --- | --- |
+| No recipes have been added | `Error: There are no recipes to record. Use 'add-recipe' to add one.` | Add a recipe, then enter `record-meal 1`. |
+| `record-meal` | `Error: Recipe index is required.` | Add an index, for example `record-meal 1`. |
+| `record-meal 5` with only three recipes | `Error: Recipe index must be between 1 and 3.` | Enter `list-recipes` to check the numbers, then use one within that range. |
+| `record-meal 0` | `Error: Recipe index must be at least 1.` | Recipe numbers start at 1, for example `record-meal 1`. |
+| `record-meal two`, `record-meal -1`, or `record-meal 1 2` | `Error: Recipe index must be a single positive whole number.` | Enter one whole number, for example `record-meal 2`. |
+
+Errors in the index also display `Format: record-meal INDEX`. The "no recipes" error and the "index too large" error display the list of all command formats instead. Enter the corrected command at the next prompt; errors leave your recorded meals unchanged.
+
+## Viewing Recorded Meals
+
+Displays every meal you have recorded, with the calories, macronutrients, and macro split of each meal, followed by the totals for all recorded meals. Viewing does not record or change anything.
+
+**Before You Start:** Record at least one meal using `record-meal INDEX`.
+
+**Format:**
+
+```text
+view-meals
+```
+
+**Example:**
+
+After the two `record-meal` commands in [Recording a Meal](#recording-a-meal), enter:
+
+```text
+view-meals
+```
+
+**Example Output:**
+
+```text
+================ Recorded Meals ================
+Meal 1: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)
+    Macro split: P 32% | C 46% | F 22%
+Meal 2: Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)
+    Macro split: P 31% | C 53% | F 16%
+------------------------------------------------
+Total: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
+================================================
+```
+
+**Rules:**
+
+- `view-meals` takes **no arguments**.
+- Meals appear in the order you recorded them, and are numbered from 1.
+- Each meal's line gives its calories (kcal) and its protein (P), carbohydrates (C), and fats (F) in grams. The indented `Macro split` line below it shows how that meal's energy divides between protein, carbohydrates, and fats, as explained in [Recording a Meal](#recording-a-meal).
+- The total line adds up all recorded meals. It is not a daily total: MishMash does not record dates, so everything you record in the session is counted together.
+- These meals are what you recorded as eaten. They are not the meals in your meal plan, and `check-shortfall` does not use them.
+
+**Errors and Recovery:**
+
+| Situation or Input | Response | What to Do |
+| --- | --- | --- |
+| No meals recorded yet | `No meals recorded yet.` | Enter `record-meal 1` (or another recipe number), then try `view-meals` again. |
+| Extra arguments, such as `view-meals 1` | `Error: view-meals does not accept arguments.` followed by `Format: view-meals`. | Enter `view-meals` on its own. |
+
 ## Exiting MishMash
 
 Enter:
@@ -640,6 +765,9 @@ MishMash displays `Goodbye!` and closes. In the current application, all session
 | A generated plan still shows a nutrition shortfall | Generation accepts daily totals within +/-15% of supplied targets; `check-shortfall` reports any amount below its supplied targets. See [Checking Nutrition Shortfalls](#checking-nutrition-shortfalls). |
 | A generated plan shows an excess warning | A daily total is above an exact generation target, even if it is within the accepted 15% tolerance. See [Nutrition Target Warnings](#nutrition-target-warnings). |
 | Ingredients that look similar appear separately | `generate-list` combines exact ingredient names and units only. Check capitalization and units; see the [ingredient combining example](#ingredient-combining-example). |
+| `record-meal` reports an index error | Run `list-recipes` and use a number shown there. Numbers change after `delete-recipe`. See [Recording a Meal](#recording-a-meal). |
+| `view-meals` shows `No meals recorded yet.` | Record a meal first with `record-meal INDEX`. Meals in a generated plan are not recorded automatically. |
+| A meal shows `Macro split: n/a` | The recipe has 0g of protein, carbohydrates, and fats, so there is nothing to divide. Check its values with `list-recipes`. |
 
 Invalid viewing input displays an error or a generate-first message; you can enter another command without restarting.
 
@@ -688,6 +816,14 @@ No. `view-plan` and `view-list` display existing data. Use the corresponding gen
 
 The current `[ ]` markers are display-only. No shopping-item marking command is available.
 
+**What is the difference between my meal plan and my recorded meals?**
+
+The meal plan, created by `generate-plan`, is what you intend to eat. Recorded meals, created by `record-meal`, are what you have actually eaten. They are separate: recording a meal does not change the plan, and `view-meals` does not show planned meals.
+
+**Can I remove a meal I recorded by mistake?**
+
+Not yet. There is currently no command to remove or edit a recorded meal. Restarting MishMash clears all recorded meals.
+
 <!-- TEAM: Confirm the release download link, actual JAR filename, feature availability, sample workflow, and storage behavior before publishing. Remove unfinished fields and owner comments from the release guide. -->
 
 
@@ -696,7 +832,7 @@ The current `[ ]` markers are display-only. No shopping-item marking command is 
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`,
-`check-shortfall`, `generate-list`, `view-list`, `help`, and `bye`.
+`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
 A divider and an input prompt appear when the command session starts and after every
