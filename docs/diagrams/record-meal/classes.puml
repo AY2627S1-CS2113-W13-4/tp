@@ -1,0 +1,61 @@
+@startuml
+!pragma layout smetana
+!include style.iuml
+title Meal recording: selected class relationships
+top to bottom direction
+skinparam nodesep 50
+skinparam ranksep 75
+hide empty members
+
+class Parser {
+  - mealLog: MealLog
+  + parseCommand(input: String): Command
+  - parseRecordMeal(arguments: String): Command
+  - parseViewMeals(arguments: String): Command
+}
+interface Command {
+  + execute(recipeBook: RecipeBook): String
+}
+class RecordMealCommand {
+  + execute(recipeBook: RecipeBook): String
+}
+class ViewMealsCommand {
+  + execute(recipeBook: RecipeBook): String
+}
+class MealLog {
+  + record(recipe: Recipe): void
+  + getMeals(): List<Recipe>
+  + getTotals(): NutritionTotals
+}
+class NutritionTotals <<record>> {
+  + calories: long
+  + protein: long
+  + carbs: long
+  + fats: long
+}
+class MealLogViewer {
+  + view(meals: List<Recipe>, totals: NutritionTotals): String
+  + viewRecorded(meal: Recipe, totals: NutritionTotals): String
+}
+class RecipeBook {
+  + getRecipes(): List<Recipe>
+}
+class Recipe
+
+Parser ..> RecordMealCommand : creates
+Parser ..> ViewMealsCommand : creates
+RecordMealCommand ..|> Command
+ViewMealsCommand ..|> Command
+RecordMealCommand --> "1\n-mealLog" MealLog
+RecordMealCommand ..> RecipeBook : reads
+RecordMealCommand ..> MealLogViewer : formats with
+ViewMealsCommand --> "1\n-mealLog" MealLog
+ViewMealsCommand ..> MealLogViewer : formats with
+MealLog ..> NutritionTotals : creates
+MealLog --> "0..*\n-meals" Recipe
+RecipeBook --> "0..*\n-recipes" Recipe
+
+legend bottom
+  Only members relevant to this enhancement are shown.
+endlegend
+@enduml
