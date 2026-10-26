@@ -1,0 +1,49 @@
+@startuml
+!include ../shortfall/style.iuml
+title Parsing and executing list-recipes 2
+autonumber
+
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+participant "list: ListRecipeCommand" as List
+participant "book: RecipeBook" as Book
+participant "viewer: RecipeViewer" as Viewer
+
+App -> Parser : parseCommand("list-recipes 2")
+activate Parser
+note right of Parser : Dispatch to parseListRecipe is condensed.
+Parser -> Parser : parseRecipeIndex("2")
+note right of Parser
+  Accepts digits only, within the int range, and at least 1.
+  Anything else throws IllegalArgumentException, which
+  parseListRecipe wraps in a MishMashException that ends
+  with the list-recipes format.
+end note
+create List
+Parser -> List : new ListRecipeCommand(2)
+Parser --> App : list
+deactivate Parser
+
+note over App, List : confirmationPrompt(book) returns an empty Optional, so no question is asked.
+App -> List : execute(book)
+activate List
+List -> Book : getRecipes()
+Book --> List : recipes (read-only copy)
+alt recipes is empty, or index exceeds recipes.size()
+  List --> App : throws MishMashException
+  note over App, List : The caller displays the error followed by all command formats.
+else index is valid
+  create Viewer
+  List -> Viewer : new RecipeViewer()
+  List -> Viewer : view(recipes.get(index - 1))
+  Viewer --> List : name, nutrition, ingredients, food tags
+  List --> App : details of recipe 2
+end
+deactivate List
+
+note over App, Viewer
+  Without an index, parseListRecipe creates ListRecipeCommand() and execute builds the
+  numbered list itself ("Recipes:" plus one line per recipe, or "No recipes yet...").
+  No viewer is used and an empty book is not an error. Neither path changes the book.
+end note
+@enduml

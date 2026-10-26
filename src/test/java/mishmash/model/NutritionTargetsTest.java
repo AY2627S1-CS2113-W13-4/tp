@@ -18,6 +18,40 @@ class NutritionTargetsTest {
     private static final DayPlan DAY = new DayPlan(List.of(TestRecipes.recipe("Meal", 1000, 100, 100, 100)));
 
     @Test
+    void calculateExcesses_belowEqualAndAboveTargets_comparesEachNutrientExactly() {
+        NutritionTargets targets = new NutritionTargets(100, 100, 100, 100);
+        assertEquals(new NutritionTotals(0, 0, 0, 0),
+                targets.calculateExcesses(new NutritionTotals(99, 99, 99, 99)));
+        assertEquals(new NutritionTotals(0, 0, 0, 0),
+                targets.calculateExcesses(new NutritionTotals(100, 100, 100, 100)));
+        assertEquals(new NutritionTotals(1, 2, 3, 4),
+                targets.calculateExcesses(new NutritionTotals(101, 102, 103, 104)));
+    }
+
+    @Test
+    void calculateExcesses_partialAndUnsetTargets_ignoresOmittedNutrients() {
+        NutritionTotals totals = new NutritionTotals(110, 120, 130, 140);
+        assertEquals(new NutritionTotals(0, 20, 0, 40),
+                new NutritionTargets(null, 100, null, 100).calculateExcesses(totals));
+        assertEquals(new NutritionTotals(0, 0, 0, 0), NutritionTargets.none().calculateExcesses(totals));
+    }
+
+    @Test
+    void calculateExcesses_largeTotals_preservesLongValues() {
+        long total = 3L * Integer.MAX_VALUE;
+        long excess = total - Integer.MAX_VALUE;
+        NutritionTargets targets = new NutritionTargets(Integer.MAX_VALUE, Integer.MAX_VALUE,
+                Integer.MAX_VALUE, Integer.MAX_VALUE);
+        assertEquals(new NutritionTotals(excess, excess, excess, excess),
+                targets.calculateExcesses(new NutritionTotals(total, total, total, total)));
+    }
+
+    @Test
+    void calculateExcesses_nullTotals_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> NutritionTargets.none().calculateExcesses(null));
+    }
+
+    @Test
     void none_hasNoTargets() {
         assertFalse(NutritionTargets.none().hasAnyTarget());
     }

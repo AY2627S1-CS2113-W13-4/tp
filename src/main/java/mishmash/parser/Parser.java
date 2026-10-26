@@ -17,6 +17,7 @@ import mishmash.command.AddRecipeCommand;
 import mishmash.command.CheckShortfallCommand;
 import mishmash.command.Command;
 import mishmash.command.DeleteRecipeCommand;
+import mishmash.command.EditRecipeCommand;
 import mishmash.command.GenerateListCommand;
 import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
@@ -35,6 +36,7 @@ import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
+import mishmash.model.RecipeChanges;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
 /**
@@ -62,6 +64,16 @@ public class Parser {
      */
     public static final String DELETE_RECIPE_USAGE = "Format: delete-recipe INDEX";
 
+    /** Describes partial recipe edits and complete ingredient-list replacement. */
+    public static final String EDIT_RECIPE_USAGE =
+            "Format: edit-recipe INDEX [n/DISHNAME] [cal/CALORIES] [p/PROTEIN] [c/CARBS] [f/FATS]"
+                    + " [i/INGREDIENT:QUANTITYUNIT ...] [food/TAG[,TAG...]]"
+                    + System.lineSeparator()
+                    + "Supply at least one field. Omitted fields are unchanged."
+                    + " Each i/ supplies one item in the entire replacement ingredient list."
+                    + System.lineSeparator()
+                    + "Example: edit-recipe 1 p/55 i/Chicken:220g i/Rice:150g";
+
     /**
      * Describes how to list all recipes or show one in full.
      */
@@ -81,7 +93,7 @@ public class Parser {
      * Lists supported syntax for empty or unknown input.
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
-            ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
+            ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
             DietaryPreferencesParser.USAGE, "Format: view-diet",
             "Format: help", "Format: bye");
@@ -115,6 +127,9 @@ public class Parser {
      * Supplies the active plan at command execution, so view-plan always shows the latest generated plan.
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
+
+    /** Supplies targets corresponding to the meals returned by the viewing source. */
+    private final Supplier<NutritionTargets> targetsSource;
 
     /**
      * Supplies the generated list without making viewing responsible for generation or storage.
@@ -166,7 +181,8 @@ public class Parser {
      */
     public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
-        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource);
+        this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource,
+                NutritionTargets::none);
     }
 
     /**
@@ -183,7 +199,8 @@ public class Parser {
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
         this(mealPlanGenerator, activeMealPlan,
                 () -> activeMealPlan.get().map(MealPlan::toMealSummaries).orElse(List.of()),
-                groceryListSource);
+                groceryListSource,
+                () -> activeMealPlan.getRequest().map(GeneratePlanRequest::targets).orElseGet(NutritionTargets::none));
     }
 
     /**
@@ -193,15 +210,17 @@ public class Parser {
      * @param activeMealPlan The destination for newly generated plans and groceries.
      * @param mealPlanSource The source read by meal-plan viewing commands.
      * @param groceryListSource The source of generated groceries, if available.
+     * @param targetsSource The daily targets associated with the displayed meals.
      * @throws NullPointerException If any dependency is null.
      */
     private Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan,
             Supplier<List<List<MealSummary>>> mealPlanSource,
-            Supplier<Optional<List<GroceryItem>>> groceryListSource) {
+            Supplier<Optional<List<GroceryItem>>> groceryListSource, Supplier<NutritionTargets> targetsSource) {
         this.mealPlanGenerator = Objects.requireNonNull(mealPlanGenerator, "mealPlanGenerator");
         this.activeMealPlan = Objects.requireNonNull(activeMealPlan, "activeMealPlan");
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
         this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
+        this.targetsSource = Objects.requireNonNull(targetsSource, "targetsSource");
     }
 
     /**
@@ -266,6 +285,9 @@ public class Parser {
         if (commandWord.equals(COMMAND_DELETE_RECIPE)) {
             return parseDeleteRecipe(arguments);
         }
+        if (commandWord.equals("edit-recipe")) {
+            return parseEditRecipe(arguments);
+        }
         if (commandWord.equals(COMMAND_ADD_RECIPE)) {
             return parseAddRecipeCommand(arguments);
         }
@@ -317,6 +339,40 @@ public class Parser {
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
         }
+    }
+
+    /**
+     * Parses only supplied edits using the same field and ingredient validation as recipe addition.
+     *
+     * @param arguments The index followed by one or more prefixed fields.
+     * @return An edit that leaves recipe lookup until execution.
+     * @throws MishMashException If the index or any supplied field is invalid.
+     */
+    private Command parseEditRecipe(String arguments) throws MishMashException {
+        try {
+            String[] parts = arguments.trim().split("\\s+", 2);
+            int index = parseRecipeIndex(parts[0]);
+            if (parts.length < 2) {
+                throw new IllegalArgumentException("Provide at least one recipe field to edit.");
+            }
+            Map<String, String> fields = new HashMap<>();
+            List<GroceryItem> ingredients = new ArrayList<>();
+            collectRecipeArguments(parts[1], fields, ingredients);
+            RecipeChanges changes = new RecipeChanges(fields.get("n"),
+                    parseOptionalNutrition(fields, "cal", "Calories"),
+                    parseOptionalNutrition(fields, "p", "Protein"),
+                    parseOptionalNutrition(fields, "c", "Carbs"),
+                    parseOptionalNutrition(fields, "f", "Fats"), ingredients,
+                    fields.containsKey("food") ? FoodInfo.parseField(fields.get("food")) : null);
+            return new EditRecipeCommand(index, changes);
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage() + System.lineSeparator() + EDIT_RECIPE_USAGE, e);
+        }
+    }
+
+    /** Returns validated nutrition when supplied, or null to preserve the current recipe value. */
+    private Integer parseOptionalNutrition(Map<String, String> fields, String prefix, String fieldName) {
+        return fields.containsKey(prefix) ? parseNutrition(fields.get(prefix), fieldName) : null;
     }
 
     //@@author peilingggg
@@ -472,7 +528,7 @@ public class Parser {
     private Command parseViewPlan(String arguments) throws MishMashException {
         if (arguments.isBlank()) {
             LOGGER.fine("Parsed view-plan for all days");
-            return new ViewPlanCommand(mealPlanSource);
+            return new ViewPlanCommand(mealPlanSource, targetsSource, null);
         }
         Matcher matcher = DAY_PATTERN.matcher(arguments.trim());
         if (!matcher.matches()) {
@@ -481,7 +537,7 @@ public class Parser {
         }
         try {
             int dayNumber = Integer.parseInt(matcher.group(1));
-            ViewPlanCommand command = new ViewPlanCommand(mealPlanSource, dayNumber);
+            ViewPlanCommand command = new ViewPlanCommand(mealPlanSource, targetsSource, dayNumber);
             LOGGER.fine(() -> "Parsed view-plan for day " + dayNumber);
             return command;
         } catch (IllegalArgumentException e) {

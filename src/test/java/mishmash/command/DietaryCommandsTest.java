@@ -67,6 +67,29 @@ class DietaryCommandsTest {
     }
 
     @Test
+    void viewPlan_dietaryRepair_recalculatesWarningsUsingOriginalTargets() throws MishMashException {
+        List<Recipe> suitable = addSuitableRecipes();
+        Recipe milk = createRecipe("Milk", 650, "milk");
+        MealPlan plan = new MealPlan(List.of(new DayPlan(List.of(suitable.get(0), suitable.get(1), milk))));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, new NutritionTargets(1700, null, null, null));
+        active.setGenerated(plan, request, Optional.empty());
+        Command view = parser.parseCommand("view-plan");
+        assertTrue(view.execute(book).contains("Warning: Calories exceed target by 150 kcal"
+                + " (1850 kcal actual; 1700 kcal target)."));
+
+        assertTrue(execute("set-diet diet/vegan").contains("Conflicting days were replaced."));
+
+        String display = view.execute(book);
+        assertTrue(display.contains("Warning: Calories exceed target by 100 kcal"
+                + " (1800 kcal actual; 1700 kcal target)."), display);
+        assertFalse(display.contains("1850"), display);
+        assertEquals(request, active.getRequest().orElseThrow());
+
+        assertTrue(execute("set-diet avoid/soy").contains("have been cleared"));
+        assertEquals("No active meal plan. Use 'generate-plan' first.", view.execute(book));
+    }
+
+    @Test
     void setDiet_beforeGeneration_filtersFuturePlans() throws MishMashException {
         addSuitableRecipes();
         book.add(createRecipe("Milk", 600, "milk"));

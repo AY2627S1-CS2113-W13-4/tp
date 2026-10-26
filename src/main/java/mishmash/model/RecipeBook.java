@@ -30,6 +30,19 @@ public class RecipeBook {
     }
 
     /**
+     * Replaces one recipe without changing the book's size, order, or earlier snapshots.
+     *
+     * @param index The zero-based position to replace.
+     * @param recipe The validated replacement recipe.
+     * @throws IndexOutOfBoundsException If the position does not exist.
+     * @throws NullPointerException If the replacement recipe is null.
+     */
+    public void replace(int index, Recipe recipe) {
+        Objects.checkIndex(index, recipes.size());
+        recipes.set(index, Objects.requireNonNull(recipe, "recipe"));
+    }
+
+    /**
      * Returns how many recipes are stored.
      */
     public int size() {

@@ -1,6 +1,7 @@
 package mishmash.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +34,57 @@ class ParserGeneratePlanTest {
         recipeBook.add(TestRecipes.recipe("B", 600, 30, 60, 15));
         recipeBook.add(TestRecipes.recipe("C", 700, 40, 70, 20));
         return recipeBook;
+    }
+
+    @Test
+    void viewPlan_targetsWithinTolerance_warnsAndReadsReplacementTargets() throws MishMashException {
+        RecipeBook recipes = threeRecipes();
+        Command view = parser.parseCommand("view-plan");
+        Command viewDay = parser.parseCommand("view-plan d/1");
+        parser.parseCommand("generate-plan d/1 cal/1700 p/85 c/180 f/45").execute(recipes);
+
+        String display = view.execute(recipes);
+        assertTrue(display.contains("Warning: Calories exceed target by 100 kcal"
+                + " (1800 kcal actual; 1700 kcal target)."), display);
+        assertTrue(display.contains("Warning: Protein exceeds target by 5 g (90 g actual; 85 g target)."), display);
+        assertFalse(display.contains("Warning: Carbs"), display);
+        assertFalse(display.contains("Warning: Fats"), display);
+        assertEquals(display, viewDay.execute(recipes));
+
+        // Failed generation preserves both meals and targets for previously parsed commands.
+        assertThrows(MishMashException.class,
+                () -> parser.parseCommand("generate-plan d/1 cal/1").execute(recipes));
+        assertEquals(display, view.execute(recipes));
+
+        parser.parseCommand("generate-plan d/1 cal/1800").execute(recipes);
+        assertFalse(view.execute(recipes).contains("Warning:"));
+        parser.parseCommand("generate-plan d/1 cal/1700").execute(recipes);
+        assertTrue(view.execute(recipes).contains("Warning:"));
+        parser.parseCommand("generate-plan d/1").execute(recipes);
+        assertFalse(view.execute(recipes).contains("Warning:"));
+    }
+
+    @Test
+    void viewPlan_legacyPlanWithoutRequest_doesNotReusePreviousTargets() throws MishMashException {
+        RecipeBook recipes = threeRecipes();
+        Command view = parser.parseCommand("view-plan");
+        parser.parseCommand("generate-plan d/1 cal/1700").execute(recipes);
+        assertTrue(view.execute(recipes).contains("Warning:"));
+
+        activePlan.set(activePlan.get().orElseThrow());
+
+        assertFalse(view.execute(recipes).contains("Warning:"));
+    }
+
+    @Test
+    void checkShortfall_explicitTargets_doesNotChangeViewWarnings() throws MishMashException {
+        RecipeBook recipes = threeRecipes();
+        parser.parseCommand("generate-plan d/1 cal/1700").execute(recipes);
+        String before = parser.parseCommand("view-plan").execute(recipes);
+
+        parser.parseCommand("check-shortfall cal/1900").execute(recipes);
+
+        assertEquals(before, parser.parseCommand("view-plan").execute(recipes));
     }
 
     @Test

@@ -143,5 +143,25 @@ class RecipeBookTest {
         return new Recipe(name, 100, 1, 1, 1,
                 List.of(new GroceryItem("Rice", new BigDecimal("100"), "g")));
     }
+
+    @Test
+    void replace_invalidInput_preservesBookAndPreviousSnapshots() {
+        RecipeBook book = new RecipeBook();
+        Recipe original = createRecipe("Original");
+        Recipe edited = createRecipe("Edited");
+        book.add(original);
+        List<Recipe> snapshot = book.getRecipes();
+
+        assertThrows(NullPointerException.class, () -> book.replace(0, null));
+        for (int index : new int[] {-1, 1, Integer.MAX_VALUE}) {
+            assertThrows(IndexOutOfBoundsException.class, () -> book.replace(index, edited));
+        }
+        assertEquals(List.of(original), book.getRecipes());
+
+        book.replace(0, edited);
+        assertEquals(List.of(edited), book.getRecipes());
+        assertEquals(List.of(original), snapshot);
+        assertEquals(1, book.size());
+    }
 }
 
