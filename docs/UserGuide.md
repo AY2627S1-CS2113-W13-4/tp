@@ -626,7 +626,7 @@ This differs from having no generated list at all, which displays the generate-f
 
 ## Recording a Meal
 
-Records a recipe as a meal you have eaten, so you can keep track of your actual food intake. Each time you record a meal, MishMash shows its calories and macronutrients and the totals of everything you have recorded so far. Recording a meal does not change your recipes, meal plan, or grocery list.
+Records a recipe as a meal you have eaten, so you can keep track of your actual food intake. Each time you record a meal, MishMash shows its calories and macronutrients, how its energy divides between protein, carbohydrates, and fats, and the totals of everything you have recorded so far. Recording a meal does not change your recipes, meal plan, or grocery list.
 
 **Before You Start:** Add at least one recipe, then use `list-recipes` to see each recipe's number.
 
@@ -658,6 +658,7 @@ After `record-meal 1`:
 ```text
 Meal recorded!
 Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)
+    Macro split: P 32% | C 46% | F 22%
 Total so far: 650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
 ```
 
@@ -666,6 +667,7 @@ After `record-meal 2`:
 ```text
 Meal recorded!
 Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)
+    Macro split: P 31% | C 53% | F 16%
 Total so far: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
 ```
 
@@ -674,6 +676,7 @@ Total so far: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
 - Supply exactly **one** index, written as a positive whole number such as `2`. Signs, decimals, and extra words are rejected.
 - The index must match a recipe in your current recipe list. If you delete a recipe, the numbers of the recipes after it change, so check `list-recipes` again.
 - The meal is recorded with the recipe's calories and macronutrients as stored when you record it. Deleting or editing that recipe later (for example with `edit-recipe`) does not change a meal you have already recorded.
+- The `Macro split` line shows what share of the meal's macronutrient energy comes from protein (P), carbohydrates (C), and fats (F). MishMash estimates it from the grams you entered, using 4 kcal per gram of protein and carbohydrates and 9 kcal per gram of fat, so it can differ from the share of the calories you entered. The three whole-number percentages add up to 100. A meal with no protein, carbohydrates, or fats shows `Macro split: n/a`.
 - You can record the same recipe more than once. Each entry counts separately toward the totals.
 - Recorded meals are kept only for the current session. They are separate from the meals in a generated plan.
 - MishMash does not ask for confirmation. There is currently no command to remove a recorded meal.
@@ -692,7 +695,7 @@ Errors in the index also display `Format: record-meal INDEX`. The "no recipes" e
 
 ## Viewing Recorded Meals
 
-Displays every meal you have recorded, with the calories and macronutrients of each meal, followed by the totals for all recorded meals. Viewing does not record or change anything.
+Displays every meal you have recorded, with the calories, macronutrients, and macro split of each meal, followed by the totals for all recorded meals. Viewing does not record or change anything.
 
 **Before You Start:** Record at least one meal using `record-meal INDEX`.
 
@@ -715,7 +718,9 @@ view-meals
 ```text
 ================ Recorded Meals ================
 Meal 1: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)
+    Macro split: P 32% | C 46% | F 22%
 Meal 2: Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)
+    Macro split: P 31% | C 53% | F 16%
 ------------------------------------------------
 Total: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
 ================================================
@@ -725,7 +730,7 @@ Total: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g
 
 - `view-meals` takes **no arguments**.
 - Meals appear in the order you recorded them, and are numbered from 1.
-- Each meal's line gives its calories (kcal) and its protein (P), carbohydrates (C), and fats (F) in grams.
+- Each meal's line gives its calories (kcal) and its protein (P), carbohydrates (C), and fats (F) in grams. The indented `Macro split` line below it shows how that meal's energy divides between protein, carbohydrates, and fats, as explained in [Recording a Meal](#recording-a-meal).
 - The total line adds up all recorded meals. It is not a daily total: MishMash does not record dates, so everything you record in the session is counted together.
 - These meals are what you recorded as eaten. They are not the meals in your meal plan, and `check-shortfall` does not use them.
 
@@ -762,6 +767,7 @@ MishMash displays `Goodbye!` and closes. In the current application, all session
 | Ingredients that look similar appear separately | `generate-list` combines exact ingredient names and units only. Check capitalization and units; see the [ingredient combining example](#ingredient-combining-example). |
 | `record-meal` reports an index error | Run `list-recipes` and use a number shown there. Numbers change after `delete-recipe`. See [Recording a Meal](#recording-a-meal). |
 | `view-meals` shows `No meals recorded yet.` | Record a meal first with `record-meal INDEX`. Meals in a generated plan are not recorded automatically. |
+| A meal shows `Macro split: n/a` | The recipe has 0g of protein, carbohydrates, and fats, so there is nothing to divide. Check its values with `list-recipes`. |
 
 Invalid viewing input displays an error or a generate-first message; you can enter another command without restarting.
 
@@ -826,7 +832,7 @@ Not yet. There is currently no command to remove or edit a recorded meal. Restar
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`,
-`check-shortfall`, `generate-list`, `view-list`, `record-meal`, `view-meals`, `help`, and `bye`.
+`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
 A divider and an input prompt appear when the command session starts and after every

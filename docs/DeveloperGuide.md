@@ -9,7 +9,7 @@ MishMash is a command-line meal prep planner for managing recipes, generating me
 - [JUnit Jupiter](https://junit.org/junit5/) provides the automated testing framework.
 - [Checkstyle](https://checkstyle.org/) checks Java coding conventions.
 - [Shadow](https://gradleup.com/shadow/) packages the application JAR.
-- [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams/shortfall`.
+- [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams`, which has one folder per feature.
 
 <!-- TEAM: Add any further sources of reused or adapted code, ideas, and documentation before submission. -->
 
@@ -23,9 +23,9 @@ The application separates terminal interaction, command handling, application da
 | --- | --- |
 | Application and user interaction | Display the greeting, read commands, obtain confirmation when required, and show results or errors. |
 | Command handling | Recognise commands, validate their arguments, and perform the requested action. |
-| Model | Hold recipes, nutrition information, meal plans, and generated groceries. |
+| Model | Hold recipes, nutrition information, meal plans, generated groceries, and recorded meals. |
 | Generation logic | Produce meal plans and consolidate grocery quantities. |
-| Display formatting | Present recipes, meal plans, and grocery lists consistently as text. |
+| Display formatting | Present recipes, meal plans, grocery lists, and recorded meals consistently as text. |
 
 Command names and prefixes are case-sensitive. Invalid commands normally produce an error and allow the user to continue. The application accepts one command per line and ends when the user enters `bye` or console input ends.
 
@@ -44,6 +44,8 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
+| `record-meal` | Record the recipe at a displayed index as a meal eaten. |
+| `view-meals` | Display the recorded meals with their nutrition, macro split, and totals. |
 | `help` | Display the supported commands and their formats. |
 | `bye` | End the session. |
 
@@ -62,16 +64,21 @@ Commands validate their arguments and relevant application state. Requests that 
 | `NutritionTargets` | Optional daily calorie, protein, carbohydrate, and fat targets. |
 | `GeneratePlanRequest` | The requested number of days and nutrition targets. |
 | `ActiveMealPlan` | The current meal plan and its generated grocery list, if available. |
+| `MealLog` | The recipes the user has recorded as eaten, in the order recorded. |
+| `NutritionTotals` | Summed calories, protein, carbohydrates, and fats, held as `long` values. |
+| `MacroSplit` | The whole-number share of a meal's macronutrient energy from protein, carbohydrates, and fats. |
 
 There are no separate `Ingredient` or `GroceryList` classes in the current model. Recipe ingredients and generated grocery entries use `GroceryItem`.
 
 Recipes remain in insertion order. Their displayed indexes start at 1 and can change after deletion. Duplicate names are permitted. Editing replaces the recipe at its position without changing indexes. Existing meal plans retain their recipe snapshots when recipes are added, edited, or removed from the recipe book.
 
+Recorded meals are kept in one `MealLog` for the session. The log stores the `Recipe` objects themselves, so each recorded meal keeps the nutrition the recipe had when it was recorded, whatever happens to the recipe book afterwards. The log is separate from the active plan: the plan holds meals the user intends to eat, and the log holds meals the user has eaten.
+
 Only one meal plan is active at a time. Successfully generating a replacement plan clears the groceries associated with the previous plan. Failed generation preserves the previous plan and groceries.
 
 ### Storage Component
 
-Persistent application-data storage is not implemented. Recipes, meal plans, and grocery lists are held in memory and are cleared when the application closes. There is no save or load command, save-file format, or application-data recovery process.
+Persistent application-data storage is not implemented. Recipes, meal plans, grocery lists, and recorded meals are held in memory and are cleared when the application closes. There is no save or load command, save-file format, or application-data recovery process.
 
 Diagnostic logs are written to disk, but they do not save or restore the recipe book or generated data.
 
@@ -734,34 +741,47 @@ view-meals
 ```
 
 `INDEX` is the position of a recipe in the `list-recipes` output, counting from 1, as for
-`delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal) and protein, carbs and
-fats (g), followed by the totals for all recorded meals. Unlike `check-shortfall`, which examines the
-*planned* meals of the active plan, this feature records meals the user *has eaten*. The recorded meals
-are kept in memory for the session only, matching the product's current data boundary.
+`delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal), protein, carbs and
+fats (g), and its macro split, followed by the totals for all recorded meals. Unlike `check-shortfall`,
+which examines the *planned* meals of the active plan, this feature records meals the user *has eaten*.
+The recorded meals are kept in memory for the session only, matching the product's current data boundary.
+
+A meal is one whole recipe, and a recipe stores the nutrition the user entered with `add-recipe`; nutrition
+is not derived from ingredients. The nutritional content of one meal is therefore read from its recipe. What
+the feature calculates is what the stored values do not give directly: the *totals* across all recorded
+meals, and for each meal the *macro split*, which is the share of the meal's macronutrient energy that comes
+from protein, carbohydrates and fats. The second user story is satisfied by showing each meal's own values
+and macro split together with those totals.
 
 #### Architecture-level view
 
 The feature follows the existing command workflow. `MishMash` reads input, asks `Parser` for a
 `Command`, executes it, and prints the returned text. Parsing validates syntax and creates the action;
-execution reads or changes session data. A new model class, `MealLog`, holds the recorded meals, in the
-same way `ActiveMealPlan` holds the active plan.
+execution reads or changes session data. A new model class, `MealLog`, holds the recorded meals. Like
+`ActiveMealPlan`, it is session data shared between commands, but it is separate from the plan: the plan
+holds meals the user intends to eat, and the log holds meals the user has eaten.
 
 ![Figure 11. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
 
 *Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
 associations with private role names; dashed arrows show dependencies or interface realization.
 `NutritionTotals` is the existing value record that `DayPlan` also uses for daily totals, and `MealLog`
-reuses it; its values are `long` so that adding many recipes cannot overflow.*
+reuses it; its values are `long` so that adding many recipes cannot overflow. `MacroSplit` is new.*
 
 * `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
   a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
   `NutritionTotals`, the same record `DayPlan` returns for a day's meals. The commands never add up nutrition values themselves.
+* `MacroSplit` (model) is an immutable record of three whole-number percentages. `MacroSplit.of(recipe)`
+  calculates a recipe's split, and is empty when the recipe has no protein, carbs or fats to divide.
 * `RecordMealCommand` and `ViewMealsCommand` implement `Command`. Each retains the shared `MealLog`.
-* `MealLogViewer` (ui) turns the meals and totals into text, in the same way `MealPlanViewer` formats a
-  meal plan. Keeping formatting out of the model and commands lets them be tested without comparing
-  layout text.
-* `Parser` creates one `MealLog` in its normal constructor and passes it to the commands it builds,
-  because `Command.execute` only receives the `RecipeBook`.
+* `MealLogViewer` (ui) turns the meals, their macro splits and the totals into text, in the same way
+  `MealPlanViewer` formats a meal plan. Keeping formatting out of the model and commands lets them be
+  tested without comparing layout text.
+* `Parser` owns the `MealLog` and passes it to the commands it builds, because `Command.execute` only
+  receives the `RecipeBook`. Every `Parser` constructor that is not given a log creates a fresh one, so
+  each session starts with no recorded meals. `Parser(MealLog)` and
+  `Parser(MealLog, MealPlanGenerator, ActiveMealPlan)` accept one, which lets tests supply and inspect
+  the log. The command classes receive the log through their own constructors.
 
 #### Recording a meal
 
@@ -772,7 +792,8 @@ Figure 12 follows `record-meal 2`. The dispatch from `parseCommand` through `par
 
 *Figure 12: Parsing returns a command without reading any data. The inherited confirmation step is
 omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
-`alt` fragment.*
+`alt` fragment. The viewer asks `MacroSplit` for the recorded meal's split; its other formatting steps
+are omitted.*
 
 `Parser` checks that the argument is a single positive whole number. A missing, non-numeric, signed,
 zero or extra argument is rejected with the usage line `Format: record-meal INDEX`; nothing is read or
@@ -782,21 +803,37 @@ During execution the command converts the index to a zero-based position, as `De
 does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
 exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
 `MealLog.record(recipe)` and `MealLog.getTotals()`, then asks `MealLogViewer.viewRecorded` to format the
-recorded meal's calories and macros with the running totals, so the user sees the effect immediately. Recording a meal needs no confirmation:
-it is quick to repeat, and it changes only the log.
+recorded meal's calories, macros and macro split with the running totals, so the user sees the effect
+immediately. Recording a meal needs no confirmation: it is quick to repeat, and it changes only the log.
 
 #### Viewing recorded meals and totals
 
 ![Figure 13. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
 
 *Figure 13: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
-fragment.*
+fragment, and the per-meal macro split lookup as a `loop`.*
 
 `view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
 the meals from the `MealLog`. An empty log is a valid state, not an error, so the command returns
 `No meals recorded yet.` Otherwise it asks the log for the totals and delegates formatting to
-`MealLogViewer`. Each meal appears with its own calories and macros, which gives the per-meal nutrition
-required by the second user story, followed by one totals line. Viewing never changes the log.
+`MealLogViewer`. Each meal appears with its own calories, macros and macro split, which gives the per-meal
+nutrition required by the second user story, followed by one totals line. Viewing never changes the log.
+
+#### Macro split calculation
+
+`MacroSplit.fromGrams(protein, carbs, fats)` converts the grams to energy with the standard factors of
+4 kcal per gram of protein, 4 kcal per gram of carbohydrate and 9 kcal per gram of fat, then expresses each
+nutrient's energy as a percentage of the three nutrients' combined energy. For `Chicken Rice` with 40 g
+protein, 70 g carbs and 15 g fat, the energy is 160, 280 and 135 kcal, giving 27.8%, 48.7% and 23.5%.
+
+Whole-number percentages that are each rounded would not always add up to 100. The calculation therefore
+rounds every percentage down and gives the remaining points, one each, to the nutrients with the largest
+fractional parts, preferring protein, then carbs, then fats on a tie. The example becomes 28%, 49% and 23%.
+The three values always add up to 100.
+
+If a recipe has 0 g of all three nutrients there is nothing to divide, so `MacroSplit.of` returns an empty
+`Optional` and the viewer shows `Macro split: n/a`. The calculation uses `long` arithmetic, so the largest
+values a recipe can hold do not overflow.
 
 #### Invalid input and recovery
 
@@ -812,6 +849,7 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 | `view-meals` before any meal is recorded | Return `No meals recorded yet.` |
 | Recipe deleted, edited with `edit-recipe`, or otherwise changed after a meal was recorded | The recorded meal keeps its original calories and macros. |
 | Same recipe recorded twice | Two entries are kept, and both count toward the totals. |
+| Recipe with 0 g of protein, carbs and fats | The meal is recorded and counted in the totals, and its split is shown as `Macro split: n/a`. |
 
 #### Rationale and alternatives considered
 
@@ -819,8 +857,10 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 | --- | --- | --- |
 | Store the `Recipe` itself in the log | Store the recipe's index | `Recipe` is immutable, so the log keeps the nutrition as it was when the meal was eaten. Indexes shift whenever `delete-recipe` runs, so an old entry could silently point to a different recipe. |
 | `MealLog.getTotals()` sums the meals on every call | Keep running totals updated by `record` | The meal list is the single source of truth, so totals cannot drift out of step with it. Sessions are small, so the repeated sum costs nothing noticeable. Running totals would need extra care if removing meals is added later. |
-| `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | This follows how `ActiveMealPlan` is already shared and leaves the `Command` interface and every existing command unchanged. A context object becomes worthwhile if many more data holders are added. |
+| `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | `Parser` already owns and shares `ActiveMealPlan`, and this leaves the `Command` interface and every existing command unchanged. Constructors that take a `MealLog` let tests supply their own, as the `ActiveMealPlan` constructors do. A context object becomes worthwhile if many more data holders are added. |
 | Pick a meal by recipe index | Type nutrition values in directly | Reusing stored recipes avoids duplicating the input and validation of `add-recipe` and keeps unchecked numbers out of the log. Free-text entry would help when eating out, so it is a possible extension. |
+| Show the share of macronutrient energy as the per-meal calculation | Show the share of the recipe's stated calories, or only grams | The stated calories are entered by the user and need not equal 4/4/9 kcal per gram of the entered macros, so shares of them could add up to more or less than 100%. Shares of the macro energy always add up to 100 and need no extra input. |
+| Round down and distribute the remaining points by largest remainder | Round each percentage to the nearest whole number | Plain rounding can give 99% or 101% in total, which looks like an error to a reader. Largest remainder keeps the total at exactly 100 and is deterministic. |
 | Return formatted text through `Command.execute`, using a small viewer | Print from the command or the model | The viewer matches `MealPlanViewer` and keeps layout out of the logic, so the model and commands can be tested without comparing layout text. |
 
 #### Limitations and possible extensions
@@ -831,13 +871,23 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 * There is no command to remove or correct a recorded meal yet.
 * Each meal counts as one whole recipe; portion sizes are not supported, as for meal plans.
 
+#### Verification
+
+The feature is covered by `MealLogTest`, `MacroSplitTest`, `MealLogViewerTest`, `RecordMealCommandTest`,
+`ViewMealsCommandTest`, `ParserRecordMealTest`, and console-workflow tests in `MishMashTest`. They check
+the totals (including values beyond the `int` range), the macro split for typical, tied, single-nutrient,
+zero and very large values, the exact output layout, every invalid index in the table above, the empty-log
+and empty-book cases, that failed commands leave the log unchanged, and that the log is separate from the
+active plan. The manual checks are under [Record and View Meals](#record-and-view-meals); the use cases are
+UC11 and UC12.
+
 #### Diagram maintenance
 
 Editable sources for the three figures are under
 [`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
 `docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
-regeneration commands. Check every depicted call, branch and message against the code after any change, and update the
-sources and images together.
+regeneration commands. Check every depicted call, branch and message against the code after any change, and
+update the sources and images together.
 
 <!-- @@author -->
 
@@ -932,6 +982,8 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | Meal prep user | View all planned days or a selected day | Review meals and daily nutrition totals |
 | Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
 | Shopper | View the generated grocery list | See what to purchase |
+| Returning user | Record the meals that I have eaten | Keep track of my actual food intake |
+| User tracking nutrition | See the calories, macronutrients, and macro split of each recorded meal, and their totals | Know the nutritional content of what I am eating |
 | User who makes a typing mistake | Receive an error and enter another command | Correct the mistake without restarting |
 
 ### User Stories for Future Consideration
@@ -940,13 +992,12 @@ The following ideas are not implemented and are not commitments for a particular
 
 - Search recipes.
 - Apply dietary restrictions or allergy preferences.
-- Record meals eaten (`record-meal`) and see the calories and macronutrients of each meal and their
-  totals (`view-meals`). The design is described in
+- Record meals against dates, and remove or correct a recorded meal. The current design is described in
   [Recording meals and tracking nutrition](#recording-meals-and-tracking-nutrition).
 - Save and restore recipes or meal plans between sessions.
 - Estimate meal or grocery costs.
 
-Daily nutrition targets and daily nutrition totals are already supported and are therefore included in the current-functionality stories.
+Daily nutrition targets, daily nutrition totals, and recording meals eaten are already supported and are therefore included in the current-functionality stories.
 
 ### Use Cases
 
@@ -1102,6 +1153,41 @@ The comparison is strict and does not apply the generator's 15% tolerance. Viewi
 targets, and groceries unchanged. A successful replacement uses its new targets; failed generation
 preserves the previous warnings. Dietary repair recalculates warnings using the repaired meals and
 the retained generation targets. Clearing the plan removes the warnings.
+<!-- @@author -->
+
+<!-- @@author GauthamNandi -->
+#### UC11 Record a meal eaten
+
+**Precondition:** At least one recipe exists.
+
+**MSS**
+
+1. The user enters `record-meal INDEX`, using an index shown by `list-recipes`.
+2. MishMash validates the index and finds the recipe at that position.
+3. MishMash adds the recipe to the recorded meals.
+4. MishMash displays the meal, its macro split, and the totals of all recorded meals, then prompts for another command.
+
+**Extensions**
+
+- 2a. The index is missing, or is not a single positive whole number: MishMash displays an error and the `record-meal` format. The use case ends without recording anything.
+- 2b. There are no recipes, or the index is larger than the number of recipes: MishMash displays an error. The use case ends without recording anything.
+
+No confirmation is requested. Recording changes only the recorded meals; recipes, the meal plan, and groceries are unchanged. Recording the same recipe again adds another entry.
+
+#### UC12 View recorded meals
+
+**MSS**
+
+1. The user enters `view-meals`.
+2. MishMash reads the recorded meals and sums their nutrition.
+3. MishMash displays each meal in the order recorded with its calories, macronutrients, and macro split, followed by the totals, then prompts for another command.
+
+**Extensions**
+
+- 1a. The user adds an argument: MishMash displays an error and the `view-meals` format. The use case ends.
+- 2a. No meal has been recorded: MishMash displays `No meals recorded yet.` The use case ends.
+
+Viewing leaves the recorded meals unchanged. The totals cover every meal recorded in the session, because meals are not recorded against dates.
 <!-- @@author -->
 
 ### Non Functional Requirements
@@ -1314,6 +1400,29 @@ existing logging configuration; absence of a `FINE` record at a higher log level
 - Enter `view-list extra`. Expect a format error.
 - Successfully generate a replacement meal plan, then enter `view-list`. Expect a generate-list-first message because the previous groceries were cleared.
 - Generate groceries again, then attempt `generate-plan d/1 cal/1`. After that failure, verify that the previous grocery list is still available.
+
+<!-- @@author GauthamNandi -->
+### Record and View Meals
+
+1. In a fresh session, enter `record-meal 1`. Expect `Error: There are no recipes to record. Use 'add-recipe' to add one.`, the list of command formats, and another prompt. Enter `view-meals` and expect `No meals recorded yet.`
+2. Load exactly the three [sample recipes](#sample-recipes). Enter `record-meal 1`. Expect:
+
+   ```text
+   Meal recorded!
+   Chicken Rice (600 kcal | P: 40g, C: 70g, F: 15g)
+       Macro split: P 28% | C 49% | F 23%
+   Total so far: 600 kcal | Protein: 40g | Carbs: 70g | Fats: 15g
+   ```
+
+3. Enter `record-meal 2`. Expect Tofu Rice with `Macro split: P 22% | C 54% | F 24%` and `Total so far: 1100 kcal | Protein: 65g | Carbs: 130g | Fats: 27g`.
+4. Enter `view-meals`. Expect the header, `Meal 1: Chicken Rice ...` and `Meal 2: Tofu Rice ...`, each followed by its indented `Macro split` line, then a divider, `Total: 1100 kcal | Protein: 65g | Carbs: 130g | Fats: 27g`, and the footer. Confirm that each split adds up to 100%.
+5. Enter `record-meal 1` again, then `view-meals`. Expect a third entry, `Meal 3: Chicken Rice ...`, and `Total: 1700 kcal | Protein: 105g | Carbs: 200g | Fats: 42g`.
+6. Enter `add-recipe n/Black Coffee cal/5 p/0 c/0 f/0 i/Coffee:1cup`, then `record-meal 4`. Expect `Macro split: n/a` and a total that grows by 5 kcal only.
+7. Try `record-meal`, `record-meal 0`, `record-meal 5`, `record-meal two`, `record-meal -1`, `record-meal 1 2`, `view-meals now`. Each should produce a recoverable error. Enter `view-meals` afterwards and confirm that the recorded meals are unchanged.
+8. Enter `edit-recipe 2 cal/100`, then `delete-recipe 1` and confirm. Enter `view-meals`. Every recorded meal should keep the calories and macros it had when recorded.
+9. Enter `generate-plan d/1`, then `view-meals` and `view-plan`. The recorded meals should be unchanged by plan generation, and the plan should be unaffected by the recorded meals.
+10. Enter `help` and confirm that both commands are listed. Enter `bye`, restart, and enter a name. `view-meals` should report `No meals recorded yet.`
+<!-- @@author -->
 
 ### Help and Recovery
 
