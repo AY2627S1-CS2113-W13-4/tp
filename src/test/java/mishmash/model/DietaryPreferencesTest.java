@@ -135,4 +135,13 @@ class DietaryPreferencesTest {
                 () -> new DietaryPreferences(Diet.NONE, Set.of(), new HashSet<>(Arrays.asList((String) null))));
     }
 
+    @Test
+    void describe_multipleExclusions_hasStableReadableOrder() {
+        DietaryPreferences preferences = new DietaryPreferences(Diet.VEGAN,
+                Set.of(FoodTag.SOY, FoodTag.PEANUT), Set.of("Salt", "Mushroom"));
+        assertEquals(String.join(System.lineSeparator(), "Diet: vegan",
+                "Avoided food categories: peanut, soy", "Excluded ingredients: mushroom, salt"),
+                preferences.describe());
+        assertTrue(DietaryPreferences.createUnrestricted().describe().contains("Avoided food categories: none"));
+    }
 }

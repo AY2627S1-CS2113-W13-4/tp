@@ -1,9 +1,11 @@
 package mishmash.model;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Holds immutable dietary requirements that apply together to each selected recipe.
@@ -99,4 +101,25 @@ public record DietaryPreferences(Diet diet, Set<FoodTag> avoidedTags, Set<String
                 .toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
+    /**
+     * Formats the current profile in a stable order for {@code view-diet}.
+     *
+     * @return The diet and sorted exclusion lists, with explicit empty-state labels.
+     */
+    public String describe() {
+        return String.join(System.lineSeparator(),
+                "Diet: " + diet.getLabel(),
+                "Avoided food categories: " + formatValues(avoidedTags.stream().map(FoodTag::getLabel).toList()),
+                "Excluded ingredients: " + formatValues(excludedIngredients));
+    }
+
+    /**
+     * Formats sorted labels while making an empty exclusion list explicit.
+     *
+     * @param values The normalized labels to display.
+     * @return Comma-separated sorted labels, or {@code none} when empty.
+     */
+    private static String formatValues(Collection<String> values) {
+        return values.isEmpty() ? "none" : values.stream().sorted().collect(Collectors.joining(", "));
+    }
 }
