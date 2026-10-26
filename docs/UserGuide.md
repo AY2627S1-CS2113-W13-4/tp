@@ -140,27 +140,78 @@ add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UN
 
 **Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
 
+<!-- @@author neil0618 -->
 ## Listing Recipes
 
-<!-- OWNER: Neil. Planned command from the specification. Confirm syntax, numbered output, list order, empty-list behavior, and unexpected arguments. -->
+Shows the recipes in your recipe book. Use it to find a recipe's number, which commands such as [`edit-recipe`](#editing-a-recipe) and [`delete-recipe`](#deleting-a-recipe) ask for, or to check one recipe in full. Listing never changes your recipes, meal plan, or grocery list.
 
-**Purpose:** {Explain what information the recipe list displays.}
+**Before You Start:** Add at least one recipe with `add-recipe`.
 
 **Format:**
 
 ```text
-list-recipes
+list-recipes [INDEX]
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+| Command | What You See |
+| --- | --- |
+| `list-recipes` | Every recipe, numbered from 1 in the order you added them, with its calories. |
+| `list-recipes 2` | The full details of recipe 2: nutrition, ingredients, and food tags. |
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:**
 
-**Result:** {Show the actual output from the application.}
+In a fresh session, after entering your name, enter these commands one line at a time:
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+```text
+add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/White Rice:150g i/Olive Oil:10ml food/poultry
+add-recipe n/Protein Oatmeal cal/450 p/35 c/60 f/8 i/Rolled Oats:50g i/Whey Protein:30g
+add-recipe n/Salmon Salad cal/550 p/42 c/20 f/32 i/Salmon Fillet:200g i/Mixed Greens:150g
+list-recipes
+list-recipes 1
+```
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+**Example Output:**
+
+`list-recipes` shows:
+
+```text
+Recipes:
+1. Chicken and Rice (650 kcal)
+2. Protein Oatmeal (450 kcal)
+3. Salmon Salad (550 kcal)
+```
+
+`list-recipes 1` shows:
+
+```text
+Chicken and Rice
+650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
+Ingredients:
+- Chicken Breast: 200g
+- White Rice: 150g
+- Olive Oil: 10ml
+Food tags: poultry
+```
+
+**Rules:**
+
+- `INDEX` is optional. When given, it must be a single positive whole number, counting from 1.
+- The numbers are positions in the current list, and they are the numbers other commands use. They change when a recipe is deleted, so run `list-recipes` again before using a number.
+- Calories are in kcal; protein, carbs, and fats are in grams.
+- `Food tags` shows `Unclassified` if the recipe was added without `food/`, `None declared` if it was added with `food/none`, and otherwise the declared tags.
+- With no recipes, `list-recipes` replies `No recipes yet. Use 'add-recipe' to add one.` This is a normal message, not an error.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| `list-recipes 1` with no recipes | `Error: There are no recipes to show. Use 'add-recipe' to add one.` | Add a recipe, then try again. |
+| `list-recipes 4` with only three recipes | `Error: Recipe index must be between 1 and 3.` | Enter `list-recipes` and choose a number shown. |
+| `list-recipes 0` | `Error: Recipe index must be at least 1.` | Recipe numbers start at 1. |
+| `list-recipes abc`, `list-recipes -1`, `list-recipes 1.5`, or `list-recipes 1 2` | `Error: Recipe index must be a single positive whole number.` | Enter one whole number, for example `list-recipes 2`. |
+
+The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: list-recipes [INDEX]`. Enter the corrected command at the next prompt; errors never change your recipes.
+<!-- @@author -->
 
 ## Editing a Recipe
 
@@ -219,11 +270,12 @@ For a smaller correction, `edit-recipe 1 p/60` changes only the protein value.
 | `edit-recipe 1 i/Rice:0g` | `Ingredient quantity must be greater than zero.` Supply a positive quantity and the complete replacement ingredient list. |
 | A prefix is blank, unknown, or repeated | The error identifies the invalid field and shows edit usage. Supply a nonblank value and use each prefix once, except repeated `i/`. |
 
+<!-- @@author neil0618 -->
 ## Deleting a Recipe
 
-<!-- OWNER: Neil. Planned command. Cover current indexes, renumbering, invalid indexes, and the effect on an existing meal plan. -->
+Removes one recipe from your recipe book, chosen by its number. Because a deleted recipe cannot be brought back, MishMash names the recipe and asks you to confirm first.
 
-**Purpose:** {Explain which recipe is removed and what remains.}
+**Before You Start:** Add at least one recipe, then use `list-recipes` to find its number.
 
 **Format:**
 
@@ -231,15 +283,74 @@ For a smaller correction, `edit-recipe 1 p/60` changes only the protein value.
 delete-recipe INDEX
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+| Parameter | Meaning |
+| --- | --- |
+| `INDEX` | The number of the recipe to delete, as shown by `list-recipes`. The first recipe is number 1. |
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:**
 
-**Result:** {Show the actual output from the application.}
+In a fresh session, after entering your name, enter these commands one line at a time:
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+```text
+add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/White Rice:150g i/Olive Oil:10ml
+add-recipe n/Protein Oatmeal cal/450 p/35 c/60 f/8 i/Rolled Oats:50g i/Whey Protein:30g
+add-recipe n/Salmon Salad cal/550 p/42 c/20 f/32 i/Salmon Fillet:200g i/Mixed Greens:150g
+delete-recipe 2
+```
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+MishMash asks you to confirm. Enter `y` to delete the recipe.
+
+**Example Output:**
+
+In this transcript, `delete-recipe 2` and `y` are the lines you type; the other lines are MishMash's replies.
+
+```text
+delete-recipe 2
+Are you sure you want to delete recipe 2: Protein Oatmeal? (y/n)
+y
+Recipe deleted!
+Protein Oatmeal
+Recipes remaining: 2
+```
+
+`list-recipes` now shows that the later recipe has moved up one number:
+
+```text
+Recipes:
+1. Chicken and Rice (650 kcal)
+2. Salmon Salad (550 kcal)
+```
+
+If you answer anything other than `y` or `yes`, nothing is deleted:
+
+```text
+delete-recipe 2
+Are you sure you want to delete recipe 2: Salmon Salad? (y/n)
+n
+Cancelled. Nothing was changed.
+```
+
+**Rules:**
+
+- Supply exactly one `INDEX`, written as a positive whole number such as `2`.
+- Check that the recipe named in the question is the one you meant before you answer. Only `y` or `yes`, in any letter case, confirms. Any other answer, including pressing Enter on its own, cancels the deletion.
+- Recipes after the deleted one move up by one number. Run `list-recipes` again before using another number.
+- Deleting a recipe does not change an existing meal plan or grocery list. They keep the meals they were generated with, including the deleted recipe. To plan without it, run [`generate-plan`](#generating-a-meal-plan) again, then `generate-list`. A new plan needs at least three recipes.
+- There is no undo. To get a deleted recipe back, add it again with `add-recipe`.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| No recipes have been added | `Error: There are no recipes to delete.` | Add a recipe first. |
+| `delete-recipe 5` with only two recipes | `Error: Recipe index must be between 1 and 2.` | Enter `list-recipes` and choose a number shown. |
+| `delete-recipe` | `Error: Recipe index is required.` | Add a number, for example `delete-recipe 1`. |
+| `delete-recipe 0` | `Error: Recipe index must be at least 1.` | Recipe numbers start at 1. |
+| `delete-recipe abc`, `delete-recipe -1`, `delete-recipe 1.5`, or `delete-recipe 1 2` | `Error: Recipe index must be a single positive whole number.` | Enter one whole number, for example `delete-recipe 2`. |
+| You answer something other than `y` or `yes` | `Cancelled. Nothing was changed.` | Enter `delete-recipe` again and answer `y`. |
+
+An index problem is reported before MishMash asks you to confirm, so nothing is deleted. The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: delete-recipe INDEX`. Enter the corrected command at the next prompt.
+<!-- @@author -->
 
 ## Generating a Meal Plan
 
@@ -768,6 +879,8 @@ MishMash displays `Goodbye!` and closes. In the current application, all session
 | `record-meal` reports an index error | Run `list-recipes` and use a number shown there. Numbers change after `delete-recipe`. See [Recording a Meal](#recording-a-meal). |
 | `view-meals` shows `No meals recorded yet.` | Record a meal first with `record-meal INDEX`. Meals in a generated plan are not recorded automatically. |
 | A meal shows `Macro split: n/a` | The recipe has 0g of protein, carbohydrates, and fats, so there is nothing to divide. Check its values with `list-recipes`. |
+| `delete-recipe` answers `Cancelled. Nothing was changed.` | Only `y` or `yes` confirms. Enter the command again and answer `y`. See [Deleting a Recipe](#deleting-a-recipe). |
+| A deleted recipe still appears in my meal plan or grocery list | Existing plans and lists keep the meals they were generated with. Run `generate-plan`, then `generate-list`, to build new ones. |
 
 Invalid viewing input displays an error or a generate-first message; you can enter another command without restarting.
 
