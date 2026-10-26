@@ -1,0 +1,38 @@
+@startuml
+!include ../shortfall/style.iuml
+skinparam ActivityBackgroundColor #F5F8FC
+skinparam ActivityBorderColor #475569
+skinparam ActivityDiamondBackgroundColor #FFF9E8
+skinparam ActivityDiamondBorderColor #C4AC70
+skinparam ActivityFontSize 14
+title Deleting a recipe: where each outcome is decided
+
+start
+:User enters delete-recipe INDEX;
+if (INDEX is a single positive whole number\nwithin the int range?) then (no)
+  :Parser throws MishMashException\nwith the delete-recipe format;
+  :MishMash displays the error;
+  stop
+else (yes)
+endif
+if (Recipe book is empty, or\nINDEX exceeds the recipe count?) then (yes)
+  :confirmationPrompt throws MishMashException;
+  :MishMash displays the error\nand all command formats;
+  stop
+else (no)
+endif
+:MishMash asks\n"Are you sure you want to delete recipe INDEX: name? (y/n)";
+if (Next input line is y or yes,\nignoring letter case?) then (yes)
+  :execute removes the recipe at INDEX;
+  :MishMash displays its name\nand the recipes remaining;
+else (no, or input ended)
+  :MishMash displays\n"Cancelled. Nothing was changed.";
+endif
+stop
+
+note right
+  Nothing is removed unless the final
+  check passes. Every other path ends
+  with the recipe book unchanged.
+end note
+@enduml
