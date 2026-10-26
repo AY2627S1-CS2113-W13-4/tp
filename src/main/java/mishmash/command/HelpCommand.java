@@ -52,6 +52,7 @@ public class HelpCommand implements Command {
                 "Recipes must declare every applicable category, including those in compound ingredients.",
                 "Unclassified recipes are excluded while restrictions are active.",
                 "Ingredient exclusions match complete names, ignoring case and extra spaces.",
+                "",
                 "view-diet - View current dietary preferences.",
                 "Format: view-diet",
                 "",
