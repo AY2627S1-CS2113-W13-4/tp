@@ -9,6 +9,7 @@ import mishmash.model.RecipeBook;
 import mishmash.model.RecipeChanges;
 import mishmash.ui.RecipeViewer;
 
+//@@author Rixte
 /**
  * Replaces one recipe in place using validated edits, keeping all omitted fields.
  */
@@ -63,3 +64,4 @@ public class EditRecipeCommand implements Command {
         return confirmation;
     }
 }
+//@@author

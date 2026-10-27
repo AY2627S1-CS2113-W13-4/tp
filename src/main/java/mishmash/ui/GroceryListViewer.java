@@ -6,6 +6,7 @@ import java.util.Objects;
 import mishmash.logic.GroceryListGenerator;
 import mishmash.model.GroceryItem;
 
+//@@author Rixte
 /**
  * Formats a generated grocery list for the {@code view-list} display without changing its items.
  */
@@ -36,3 +37,4 @@ public class GroceryListViewer {
         return result.toString();
     }
 }
+//@@author

@@ -11,6 +11,7 @@ import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.RecipeBook;
 
+//@@author Rixte
 /**
  * Reports daily nutrition shortfalls in the active plan without changing meals or targets.
  * A shortfall is any amount below a supplied target, independently of generation's tolerance.
@@ -110,3 +111,4 @@ public class CheckShortfallCommand implements Command {
         }
     }
 }
+//@@author

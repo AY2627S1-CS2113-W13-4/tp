@@ -91,6 +91,7 @@ public class MishMash {
         }
     }
 
+    //@@author Rixte
     /**
      * Writes package diagnostics to rotating files without mixing them into console interaction.
      * Logging failure leaves the application usable with its existing console logging configuration.
@@ -113,6 +114,7 @@ public class MishMash {
             return null;
         }
     }
+    //@@author
 
     /**
      * Reads commands until the user exits or console input ends.

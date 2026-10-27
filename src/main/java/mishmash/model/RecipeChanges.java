@@ -3,6 +3,7 @@ package mishmash.model;
 import java.util.List;
 import java.util.Objects;
 
+//@@author Rixte
 /**
  * Holds validated, immutable edits to apply to the recipe found when a command executes.
  * Nullable scalar fields mean unchanged; an empty ingredient list means unchanged.
@@ -71,3 +72,4 @@ public record RecipeChanges(String name, Integer calories, Integer protein, Inte
                 foodInfo == null ? original.getFoodInfo() : foodInfo);
     }
 }
+//@@author
