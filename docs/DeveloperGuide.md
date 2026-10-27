@@ -635,7 +635,6 @@ Grocery parsing and viewing use `FINE` logs, successful generation logs counts a
 Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
 <!-- @@author -->
 
-<!-- @@author Rixte -->
 <!-- @@author peilingggg -->
 ### Applying dietary restrictions
 
@@ -830,7 +829,8 @@ Extra arguments raise `MishMashException` with the no-arguments message and `For
 No command executes and all state is preserved. `ViewDietCommandTest` covers unrestricted and
 populated profiles, execution-time reads, and argument rejection without profile changes. Parser tests cover
 argument rejection. Run the existing Java 25 test suite when changing this behavior.
-
+<!-- @@author -->
+<!-- @@author Rixte -->
 ### Checking nutrition shortfalls
 
 #### Purpose and implemented scope
