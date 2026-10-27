@@ -15,6 +15,7 @@ import mishmash.command.GenerateListCommand;
 import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
+import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.TestRecipes;
 
@@ -77,10 +78,15 @@ class ParserGenerateListTest {
         parser.parseCommand("generate-plan d/2").execute(book);
         generate.execute(book);
         String original = view.execute(book);
+        Command viewPlan = parser.parseCommand("view-plan");
+        String originalPlanDisplay = viewPlan.execute(book);
+        List<Recipe> originalRecipes = book.getRecipes();
         assertTrue(original.contains("[ ] Ingredient: 6g"), original);
 
         assertThrows(MishMashException.class, () -> parser.parseCommand("generate-plan d/2 cal/1").execute(book));
+        assertEquals(originalPlanDisplay, viewPlan.execute(book));
         assertEquals(original, view.execute(book));
+        assertEquals(originalRecipes, book.getRecipes());
         assertThrows(MishMashException.class, () -> parser.parseCommand("generate-list extra"));
         assertEquals(original, view.execute(book));
 

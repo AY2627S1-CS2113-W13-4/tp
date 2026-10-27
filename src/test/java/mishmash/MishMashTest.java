@@ -1,5 +1,6 @@
 package mishmash;
 
+import static mishmash.testutil.CliAssertions.assertInOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -26,8 +27,10 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
+import mishmash.exception.MishMashException;
 import mishmash.parser.Parser;
 import mishmash.testutil.AddRecipeTestData;
+import mishmash.testutil.LogCapture;
 
 /**
  * Checks CLI output and recovery after an invalid command.
@@ -53,6 +56,51 @@ class MishMashTest {
     private static final String ADD_RICE = AddRecipeTestData.VALID_COMMAND;
     private static final String ADD_OATS = "add-recipe n/Oats cal/150 p/5 c/27 f/3 i/Oats:40g";
     private static final String CONTINUE_PROMPT = "Enter a command, or type 'help' for all commands or 'bye' to exit.";
+
+    @Test
+    void main_viewingErrors_logsRecoverableRejectionsAndContinues() {
+        try (LogCapture logs = new LogCapture(MishMash.class)) {
+            String output = runCli(session("view-list extra", "view-plan d/0", "view-plan", "view-list", "bye"));
+            List<LogRecord> rejections = logs.getRecords().stream()
+                    .filter(record -> record.getMessage().equals("Command rejected")).toList();
+
+            assertEquals(2, rejections.size());
+            assertTrue(rejections.stream().allMatch(record -> record.getLevel() == Level.FINE
+                    && record.getThrown() instanceof MishMashException));
+            assertEquals(1, logs.getRecords().stream()
+                    .filter(record -> record.getMessage().equals("Completed ViewPlanCommand")).count());
+            assertEquals(1, logs.getRecords().stream()
+                    .filter(record -> record.getMessage().equals("Completed ViewListCommand")).count());
+            assertTrue(logs.getRecords().stream().noneMatch(record -> record.getLevel() == Level.SEVERE));
+            assertEquals(2, countOccurrences(output, "Error: "), output);
+            assertTrue(output.contains("Hello Tester"), output);
+            assertFalse(output.contains("Command rejected"), output);
+            assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+        }
+    }
+
+    @Test
+    void main_newSession_greetsAgainWithoutPreviousPlanOrGroceries() {
+        String firstSession = runCli(session(
+                "add-recipe n/A cal/100 p/10 c/20 f/5 i/Rice:1g",
+                "add-recipe n/B cal/100 p/10 c/20 f/5 i/Rice:1g",
+                "add-recipe n/C cal/100 p/10 c/20 f/5 i/Rice:1g",
+                "generate-plan d/1", "generate-list", "view-plan", "view-list", "bye"));
+
+        String nextSession = runCli(session("view-plan", "view-list", "bye"));
+
+        assertTrue(firstSession.contains("Daily Totals: 300 kcal | Protein: 30g | Carbs: 60g | Fats: 15g"));
+        assertTrue(firstSession.contains("[ ] Rice: 3g"), firstSession);
+        assertTrue(nextSession.contains("No active meal plan. Use 'generate-plan' first."), nextSession);
+        assertTrue(nextSession.contains("No grocery list generated. Use 'generate-list' first."), nextSession);
+        assertFalse(nextSession.contains("Daily Totals:"), nextSession);
+        assertFalse(nextSession.contains("[ ] Rice:"), nextSession);
+        for (String output : List.of(firstSession, nextSession)) {
+            assertTrue(output.contains("Hello Tester"), output);
+            assertEquals(0, countOccurrences(output, "Error: "), output);
+            assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+        }
+    }
 
     @Test
     void main_editRecipe_recoversFromErrorsAndShowsUpdatedDetails() {
@@ -126,6 +174,11 @@ class MishMashTest {
         assertEquals(1, countOccurrences(output, "[ ] Tofu: 200g"), output);
         assertEquals(1, countOccurrences(output, "No grocery list generated. Use 'generate-list' first."), output);
         assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertInOrder(output, "Meal plan successfully generated for 1 day(s)!",
+                "Daily Totals: 1800 kcal", "Warning: Calories exceed target by 100 kcal", "[ ] Rice: 300g",
+                "Recipe updated!", "Daily Totals: 1800 kcal", "Warning: Calories exceed target by 100 kcal",
+                "[ ] Rice: 300g", "Meal plan successfully generated for 1 day(s)!", "Daily Totals: 2000 kcal",
+                "No grocery list generated.", "Grocery list generated.", "[ ] Tofu: 200g", "Goodbye!");
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
 
@@ -437,16 +490,36 @@ class MishMashTest {
     }
 
     @Test
-    void greet_nullScanner_rejectsBeforeDisplayingPrompt() {
+    void main_startupFailure_logsCauseOnceAndRestoresLogging() {
+        InputStream originalInput = System.in;
         PrintStream originalOutput = System.out;
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (PrintStream capturedOutput = new PrintStream(output, true, StandardCharsets.UTF_8)) {
-            System.setOut(capturedOutput);
-            NullPointerException exception = assertThrows(NullPointerException.class, () -> MishMash.greet(null));
-            assertEquals("scanner", exception.getMessage());
-            assertEquals(0, output.size());
+        Logger appLogger = Logger.getLogger("mishmash");
+        Level originalLevel = appLogger.getLevel();
+        boolean wereParentHandlersEnabled = appLogger.getUseParentHandlers();
+        List<Handler> originalHandlers = Arrays.asList(appLogger.getHandlers());
+        RecordingHandler recordingHandler = new RecordingHandler();
+        appLogger.addHandler(recordingHandler);
+        try {
+            System.setIn(new ByteArrayInputStream(new byte[0]));
+            // A missing output stream makes session construction fail before run() can log anything.
+            System.setOut(null);
+            NullPointerException error = assertThrows(NullPointerException.class, () -> MishMash.main(new String[0]));
+
+            assertEquals("output", error.getMessage());
+            List<LogRecord> failures = recordingHandler.records.stream()
+                    .filter(record -> record.getLevel() == Level.SEVERE).toList();
+            assertEquals(1, failures.size());
+            assertSame(error, failures.getFirst().getThrown());
+            assertTrue(failures.getFirst().getMessage().contains("startup"));
+            assertEquals(originalLevel, appLogger.getLevel());
+            assertEquals(wereParentHandlersEnabled, appLogger.getUseParentHandlers());
+            List<Handler> expectedHandlers = new ArrayList<>(originalHandlers);
+            expectedHandlers.add(recordingHandler);
+            assertEquals(expectedHandlers, Arrays.asList(appLogger.getHandlers()));
         } finally {
+            System.setIn(originalInput);
             System.setOut(originalOutput);
+            appLogger.removeHandler(recordingHandler);
         }
     }
 
