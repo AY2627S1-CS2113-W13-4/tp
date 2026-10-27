@@ -263,6 +263,50 @@ class ResetPlanIntegrationTest {
         assertEquals(2, savedPlan.getNumberOfDays());
     }
 
+    @Test
+    void execute_resetThenEditAndRecord_keepsOldFoodSnapshotsAndUsesNewRecipesForPlanning() throws MishMashException {
+        parser.parseCommand("set-diet diet/vegetarian avoid/milk exclude/Peanut").execute(book);
+        parser.parseCommand("record-meal 1").execute(book);
+        parser.parseCommand("generate-plan d/1 cal/1500").execute(book);
+        MealPlan oldPlan = activePlan.get().orElseThrow();
+        Recipe originalMeal = mealLog.getMeals().getFirst();
+        String diet = parser.parseCommand("view-diet").execute(book);
+        parser.parseCommand("reset-plan").execute(book);
+
+        parser.parseCommand("edit-recipe 1 n/Edited cal/600").execute(book);
+        parser.parseCommand("record-meal 1").execute(book);
+        parser.parseCommand("record-meal 2").execute(book);
+        Recipe editedMeal = book.getRecipes().getFirst();
+        List<Recipe> recordedMeals = List.of(originalMeal, editedMeal, book.getRecipes().get(1));
+
+        assertEquals(recordedMeals, mealLog.getMeals());
+        assertEquals("A", originalMeal.getName());
+        assertEquals(500, originalMeal.getCalories());
+        assertEquals("Edited", editedMeal.getName());
+        assertEquals(600, editedMeal.getCalories());
+        assertEquals(1600L, mealLog.getTotals().calories());
+        assertEquals(diet, parser.parseCommand("view-diet").execute(book));
+        assertTrue(activePlan.get().isEmpty());
+
+        parser.parseCommand("generate-plan d/1 cal/1600").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+
+        assertEquals(1600, activePlan.get().orElseThrow().getDays().getFirst().getTotalCalories());
+        assertEquals(1600, activePlan.getRequest().orElseThrow().targets().getCalories());
+        assertEquals(List.of("Rice: 300g"), activePlan.getGroceryList().orElseThrow().stream()
+                .map(Object::toString).toList());
+        assertEquals(1500, oldPlan.getDays().getFirst().getTotalCalories());
+
+        parser.parseCommand("reset-plan").execute(book);
+
+        assertSame(editedMeal, book.getRecipes().getFirst());
+        assertEquals(recordedMeals, mealLog.getMeals());
+        assertEquals(diet, parser.parseCommand("view-diet").execute(book));
+        assertTrue(activePlan.get().isEmpty());
+        assertTrue(activePlan.getRequest().isEmpty());
+        assertTrue(activePlan.getGroceryList().isEmpty());
+    }
+
     /**
      * Returns three classified recipes with predictable totals, all compatible with a vegetarian diet.
      */
