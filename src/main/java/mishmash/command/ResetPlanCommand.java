@@ -1,5 +1,7 @@
 package mishmash.command;
 
+import java.util.Objects;
+
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.RecipeBook;
 
@@ -17,9 +19,10 @@ public class ResetPlanCommand implements Command {
      * Creates a reset that reads the latest plan state only when executed.
      *
      * @param activePlan The shared holder of planned meals, their generation request, and groceries.
+     * @throws NullPointerException If the shared plan holder is missing.
      */
     public ResetPlanCommand(ActiveMealPlan activePlan) {
-        this.activePlan = activePlan;
+        this.activePlan = Objects.requireNonNull(activePlan, "activePlan");
     }
 
     /**

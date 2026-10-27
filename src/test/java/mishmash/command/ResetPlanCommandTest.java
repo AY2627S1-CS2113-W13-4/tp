@@ -2,6 +2,7 @@ package mishmash.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
@@ -34,6 +35,13 @@ class ResetPlanCommandTest {
     private final Recipe recipe = TestRecipes.recipe("Stored recipe", 300, 20, 40, 5);
     private final MealPlan plan = new MealPlan(List.of(new DayPlan(List.of(recipe))));
     private final GroceryItem rice = new GroceryItem("Rice", BigDecimal.ONE, "g");
+
+    @Test
+    void constructor_nullPlanHolder_rejectsInvalidDependency() {
+        NullPointerException error = assertThrows(NullPointerException.class, () -> new ResetPlanCommand(null));
+
+        assertEquals("activePlan", error.getMessage());
+    }
 
     @TestFactory
     Stream<DynamicTest> execute_generatedPlan_clearsRequestAndEveryGroceryState() {
@@ -165,9 +173,6 @@ class ResetPlanCommandTest {
         assertTrue(activePlan.getRequest().isEmpty());
         assertTrue(activePlan.getGroceryList().isEmpty());
     }
-
-
-
     /**
      * Returns a distinct test label for legacy, zero-day, and empty-day plans.
      */
