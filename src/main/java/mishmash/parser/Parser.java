@@ -385,8 +385,10 @@ public class Parser {
     private Command parseCheckShortfall(String arguments) throws MishMashException {
         try {
             NutritionTargets targets = new CheckShortfallParser().parse(arguments);
+            LOGGER.fine("Parsed check-shortfall with explicit daily targets");
             return new CheckShortfallCommand(activeMealPlan, targets);
         } catch (IllegalArgumentException e) {
+            LOGGER.fine("check-shortfall rejected: invalid daily targets");
             throw new MishMashException(e.getMessage()
                     + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
         }
@@ -415,8 +417,10 @@ public class Parser {
                     parseOptionalNutrition(fields, "c", "Carbs"),
                     parseOptionalNutrition(fields, "f", "Fats"), ingredients,
                     fields.containsKey("food") ? FoodInfo.parseField(fields.get("food")) : null);
+            LOGGER.fine(() -> "Parsed edit-recipe for index " + index);
             return new EditRecipeCommand(index, changes);
         } catch (IllegalArgumentException e) {
+            LOGGER.fine("edit-recipe rejected: invalid index or recipe fields");
             throw new MishMashException(e.getMessage() + System.lineSeparator() + EDIT_RECIPE_USAGE, e);
         }
     }
