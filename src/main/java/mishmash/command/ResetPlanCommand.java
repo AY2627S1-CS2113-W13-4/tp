@@ -37,6 +37,8 @@ public class ResetPlanCommand implements Command {
         boolean hadPlan = activePlan.get().isPresent();
         boolean hadGroceries = activePlan.getGroceryList().isPresent();
         activePlan.clear();
+        assert activePlan.get().isEmpty() && activePlan.getRequest().isEmpty()
+                && activePlan.getGroceryList().isEmpty() : "Reset must clear all plan state.";
         if (!hadPlan && !hadGroceries) {
             return "No active meal plan to reset.";
         }

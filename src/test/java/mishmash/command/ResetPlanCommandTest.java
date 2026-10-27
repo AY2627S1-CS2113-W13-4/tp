@@ -173,6 +173,23 @@ class ResetPlanCommandTest {
         assertTrue(activePlan.getRequest().isEmpty());
         assertTrue(activePlan.getGroceryList().isEmpty());
     }
+    @Test
+    void execute_brokenClearImplementation_assertsRatherThanReportingFalseSuccess() {
+        ActiveMealPlan broken = new ActiveMealPlan() {
+            @Override
+            public void clear() {
+                // Simulates a model bug that fails to implement the clear contract.
+            }
+        };
+        broken.set(plan);
+
+        AssertionError error = assertThrows(AssertionError.class,
+                () -> new ResetPlanCommand(broken).execute(book));
+
+        assertEquals("Reset must clear all plan state.", error.getMessage());
+        assertSame(plan, broken.get().orElseThrow());
+    }
+
     /**
      * Returns a distinct test label for legacy, zero-day, and empty-day plans.
      */
