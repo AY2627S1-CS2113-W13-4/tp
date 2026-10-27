@@ -56,8 +56,7 @@ MishMash confirms the addition and shows the recipe's nutrition and ingredients.
 bye
 ```
 
-> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, grocery list, and recorded meals. There is no save or load command.
-
+> **Session Data:** Closing or restarting the current application clears the recipes, saved daily targets, meal plan, grocery list, and recorded meals. There is no save or load command.
 ## Commands at a Glance
 
 Click a task to jump directly to its instructions. The commands below are supported by the current team version.
@@ -68,6 +67,8 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [List recipes](#listing-recipes) | `list-recipes [INDEX]` | Omit the index to list all recipes; supply one to see its full details. |
 | [Edit a recipe](#editing-a-recipe) | `edit-recipe INDEX p/55` | Use an index from the latest recipe list and supply at least one field. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
+| [Set daily targets](#setting-daily-targets) | `set-targets cal/2000 p/150` | Supply at least one target; use `none` to remove one. |
+| [View daily targets](#viewing-daily-targets) | `view-targets` | No prerequisites. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
@@ -84,11 +85,12 @@ Click a task to jump directly to its instructions. The commands below are suppor
 Use this sequence to generate meals and their groceries:
 
 1. **Add at least three recipes** with `add-recipe`.
-2. **Generate meals** with `generate-plan d/3`.
-3. **Review meals** with `view-plan` or `view-plan d/1`.
-4. **Check daily nutrition** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional.
-5. **Generate ingredients** with `generate-list`.
-6. **Check your shopping list** with `view-list`.
+2. **Save your daily targets** with `set-targets cal/2000 p/150`, replacing the example numbers with your own. This step is optional; without it, `generate-plan` uses only the targets you type in that command.
+3. **Generate meals** with `generate-plan d/3`.
+4. **Review meals** with `view-plan` or `view-plan d/1`.
+5. **Check daily nutrition** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional.
+6. **Generate ingredients** with `generate-list`.
+7. **Check your shopping list** with `view-list`.
 
 After generating a replacement plan, generate the grocery list again so the ingredients match the meals you intend to prepare.
 
@@ -117,6 +119,8 @@ To track what you actually eat, use this separate sequence at any time after add
 | `c/`, `C` | Carbohydrates, measured in grams. |
 | `f/`, `F` | Fats, measured in grams. |
 | `i/` | Ingredient name, quantity, and unit. |
+| `none` | In `set-targets`, written instead of a number to remove a saved target, for example `cal/none`. |
+
 <!-- @@author peilingggg -->
 ## Adding a Recipe
 
@@ -395,6 +399,115 @@ Cancelled. Nothing was changed.
 An index problem is reported before MishMash asks you to confirm, so nothing is deleted. The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: delete-recipe INDEX`. Enter the corrected command at the next prompt.
 <!-- @@author -->
 
+<!-- @@author neil0618 -->
+## Setting Daily Targets
+
+Saves your daily calorie, protein, carbohydrate, and fat targets for the rest of the session, so you do not have to type them every time you generate a meal plan. Each later [`generate-plan`](#generating-a-meal-plan) uses the saved targets for any nutrient you leave out of that command. Setting a target never changes a meal plan you have already generated.
+
+**Before You Start:** None. You can set targets before or after adding recipes.
+
+**Format:**
+
+```text
+set-targets [cal/CALORIES|none] [p/PROTEIN|none] [c/CARBS|none] [f/FATS|none]
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `cal/CALORIES` | Daily calories in kcal, as a positive whole number. |
+| `p/PROTEIN` | Daily protein in grams, as a positive whole number. |
+| `c/CARBS` | Daily carbohydrates in grams, as a positive whole number. |
+| `f/FATS` | Daily fats in grams, as a positive whole number. |
+| `none` | Written instead of a number, it removes that nutrient's saved target, for example `cal/none`. |
+
+Supply at least one parameter, in any order. A nutrient you do not mention keeps its saved target.
+
+**Example:**
+
+In a fresh session, after entering your name, enter these commands one line at a time:
+
+```text
+set-targets cal/1500 p/80
+set-targets f/37
+set-targets p/none
+```
+
+**Example Output:**
+
+```text
+Daily targets saved: 1500 kcal, 80 g protein.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+`set-targets f/37` adds a third target and keeps the first two:
+
+```text
+Daily targets saved: 1500 kcal, 80 g protein, 37 g fats.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+`set-targets p/none` removes the protein target only:
+
+```text
+Daily targets saved: 1500 kcal, 37 g fats.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+**Rules:**
+
+- Each target must be a positive whole number up to 2147483647. Calories are in kcal; protein, carbohydrates, and fats are in grams.
+- `set-targets` changes only the nutrients you name. To replace a target, set it again. To remove one, write `none` (any letter case) as its value. When the last saved target is removed, MishMash replies `All daily targets cleared.`
+- Each nutrient may appear only once in a command.
+- The next [`generate-plan`](#generating-a-meal-plan) uses a saved target for every nutrient you leave out of that command. A target typed in `generate-plan` replaces the saved one for that plan only; it does not change what is saved.
+- Saved targets do not affect [`check-shortfall`](#checking-nutrition-shortfalls), which always uses the targets you type in that command.
+- Targets are kept only for the current session. Closing MishMash clears them.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| `set-targets` with nothing after it | `Error: Supply at least one daily target to set or clear.` | Add at least one target, for example `set-targets cal/2000`. |
+| `set-targets cal/0`, `cal/-5`, `cal/abc`, or `cal/1.5` | `Error: Calories target (cal/) must be a positive whole number from 1 to 2147483647, or 'none'.` | Enter a positive whole number, or `none` to remove the target. The message names the nutrient you mistyped. |
+| `set-targets cal/` | `Error: Missing value after cal/` | Add a number or `none` after the slash. |
+| `set-targets x/5` or `set-targets 2000` | `Error: Unrecognized parameter: x/5` | Use only `cal/`, `p/`, `c/`, and `f/`. |
+| `set-targets cal/1 cal/2` | `Error: Parameter cal/ was given more than once.` | Give each nutrient once. |
+
+Every error is followed by `Format: set-targets ...` and leaves your saved targets unchanged, because MishMash checks the whole command before saving anything. Enter the corrected command at the next prompt.
+
+## Viewing Daily Targets
+
+Shows the daily targets you saved with [`set-targets`](#setting-daily-targets). Viewing never changes them.
+
+**Format:**
+
+```text
+view-targets
+```
+
+**Example Output:**
+
+After `set-targets cal/1500 p/80 f/37`:
+
+```text
+Daily targets:
+Calories: 1500 kcal
+Protein: 80 g
+Carbs: not set
+Fats: 37 g
+```
+
+With no targets saved, `view-targets` replies:
+
+```text
+No daily targets saved. Use 'set-targets' to set them.
+```
+
+**Rules:**
+
+- `view-targets` takes no arguments. `view-targets now` shows `Error: view-targets does not accept arguments.` and `Format: view-targets`.
+- A nutrient shown as `not set` has no target, so `generate-plan` does not constrain it unless you type one in that command.
+<!-- @@author -->
+
 ## Generating a Meal Plan
 
 Builds a plan containing three distinct recipes per day, using recipes from your recipe book.
@@ -428,15 +541,32 @@ Use 'view-plan' to inspect your planned meals.
 - Calories use kcal; protein, carbohydrates, and fats use grams. Omitted nutrients have no target.
 - Without targets, meals are selected randomly. With targets, every day's totals must be within ±15% of
   every supplied target. For large recipe books, generation searches a bounded sample of combinations.
-- The application retains your supplied targets. `view-plan` warns whenever a daily total exceeds its exact
-  target, even when that day is within the generation tolerance. These warnings are informational.
+- Targets you saved with [`set-targets`](#setting-daily-targets) apply to every nutrient you leave out of the
+  command. A target typed here replaces the saved one for this plan only. When a saved target is used, the
+  confirmation adds a `Daily targets used:` line listing every target that was applied.
+- The application retains the targets that were applied. `view-plan` warns whenever a daily total exceeds its exact
+  target, even when that day is within the generation tolerance. These warnings are informational. They keep using
+  the targets the plan was generated with, even if you change the saved targets afterwards.
 - Successful generation replaces the active plan and its targets and clears its generated grocery list.
   A replacement generated without targets has no nutrition warnings. Plans and targets last only for this session.
+
+**Example with saved targets:** After `set-targets cal/1500 p/80`, a plain `generate-plan d/1` builds a day within 15% of 1500 kcal and 80 g protein, and the confirmation names the targets it used:
+
+```text
+Meal plan successfully generated for 1 day(s)!
+Daily targets used: 1500 kcal, 80 g protein.
+Use 'view-plan' to inspect your planned meals.
+```
+
+`generate-plan d/1 cal/1400` instead replaces the saved calories with 1400 for that plan and still uses the saved 80 g of protein. It reports `Daily targets used: 1400 kcal, 80 g protein.`
 
 **Errors and Recovery:** If generation reports that it cannot find three recipes meeting your daily targets
 within 15%, try different targets or add recipes. If fewer than three eligible recipes are available, add
 or classify suitable recipes before retrying. Failed generation leaves the previous plan, targets, and
-grocery list intact.
+grocery list intact. If a saved target was applied, the error adds a line such as `Daily targets applied: 1500 kcal,
+200 g protein (including your saved targets). Change those with 'set-targets'.` Use `view-targets` to see what is saved,
+then change or remove a target with `set-targets`. There is no way to ignore a saved target for a single `generate-plan`;
+remove it with `none` first.
 
 ## Viewing a Meal Plan
 

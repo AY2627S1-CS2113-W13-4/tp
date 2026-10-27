@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+!include ../shortfall/style.iuml
+title Nutrition totals and excess warnings: selected relationships
+top to bottom direction
+skinparam nodesep 45
+skinparam ranksep 65
+hide empty members
+
+class Parser
+class ViewPlanCommand {
+  - dayNumber: Integer [0..1]
+  + execute(recipeBook: RecipeBook): String
+}
+interface "Supplier<List<List<MealSummary>>>" as MealsSource {
+  + get(): List<List<MealSummary>>
+}
+interface "Supplier<NutritionTargets>" as TargetsSource {
+  + get(): NutritionTargets
+}
+class ActiveMealPlan {
+  + get(): Optional<MealPlan>
+  + getRequest(): Optional<GeneratePlanRequest>
+}
+class GeneratePlanRequest <<record>> {
+  - days: int
+}
+class NutritionTargets {
+  - calories: Integer [0..1]
+  - protein: Integer [0..1]
+  - carbs: Integer [0..1]
+  - fats: Integer [0..1]
+  + calculateExcesses(totals: NutritionTotals): NutritionTotals
+}
+class NutritionTotals <<record>> {
+  - calories: long
+  - protein: long
+  - carbs: long
+  - fats: long
+}
+class MealPlanViewer {
+  + view(mealsByDay, targets): String
+  + view(mealsByDay, dayNumber, targets): String
+}
+class "MealPlanViewer.MealSummary" as MealSummary <<record>>
+class DayPlan {
+  + calculateDailyNutritionTotals(): NutritionTotals
+}
+class Recipe
+
+Parser ..> ViewPlanCommand : creates with suppliers
+ViewPlanCommand --> "1" MealsSource : -mealPlanSource
+ViewPlanCommand --> "1" TargetsSource : -targetsSource
+MealsSource ..> ActiveMealPlan : default lambda reads get()
+TargetsSource ..> ActiveMealPlan : default lambda reads getRequest()
+ActiveMealPlan --> "0..1" GeneratePlanRequest : -request
+GeneratePlanRequest --> "1" NutritionTargets : -targets
+ViewPlanCommand ..> MealPlanViewer : creates and calls
+MealPlanViewer ..> MealSummary : reads transient display input
+MealPlanViewer ..> NutritionTotals : creates daily totals
+MealPlanViewer ..> NutritionTargets : calls calculateExcesses
+NutritionTargets ..> NutritionTotals : reads totals and creates excesses
+DayPlan --> "0..*" Recipe : -meals\n{ordered, nonunique}
+DayPlan ..> NutritionTotals : creates combined result
+
+legend bottom
+  The supplier interfaces are two bindings of java.util.function.Supplier, not new Java interfaces.
+  Default parser lambdas capture shared active-plan state; caller-supplied sources can behave differently.
+  MealPlanViewer calculates totals from MealSummary input; it does not call DayPlan's combined-totals API.
+  Optional targets are null when omitted. request is an Optional; its contained request is modeled here.
+  Records are immutable values. Selected methods are abbreviated; unrelated references and most getters are omitted.
+endlegend
+@enduml
