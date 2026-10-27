@@ -1,6 +1,7 @@
 package mishmash.command;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import mishmash.exception.MishMashException;
@@ -30,6 +31,19 @@ public class ResetPlanCommand implements Command {
      */
     public ResetPlanCommand(ActiveMealPlan activePlan) {
         this.activePlan = Objects.requireNonNull(activePlan, "activePlan");
+    }
+
+    /**
+     * Requests agreement before removing any plan state, including an empty grocery snapshot.
+     * The caller reads the answer; obtaining this prompt never changes state.
+     */
+    @Override
+    public Optional<String> confirmationPrompt(RecipeBook recipeBook) {
+        if (activePlan.get().isEmpty() && activePlan.getRequest().isEmpty()
+                && activePlan.getGroceryList().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of("Reset the current meal plan and clear its groceries? (y/n)");
     }
 
     /**

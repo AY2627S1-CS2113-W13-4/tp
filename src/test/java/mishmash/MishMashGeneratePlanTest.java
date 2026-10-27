@@ -28,7 +28,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/B cal/600 p/30 c/60 f/15 i/Rice:100g",
                 "add-recipe n/C cal/700 p/40 c/70 f/20 i/Rice:100g",
                 "generate-plan d/2 cal/1700 p/85 c/180 f/45",
-                "view-plan d/2", "generate-plan d/1", "view-plan", "bye") + System.lineSeparator());
+                "view-plan d/2", "generate-plan d/1", "yes", "view-plan", "bye") + System.lineSeparator());
 
         assertEquals(1, countOccurrences(output,
                 "Warning: Calories exceed target by 100 kcal (1800 kcal actual; 1700 kcal target)."), output);
@@ -51,7 +51,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:0.2g",
                 "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:1kg",
                 "generate-plan d/2", "generate-list", "generate-list extra", "view-list",
-                "generate-plan d/1", "view-list", "generate-list", "view-list", "bye"));
+                "generate-plan d/1", "yes", "view-list", "generate-list", "view-list", "bye"));
 
         assertTrue(output.contains("No active meal plan. Use 'generate-plan' first."), output);
         assertTrue(output.contains("Grocery list generated. Use 'view-list' to view it."), output);
@@ -96,7 +96,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/Salad cal/550 p/42 c/20 f/32 i/Lettuce:100g",
                 "generate-plan d/2 cal/1650 p/127 c/150 f/55",
                 "view-plan d/2",
-                "generate-plan d/3 cal/100",
+                "generate-plan d/3 cal/100", "yes",
                 "view-plan d/3",
                 "bye") + System.lineSeparator());
 

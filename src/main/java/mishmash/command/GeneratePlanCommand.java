@@ -139,6 +139,20 @@ public class GeneratePlanCommand implements Command {
         return confirmation + System.lineSeparator() + "Use 'view-plan' to inspect your planned meals.";
     }
 
+    //@@author Rixte
+    /**
+     * Requests agreement before replacing an existing plan and discarding its groceries.
+     * Reads the latest shared state without generating or publishing a replacement.
+     */
+    @Override
+    public Optional<String> confirmationPrompt(RecipeBook recipeBook) {
+        if (activePlan.get().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of("Replace the current meal plan and clear its groceries? (y/n)");
+    }
+    //@@author
+
     //@@author neil0618
     /**
      * Returns whether a saved target fills a nutrient that the command itself left without a target.

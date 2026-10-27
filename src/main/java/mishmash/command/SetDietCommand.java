@@ -41,6 +41,22 @@ public final class SetDietCommand implements Command {
         this.planner = new DietaryPlanner(generator);
     }
 
+    //@@author Rixte
+    /**
+     * Warns before a dietary change can repair or clear the existing plan and groceries.
+     * Compatible plans need no confirmation because their meals are preserved.
+     */
+    @Override
+    public Optional<String> confirmationPrompt(RecipeBook recipeBook) {
+        Optional<MealPlan> current = activePlan.get();
+        if (current.isPresent() && !planner.isCompatible(current.get(), preferences)) {
+            return Optional.of("Apply dietary preferences? Conflicting meals will be replaced, or the plan and "
+                    + "groceries cleared if repair fails. (y/n)");
+        }
+        return Optional.empty();
+    }
+    //@@author
+
     /**
      * Saves the new profile and updates days that conflict with its requirements.
      *

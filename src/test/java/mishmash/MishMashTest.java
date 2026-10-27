@@ -168,7 +168,7 @@ class MishMashTest {
                 "add-recipe n/C cal/600 p/30 c/50 f/10 i/Rice:100g food/none",
                 "generate-plan d/1 cal/1700", "generate-list", "view-plan", "view-list",
                 "edit-recipe 1 n/Updated A cal/800 i/Tofu:200g", "view-plan", "view-list",
-                "generate-plan d/1 cal/2000", "view-plan", "view-list", "generate-list", "view-list", "bye"));
+                "generate-plan d/1 cal/2000", "yes", "view-plan", "view-list", "generate-list", "view-list", "bye"));
 
         assertEquals(2, countOccurrences(output,
                 "Daily Totals: 1800 kcal | Protein: 90g | Carbs: 150g | Fats: 30g"), output);
