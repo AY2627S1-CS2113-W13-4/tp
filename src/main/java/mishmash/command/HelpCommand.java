@@ -33,6 +33,10 @@ public class HelpCommand implements Command {
                 "view-plan - View the active meal plan, or one day.",
                 Parser.VIEW_PLAN_USAGE,
                 "",
+                ResetPlanCommand.COMMAND_WORD + " - Clear the current meal plan and its grocery list.",
+                ResetPlanCommand.USAGE,
+                "Recipes, dietary preferences, and recorded meals are kept.",
+                "",
                 CheckShortfallCommand.COMMAND_WORD
                         + " - Check each day's planned nutrition against explicit daily targets.",
                 Parser.CHECK_SHORTFALL_USAGE,

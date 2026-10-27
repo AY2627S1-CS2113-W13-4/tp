@@ -23,6 +23,7 @@ import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
 import mishmash.command.ListRecipeCommand;
 import mishmash.command.RecordMealCommand;
+import mishmash.command.ResetPlanCommand;
 import mishmash.command.SetDietCommand;
 import mishmash.command.ViewListCommand;
 import mishmash.command.ViewMealsCommand;
@@ -83,6 +84,7 @@ public class Parser {
     public static final String LIST_RECIPE_USAGE = "Format: list-recipes [INDEX]";
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
+    public static final String RESET_PLAN_USAGE = ResetPlanCommand.USAGE;
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
@@ -99,7 +101,7 @@ public class Parser {
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
+            VIEW_PLAN_USAGE, RESET_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
             DietaryPreferencesParser.USAGE, "Format: view-diet", RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
             "Format: help", "Format: bye");
 
@@ -318,6 +320,9 @@ public class Parser {
         if (commandWord.equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
         }
+        if (commandWord.equals(ResetPlanCommand.COMMAND_WORD)) {
+            return parseResetPlan(arguments);
+        }
         if (commandWord.equals(RecordMealCommand.COMMAND_WORD)) {
             return parseRecordMeal(arguments);
         }
@@ -343,6 +348,21 @@ public class Parser {
             return parseAddRecipeCommand(arguments);
         }
         throw new MishMashException("Unknown command: " + commandWord);
+    }
+
+    /**
+     * Accepts a reset without arguments and leaves all state changes until execution.
+     *
+     * @param arguments The text following reset-plan.
+     * @return A command connected to the current plan holder.
+     * @throws MishMashException If any arguments are supplied.
+     */
+    private Command parseResetPlan(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException("reset-plan does not accept arguments."
+                    + System.lineSeparator() + RESET_PLAN_USAGE);
+        }
+        return new ResetPlanCommand(activeMealPlan);
     }
 
     /**
