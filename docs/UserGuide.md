@@ -99,7 +99,7 @@ To track what you actually eat, use this separate sequence at any time after add
 1. **Find the recipe** you ate with `list-recipes` and note its number.
 2. **Record the meal** with `record-meal 1`, replacing `1` with that number.
 3. **Review your intake** with `view-meals`, which shows each recorded meal's nutrition and the totals.
-
+<!-- @@author peilingggg -->
 ## Setting Dietary Preferences
 
 **Purpose:** Choose a named diet, avoid food categories, or exclude complete ingredient names.
@@ -277,7 +277,7 @@ Excluded ingredients: bell pepper, mushroom
 
 **Errors and Recovery:** `view-diet extra` produces `view-diet does not accept arguments.`
 followed by `Format: view-diet`. Retry with the command alone; session data is unchanged.
-
+<!-- @@author -->
 ## Reading Command Formats
 
 - Enter each command on **one line**. Long examples may wrap visually; do not insert a line break within a command.
