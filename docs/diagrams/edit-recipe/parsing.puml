@@ -1,57 +1,27 @@
 '@@author Rixte
 @startuml
-!include ../shortfall/style.iuml
-
-title Successful parsing: edit-recipe 2 p/55 i/Chicken:220g i/Rice:150g
-autonumber
-
-participant "MishMash" as App
-participant "parser: Parser" as Parser
-participant "changes: RecipeChanges" as Changes
-participant "edit: EditRecipeCommand" as Edit
-
-App -> Parser : parseCommand(input)
-activate Parser
-Parser -> Parser : parseNamedCommand("edit-recipe", arguments)
+!include ../shortfall/readable.iuml
+title Parsing an edit request
+participant Parser
+participant RecipeChanges as Changes
+participant EditRecipeCommand as Edit
 Parser -> Parser : parseEditRecipe(arguments)
 Parser -> Parser : parseRecipeIndex("2")
-Parser --> Parser : 2
-Parser -> Parser : collectRecipeArguments(prefixedFields, fields, ingredients)
-loop each prefixed field (p, then i, then i)
-  Parser -> Parser : readArgument(prefix, value, fields, ingredients)
-  alt ingredient prefix i/
-    Parser -> Parser : parseIngredient(value)
-    Parser --> Parser : validated GroceryItem
-    note right of Parser : Append the item to the local ingredient list.
-  else single-value prefix p/
-    note right of Parser : Check the prefix and store its unique, nonblank value.
-  end
-end
-Parser -> Parser : parseOptionalNutrition(fields, "cal", "Calories")
-Parser --> Parser : null (omitted)
-Parser -> Parser : parseOptionalNutrition(fields, "p", "Protein")
-Parser -> Parser : parseNutrition("55", "Protein")
+Parser -> Parser : collectRecipeArguments(...)
+ref over Parser : Validate prefixed fields using shared helpers
+Parser -> Parser : parseOptionalNutrition(\nfields, "p", "Protein")
 Parser --> Parser : 55
-note right of Parser
-  The omitted c/ and f/ fields also return null.
-  n/ and food/ are absent; neither is replaced.
+note over Parser
+ Omitted scalars stay null.
+ Ingredients form a replacement list.
 end note
 create Changes
-Parser -> Changes : new RecipeChanges(null, null, 55, null, null,\ningredients, null)
-activate Changes
-note right of Changes : Validate supplied values and copy the ingredient list.
-Changes --> Parser : changes
-deactivate Changes
+Parser -> Changes : new RecipeChanges(\nnull, null, 55, null, null,\ningredients, null)
+Changes --> Parser : validated changes
 create Edit
 Parser -> Edit : new EditRecipeCommand(2, changes)
-Edit --> Parser : edit
-Parser --> App : edit as Command
-deactivate Parser
+Edit --> Parser : command
+note over Parser, Edit : No recipe-book lookup while parsing.
 
-note over Parser, Edit
-  Map/list setup, ingredient construction, and repeated validation details are condensed.
-  No RecipeBook lookup occurs while parsing. Index 2 is resolved only during execution.
-  A supplied ingredient list replaces the entire list; omitted fields are read from the target later.
-end note
 @enduml
 '@@author

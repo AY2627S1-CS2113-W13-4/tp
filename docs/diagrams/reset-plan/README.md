@@ -5,10 +5,10 @@ These sources document [resetting a meal plan](../../DeveloperGuide.md#resetting
 
 | Source | Purpose |
 | --- | --- |
-| `classes.puml` | Ownership, command dependencies, and the session data retained by reset |
+| `classes.puml` | Reset command dependencies; retained session data is described in the DG |
 | `parsing.puml` | Valid parsing without changing the active plan |
-| `execution.puml` | Reset execution and missing-plan behaviour |
-| `invalid-input.puml` | Rejected arguments followed by a successful retry |
+| `execution.puml` | Execution after agreement, missing-plan behaviour, and recoverable failures |
+| `invalid-input.puml` | Rejected arguments followed by the normal parsing and confirmation workflow |
 
 The checked-in SVGs are stored under `docs/images/reset-plan`.
 

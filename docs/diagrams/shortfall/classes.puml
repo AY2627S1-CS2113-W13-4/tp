@@ -1,74 +1,31 @@
 '@@author Rixte
 @startuml
 !pragma layout smetana
-!include style.iuml
-title Shortfall checking: selected class relationships
+!include readable.iuml
+title Shortfall command relationships
 top to bottom direction
-skinparam nodesep 50
 skinparam ranksep 75
+skinparam nodesep 35
 hide empty members
-
 class Parser {
-  - activeMealPlan: ActiveMealPlan
-  + parseCommand(input: String): Command
-  - parseCheckShortfall(arguments: String): Command
+ - activeMealPlan: ActiveMealPlan
 }
 class CheckShortfallParser {
-  + parse(arguments: String): NutritionTargets
-  - readTarget(token: String, values: Map<String, Integer>): void
-  - parseTarget(value: String, prefix: String): int
+ + parse(arguments: String): NutritionTargets
 }
-interface Command {
-  + execute(recipeBook: RecipeBook): String
-}
+interface Command
 class CheckShortfallCommand {
-  + execute(recipeBook: RecipeBook): String
-  - findShortfalls(day: DayPlan): List<String>
-  - addShortfall(shortfalls, nutrientName, unit, plannedTotal, dailyTarget): void
+ + execute(recipeBook: RecipeBook): String
+ - findShortfalls(day: DayPlan): List<String>
 }
-class ActiveMealPlan {
-  + get(): Optional<MealPlan>
-}
-class NutritionTargets {
-  - calories: Integer
-  - protein: Integer
-  - carbs: Integer
-  - fats: Integer
-  + hasAnyTarget(): boolean
-  + getCalories(): Integer
-  + getProtein(): Integer
-  + getCarbs(): Integer
-  + getFats(): Integer
-}
-class MealPlan {
-  + getDays(): List<DayPlan>
-  + getNumberOfDays(): int
-}
-class DayPlan {
-  + getTotalCalories(): long
-  + getTotalProtein(): long
-  + getTotalCarbs(): long
-  + getTotalFats(): long
-}
-class Recipe
-
+class ActiveMealPlan
+class NutritionTargets
 Parser ..> CheckShortfallParser : creates
 Parser ..> CheckShortfallCommand : creates
 CheckShortfallParser ..> NutritionTargets : creates
 CheckShortfallCommand ..|> Command
 CheckShortfallCommand --> "1\n-activePlan" ActiveMealPlan
 CheckShortfallCommand --> "1\n-targets" NutritionTargets
-ActiveMealPlan --> "0..1\n-plan" MealPlan
-MealPlan --> "0..*\n-days\n{ordered, nonunique}" DayPlan
-DayPlan --> "0..*\n-meals\n{ordered, nonunique}" Recipe
 
-legend bottom
-  Only feature-relevant members are shown. The addShortfall parameter list is abbreviated.
-  Solid arrows show references with private role names; dashed arrows show dependencies or realization.
-  The parser's shared holder is an attribute; other references use association ends, never both.
-  Target-end multiplicities are shown; reverse ends are unspecified. Lists are ordered and nonunique.
-  The model allows empty lists; normal generation produces 1-7 days and 3 distinct recipes/day.
-  Integer targets may be null. RecipeBook is an execution parameter, not a stored command field.
-endlegend
 @enduml
 '@@author

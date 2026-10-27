@@ -1,39 +1,21 @@
 '@@author Rixte
 @startuml
-title Rejecting reset arguments and recovering at the next prompt
-hide footbox
-skinparam backgroundColor white
-skinparam shadowing false
-
+!include ../shortfall/readable.iuml
+title Rejecting reset arguments
 actor User
-participant MishMash
+participant MishMash as App
 participant Parser
-participant ResetPlanCommand as Reset
-participant ActiveMealPlan as Active
-
-User -> MishMash : reset-plan d/1
-MishMash -> Parser : parseCommand("reset-plan d/1")
-activate Parser
+User -> App : reset-plan d/1
+App -> Parser : parseCommand(input)
 Parser -> Parser : parseResetPlan("d/1")
-Parser --> MishMash : throws MishMashException
-deactivate Parser
-note over Parser, Active
-  Rejection happens before a reset command is created.
-  The plan, request, groceries, and other session data
-  remain unchanged.
+Parser --> App : throws MishMashException
+App --> User : error, reset usage, next prompt
+note over App, Parser
+ No reset command is created.
+ All session data stays unchanged.
 end note
-MishMash --> User : error + Format: reset-plan + next prompt
-User -> MishMash : reset-plan
-MishMash -> Parser : parseCommand("reset-plan")
-activate Parser
-create Reset
-Parser -> Reset : new ResetPlanCommand(activeMealPlan)
-Parser --> MishMash : reset command
-deactivate Parser
-MishMash -> Reset : execute(recipeBook)
-Reset -> Active : clear()
-Active --> Reset
-Reset --> MishMash : reset confirmation
-MishMash --> User : result + next prompt
+User -> App : reset-plan
+ref over App, Parser : Valid parsing, then confirmation if needed
+
 @enduml
 '@@author

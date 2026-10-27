@@ -93,6 +93,66 @@ Diagnostic logs are written to disk, but they do not save or restore the recipe 
 ## Implementation
 
 <!-- @@author Rixte -->
+### Confirming plan changes
+
+This implements [#61](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/61): users must agree before
+an existing plan is cleared or replaced. The existing `Command.confirmationPrompt(RecipeBook)` hook
+keeps console interaction in `MishMash` and state decisions in each command.
+
+![Deciding whether a plan change needs confirmation.](images/confirm-plan/decision.svg)
+
+*Prompt lookup after syntax validation; the command-specific conditions are listed below.*
+
+The parser validates syntax first. `MishMash.executeCommand` then requests a prompt before calling
+`execute`. An empty `Optional` proceeds directly. Otherwise `userConfirms` reads one line: only `y`
+or `yes`, ignoring case and surrounding spaces, permits execution. All other answers and EOF return
+`Cancelled. Nothing was changed.` No command execution or state mutation happens on cancellation.
+A command entered as an answer is consumed as that answer and must be entered again at the command prompt.
+
+![Executing a plan change after agreement.](images/confirm-plan/execution.svg)
+
+*An accepted answer permits command execution; its result may still be a recoverable error.*
+
+![Cancelling a plan change without executing it.](images/confirm-plan/cancellation.svg)
+
+*Other answers and EOF skip execution and preserve the session state.*
+
+| Command | Prompt decision, using current shared state |
+| --- | --- |
+| `ResetPlanCommand` | Ask if any plan, generation request, or grocery snapshot is present, including an empty snapshot. |
+| `GeneratePlanCommand` | Ask if a plan exists; successful generation replaces it and clears groceries. |
+| `SetDietCommand` | Ask if an existing plan is incompatible with the proposed preferences. |
+
+Prompts never generate replacements or change settings. They read the holder when called, rather than
+capturing state during parsing, so reused commands see the latest plan. A first generation, an empty
+reset, and a compatible dietary change need no answer. Dietary confirmation mentions both repair and
+clearing on failure because that command saves the new preferences even if repair cannot succeed.
+Cancelling it preserves the previous preferences as well as the plan. Failed `generate-plan` execution
+continues to preserve the old plan, original request, and grocery snapshot.
+
+**Design choice:** Reusing the existing hook avoids passing scanners into commands or storing a
+confirmation flag in the model. Commands remain independently testable. Direct callers of `execute`
+must perform confirmation themselves if needed; execution deliberately contains no console I/O.
+Generation feasibility is checked after agreement, so an impossible but syntactically valid request
+can still ask a question. Pre-generating a candidate would avoid that question but add speculative work
+and cached state to the prompt path. This single-threaded console has no concurrent command execution
+between asking and executing.
+
+**Testing:** `PlanConfirmationTest` covers accepted and rejected answers, EOF, state preservation,
+invalid syntax, current-state lookup, orphaned reset state, and confirmed generation or dietary failures.
+Existing console regression transcripts supply explicit answers at new prompts. Run Java 25 with
+`./gradlew test check jacocoTestReport`; the HTML report is in `build/reports/jacoco/test/html/index.html`.
+`check` requires 100% line and branch coverage for the three affected command classes. That threshold
+is feature-specific and does not imply 100% coverage for the entire application.
+
+**Manual verification:** With a plan and groceries present, cancel reset, replacement generation, and
+an incompatible dietary change. Check `view-plan`, `view-list`, `view-diet`, `view-targets`, and
+`view-meals` afterwards. Confirm reset and check both lists are absent. Generate again, confirm an
+impossible replacement, and verify the plan and groceries survive the error. Try malformed syntax
+and verify it reports an error without consuming the following command as an answer.
+<!-- @@author -->
+
+<!-- @@author Rixte -->
 ### Resetting a meal plan
 
 #### Purpose and command contract
@@ -109,7 +169,10 @@ generation. Repeating a reset on an empty holder returns a no-plan message.
 
 #### Parsing, execution, and ownership
 
-![Reset command ownership and retained session data.](images/reset-plan/classes.svg)
+![Reset command ownership and plan-holder dependency.](images/reset-plan/classes.svg)
+
+*Only reset dependencies are shown. Recipes, dietary settings, saved targets, and recorded meals
+are owned elsewhere; their preservation is described below.*
 
 `Parser.parseResetPlan` validates arguments before constructing `ResetPlanCommand`. Parsing only retains
 the shared `ActiveMealPlan` reference; it does not clear state. Arguments produce a `MishMashException` with
@@ -125,7 +188,7 @@ recipes, dietary settings, and recorded meals. This check runs whether Java asse
 disabled. The original cause is retained for diagnostics when clearing throws a runtime exception.
 `FINE` logging records only whether plan and grocery state were present, without recipe names or contents.
 
-![Reset-plan parsing and execution.](images/reset-plan/execution.svg)
+![Reset execution after agreement, including recoverable failures.](images/reset-plan/execution.svg)
 
 The command only holds the active-plan object. It does not receive dietary settings, saved targets, or the
 meal log, and does not read or mutate the recipe-book parameter inherited from `Command.execute`. This limited access
@@ -144,10 +207,13 @@ generated plan. Legacy plans without a retained generation request and present-b
 are supported. A grocery snapshot remaining without a plan is also removed. No new plan or groceries are
 created during reset.
 
-![Invalid reset arguments and recovery at the next prompt.](images/reset-plan/invalid-input.svg)
+![Rejected reset arguments followed by a valid retry.](images/reset-plan/invalid-input.svg)
 
-This change implements the reset operation only. The separate confirmation story #61 will define
-confirmation before clearing or replacing a plan using the existing `Command.confirmationPrompt` hook.
+*The retry follows normal parsing and then confirmation when state exists; it does not bypass
+the confirmation workflow.*
+
+Reset confirmation is implemented by `ResetPlanCommand.confirmationPrompt`. See
+[Confirming plan changes](#confirming-plan-changes) for the shared interaction and replacement paths.
 
 #### Tests and manual verification
 
@@ -189,11 +255,11 @@ The class diagram shows how parsing, edit data, execution, storage, and formatti
 `Parser` creates `RecipeChanges` and `EditRecipeCommand`. The command retains the requested changes
 and a displayed index; the recipe book is supplied only when `execute` runs.
 
-![Selected classes and relationships for recipe editing.](images/edit-recipe/classes.svg)
+![Command responsibilities for recipe editing.](images/edit-recipe/classes.svg)
 
 *Only feature-relevant members are shown. Solid arrows identify stored references; dashed arrows
-show dependencies or interface realization. The book's recipe list is ordered and permits repeated
-references. It does not exclusively own recipe objects: existing meal plans can retain the same objects.*
+show dependencies or interface realization. The book is an execution parameter rather than a stored command field.
+Its ordered list permits repeated references; existing plans can retain the same recipe objects.*
 
 `RecipeChanges` is an immutable record containing only the requested changes. Nullable scalar fields mean unchanged; an empty ingredient list means unchanged. Its constructor rejects an empty edit, blank names, negative nutrition, and invalid ingredient quantities, and defensively copies ingredients. Nullable nutrition distinguishes an omitted value from a requested zero.
 
@@ -208,17 +274,21 @@ does not look up recipe 2; the recipe book may change before the command execute
 
 ![Successful parsing and construction of a recipe edit.](images/edit-recipe/parsing.svg)
 
-*Map/list creation, ingredient construction, and repeated validation calls are condensed. The diagram
-shows nutrition parsing separately from collecting the prefixed values. Omitted food information
+*Map/list creation, ingredient construction, dispatch, and repeated validation calls are condensed.
+The reference frame summarizes validation through the shared argument and ingredient helpers.
+The diagram shows nutrition parsing separately from collecting the prefixed values. Omitted food information
 is preserved later; it is not inferred or reset during parsing.*
 
 #### Execution and replacement
 
 `EditRecipeCommand` retains the displayed index and changes. It resolves the recipe from the book during execution, so omitted fields come from the current recipe rather than a stale parsing-time copy. It checks the book and index before calling `RecipeChanges.applyTo(original)`. That method builds a new `Recipe` through its existing constructor. The command formats confirmation with `RecipeViewer` before calling `RecipeBook.replace(index - 1, edited)`, so validation or formatting failure cannot leave a partially applied edit. `replace` validates both index and replacement before updating one list element.
 
-![Execution, position checks, and replacement of a recipe.](images/edit-recipe/execution.svg)
+![Position checks, formatting, and publication of a recipe edit.](images/edit-recipe/execution.svg)
 
-*Execution is shown for index 1 and `p/55`, after successful parsing. Most getter calls, repeated
+![Building the validated immutable replacement recipe.](images/edit-recipe/replacement.svg)
+
+*Execution is split between command coordination and replacement construction. The replacement
+view expands `RecipeChanges.applyTo(original)` for an edit such as index 1 and `p/55`. Most getter calls, repeated
 size checks, logging, and formatting details are condensed. Empty books and out-of-range indexes
 raise `MishMashException` before replacement. The current index is resolved at execution time,
 including any renumbering caused by earlier deletions.*
@@ -901,14 +971,17 @@ the parser's `ActiveMealPlan`.
 
 #### Class-level responsibilities and relationships
 
-Figure 7 expands the implementation classes and the model references used by the check.
+Figures 7a and 7b separate command dependencies from model references so both views remain readable.
 
-![Figure 7. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
+![Figure 7a. Shortfall command dependencies.](images/shortfall/classes.svg)
 
-*Figure 7: Only members relevant to this enhancement are shown. Solid arrows are
+![Figure 7b. Shortfall model references.](images/shortfall/models.svg)
+
+*Figures 7a and 7b: Only members relevant to this enhancement are shown. Solid arrows are
 navigable associations with private role names; dashed arrows show dependencies or
 interface realization. Each reference is shown either as a typed attribute or as an
-association end, without duplication. The `addShortfall` parameter list is abbreviated.*
+association end, without duplication. Helper signatures and target getters are explained in the text rather than
+listed in the command class diagram.*
 
 `CheckShortfallParser` converts arguments into `NutritionTargets`. Its `parse` method
 coordinates the request while `readTarget` validates and records one token. Named prefix
@@ -938,7 +1011,9 @@ three distinct recipe entries per day.
 
 #### Successful command parsing
 
-Figure 8 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
+Figure 8 follows `check-shortfall cal/2000 p/100` through object creation. The lifelines
+"Target parser", "Targets", and "Check command" represent `CheckShortfallParser`, `NutritionTargets`,
+and `CheckShortfallCommand`, respectively. The dispatch
 from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
 the parser lifeline. A new target parser is created for the request. Its `parse` method
 collects values by calling `readTarget` for each supplied token, then constructs
@@ -946,7 +1021,8 @@ collects values by calling `readTarget` for each supplied token, then constructs
 
 ![Figure 8. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
 
-*Figure 8: Parsing returns a command without reading any plan. Dashed return arrows
+*Figure 8: Parsing returns a command to its caller without reading any plan; the console caller
+is omitted to keep the view narrow. Dashed return arrows
 represent returned values; constructor messages start the new objects' lifelines.*
 
 The outer parser creates `CheckShortfallCommand` only after argument validation succeeds.
@@ -960,9 +1036,13 @@ Figure 9 starts when `MishMash` calls `execute(recipeBook)` on the parsed comman
 inherited confirmation method returns an empty `Optional`, so this read-only action
 requires no confirmation. That common interface step is omitted from the diagram.
 
-![Figure 9. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
+![Figure 9a. Looking up the active plan and visiting its days.](images/shortfall/execution.svg)
 
-*Figure 9: The calorie getter/comparison calls are expanded; the equivalent calls for
+![Figure 9b. Comparing the nutrition of one day.](images/shortfall/comparison.svg)
+
+*Figures 9a and 9b: Plan traversal and daily comparison are shown separately. The
+reference frame expands the preceding `findShortfalls` call rather than calling it again.
+The calorie getter/comparison calls are expanded; the equivalent calls for
 protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
 list indexing, logging, and string-building details are condensed.*
 
@@ -1003,7 +1083,7 @@ The command's `FINE` log records the number of checked days; it installs no log 
 
 #### Invalid input and recovery
 
-Figure 10 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
+Figure 10 shows a rejected zero target. Its "Target parser" lifeline is `CheckShortfallParser`. `CheckShortfallParser.parseTarget` throws
 `IllegalArgumentException`; `Parser.parseCheckShortfall` wraps it as `MishMashException`,
 preserves its cause, and appends `CHECK_SHORTFALL_USAGE`. `MishMash.executeCommand` catches
 that recoverable exception and displays the error. The read loop then prints another
@@ -1835,3 +1915,12 @@ Use a fresh session containing exactly the three [sample recipes](#sample-recipe
 Add recipes, generate a plan and groceries, then enter `bye`. Restart and enter a name. Verify that the recipe book is empty and no plan or grocery list is available. Recipes from the earlier session should not reappear.
 
 There is no application-data save file to delete or corrupt for a storage-recovery test.
+
+<!-- @@author Rixte -->
+### Confirmation answers in manual workflows
+
+For every manual workflow above, answer `yes` when reset, replacement generation, or an incompatible
+dietary change asks for agreement, unless that step explicitly tests cancellation. This also applies
+to replacement requests expected to fail generation. The first generation and malformed commands
+need no answer. Use [Confirming plan changes](#confirming-plan-changes) for cancellation checks.
+<!-- @@author -->
