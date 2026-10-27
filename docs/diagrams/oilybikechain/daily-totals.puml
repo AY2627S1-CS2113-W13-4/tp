@@ -1,0 +1,56 @@
+@startuml
+!include ../shortfall/style.iuml
+title Combined daily totals: one read-only calculation
+autonumber
+participant "caller" as Caller
+participant "day: DayPlan" as Day
+participant "meal: Recipe" as Meal
+
+Caller -> Day : calculateDailyNutritionTotals()
+activate Day
+group Four getters evaluated in constructor argument order
+  Day -> Day : getTotalCalories()
+  activate Day
+  loop each meal occurrence
+    Day -> Meal : getCalories()
+    Meal --> Day : int calories
+  end
+  Day --> Day : long calorie sum
+  deactivate Day
+  Day -> Day : getTotalProtein()
+  activate Day
+  loop each meal occurrence
+    Day -> Meal : getProtein()
+    Meal --> Day : int protein
+  end
+  Day --> Day : long protein sum
+  deactivate Day
+  Day -> Day : getTotalCarbs()
+  activate Day
+  loop each meal occurrence
+    Day -> Meal : getCarbs()
+    Meal --> Day : int carbohydrates
+  end
+  Day --> Day : long carbohydrate sum
+  deactivate Day
+  Day -> Day : getTotalFats()
+  activate Day
+  loop each meal occurrence
+    Day -> Meal : getFats()
+    Meal --> Day : int fats
+  end
+  Day --> Day : long fat sum
+  deactivate Day
+end
+create participant "totals: NutritionTotals" as Totals
+Day -> Totals : new NutritionTotals(calories, protein, carbs, fats)
+Day --> Caller : totals
+deactivate Day
+
+note over Day, Totals
+  Each getter uses mapToLong(...).sum(); stream operations are condensed.
+  Empty meals give four zeros. Repeated references contribute on every occurrence.
+  This call changes no meals and retains no totals field; a new immutable result is returned.
+  The caller is an API client, not MealPlanViewer, which sums MealSummary values separately.
+end note
+@enduml

@@ -514,6 +514,17 @@ guide describes their integrated replacements above. Profile and README edits ar
 
 ### Combined daily nutrition totals
 
+The structural view connects the combined totals API with the separate target-aware viewing path.
+The supplier bindings show how viewing reads the latest shared state rather than capturing a plan
+when the command is parsed.
+
+![Nutrition class diagram showing daily totals, targets, generation requests, and viewing suppliers.](images/oilybikechain/nutrition-classes.svg)
+
+*Nutrition structure: solid associations show retained references, while dashed dependencies show
+temporary use. The supplier-to-holder dependencies describe the default parser's lambdas; these
+are bindings of Java's existing `Supplier` interface. Unrelated members and plan-to-day links are
+omitted here; the grocery class diagram below shows the plan hierarchy.*
+
 `DayPlan.calculateDailyNutritionTotals()` returns one immutable `NutritionTotals` record containing
 `calories()`, `protein()`, `carbs()`, and `fats()`. Calories are measured in kcal; the macronutrients
 are measured in grams. It delegates to the existing individual total getters, giving callers a
@@ -528,6 +539,12 @@ For example, a day containing the User Guide's Protein Oatmeal, Chicken and Rice
 has `new NutritionTotals(1650, 127, 150, 55)`. The record represents calculated data; it does not
 apply target tolerance, validate a nutrition goal, or introduce a new console command. The existing
 plan viewer computes its display totals from `MealSummary` values separately.
+
+![Sequence diagram of four daily nutrition sums followed by construction of NutritionTotals.](images/oilybikechain/daily-totals.svg)
+
+*Combined-total calculation: constructor arguments are evaluated in calories, protein, carbohydrates,
+and fats order. Each existing getter traverses every meal occurrence using a `long` sum. Stream
+internals are condensed, and the caller represents an API client rather than the plan viewer.*
 
 `DayPlanTest` covers ordinary meals, one meal, zero nutrition, an empty day, repeated recipes,
 independent days and repeated calls, unchanged meals, and totals above the integer range.
@@ -552,6 +569,13 @@ record recipe contents. `ParserTest.parseCommand_invalidArguments_preservesCause
 the cause and usage for all three parsing paths; `GeneratePlanCommandTest` verifies the original
 generation cause is retained. These changes strengthen diagnostics around teammates' commands rather
 than implementing those commands.
+
+![Sequence diagram of invalid generate-plan input, cause-preserving exception wrapping, logging, and recovery.](images/oilybikechain/diagnostic-recovery.svg)
+
+*Diagnostic recovery: `generate-plan d/0` fails while parsing, so no command is constructed or
+executed. The outer exception retains the validation cause. Application error display and the next
+prompt are integration context; the added generator assertions and diagnostics belong to successful
+validation paths and are summarized in the diagram's note.*
 
 ### Detecting exceeded nutrition targets
 
@@ -578,12 +602,26 @@ closing separator in calories, protein, carbohydrates, and fats order. Warnings 
 total, and target, using kcal for calories and g for the macronutrients. They do not change application state.
 `check-shortfall` continues to use its explicitly supplied targets independently of this display.
 
+![Sequence diagram of execution-time meal and target lookup, selected-day validation, and exact excess warnings.](images/oilybikechain/excess-warnings.svg)
+
+*Warning calculation: the default meal supplier adapts the active plan to summaries; the target
+supplier reads the retained generation request. Missing plans bypass the target supplier, and an
+out-of-range selected day fails before targets are read. Daily formatting and immutable value
+construction are condensed in notes. Only displayed days are compared, using strict excesses.*
+
 Tests cover exact comparison boundaries, omitted targets, simultaneous excesses, large totals, exact output,
 and day selection. Integration tests verify the generation tolerance, replacement after success or failure,
 legacy plans without requests, dietary repair and clearing, and independence from `check-shortfall`.
 Run `gradlew.bat test checkstyleMain checkstyleTest` with Java 25.
 
 ### Grocery command integration
+
+![Grocery class diagram showing command integration, active-plan snapshots, meal ingredients, and aggregation keys.](images/oilybikechain/grocery-classes.svg)
+
+*Grocery structure: the parser and command retain the same active-plan holder. Plain navigable
+associations allow shared model objects; they do not claim exclusive ownership. The optional grocery
+snapshot is abbreviated as an ordered collection with a note distinguishing absent and empty states.
+The temporary aggregation key is a dependency rather than a stored generator field.*
 
 #### Ingredient aggregation
 
@@ -620,6 +658,13 @@ a plan it returns `No active meal plan. Use 'generate-plan' first.` without publ
 Successful generation returns `Grocery list generated. Use 'view-list' to view it.` Only the finished
 result is stored, preserving any previous snapshot if generation fails.
 
+![Sequence diagram of generate-list parsing, active-plan lookup, ingredient collection, aggregation, and publication.](images/oilybikechain/grocery-execution.svg)
+
+*Grocery execution: parsing validates syntax without reading the plan. Execution counts every
+recipe occurrence, then publishes one completed snapshot. Ingredient-key lookup, decimal merging,
+and result-item creation are condensed inside the generator note. The existing application supplies
+confirmation handling, result display, and the next prompt.*
+
 `GenerateListCommandTest`, `ParserGenerateListTest`, and `ActiveMealPlanTest` cover missing plans,
 execution-time plan lookup, every recipe occurrence, repeated generation, syntax rejection, copying,
 and snapshot replacement. `MishMashGeneratePlanTest` exercises the generation-to-viewing connection
@@ -629,6 +674,16 @@ aggregation contribution.
 Grocery parsing and viewing use `FINE` logs, successful generation logs counts at `INFO`, and rejected generation requests use `WARNING`. These loggers inherit the existing application configuration; no additional handlers are installed. New diagnostics exclude ingredient names and raw input.
 
 Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
+
+#### Maintaining the grocery and nutrition diagrams
+
+The six class and sequence diagrams above have editable sources and regeneration instructions in
+[`docs/diagrams/oilybikechain`](diagrams/oilybikechain/README.md). Generated SVGs are checked in under
+`docs/images/oilybikechain`. Use Java 25 and PlantUML 1.2026.9 with the existing shared style and
+Smetana class layout. Check method names, retained references, multiplicities, supplier indirection,
+message order, and failure paths against current code, then syntax-check, render, and inspect every
+image. Keep sources and SVGs synchronized. The contribution history identifies the relevant commits;
+teammates' viewing, generation, formatting, and dietary components are shown as integration context.
 <!-- @@author -->
 
 <!-- @@author Rixte -->
