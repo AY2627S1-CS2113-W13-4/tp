@@ -12,8 +12,10 @@ import org.junit.jupiter.api.Test;
 import mishmash.exception.MishMashException;
 import mishmash.model.RecipeBook;
 import mishmash.parser.Parser;
+import mishmash.testutil.TestRecipes;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
+//@@author Rixte
 /**
  * Checks meal-plan command execution, missing plans, day bounds, and access to the latest supplied data.
  */
@@ -35,6 +37,25 @@ class ViewPlanCommandTest {
     private final List<List<MealSummary>> mealsByDay = List.of(
             List.of(new MealSummary("Rice", 200, 4, 45, 1)),
             List.of(new MealSummary("Beans", 300, 20, 40, 5)));
+
+    @Test
+    void execute_nonEmptyBook_preservesRecipesAfterViewsAndRejectedDay() throws MishMashException {
+        recipeBook.add(TestRecipes.recipe("Stored recipe", 300, 20, 40, 5));
+        recipeBook.add(TestRecipes.recipe("Another stored recipe", 200, 10, 30, 4));
+        var originalRecipes = recipeBook.getRecipes();
+        for (ViewPlanCommand command : List.of(new ViewPlanCommand(() -> mealsByDay),
+                new ViewPlanCommand(() -> mealsByDay, 2), new ViewPlanCommand(List::of))) {
+            command.execute(recipeBook);
+
+            assertEquals(originalRecipes, recipeBook.getRecipes());
+            assertEquals(2, recipeBook.size());
+        }
+
+        assertThrows(MishMashException.class,
+                () -> new ViewPlanCommand(() -> mealsByDay, 3).execute(recipeBook));
+        assertEquals(originalRecipes, recipeBook.getRecipes());
+        assertEquals(2, recipeBook.size());
+    }
 
     @Test
     void execute_allDays_displaysPlanWithoutChangingRecipes() throws MishMashException {
@@ -122,3 +143,4 @@ class ViewPlanCommandTest {
         assertThrows(NullPointerException.class, () -> new ViewPlanCommand(null, 1));
     }
 }
+//@@author

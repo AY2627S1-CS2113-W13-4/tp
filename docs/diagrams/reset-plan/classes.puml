@@ -1,0 +1,55 @@
+'@@author Rixte
+@startuml
+!pragma layout smetana
+title Reset-plan responsibilities and retained session data
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+interface Command {
+  + execute(recipeBook: RecipeBook): String
+  + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
+}
+class Parser {
+  - activeMealPlan: ActiveMealPlan
+  - dietarySettings: DietarySettings
+  - targetSettings: TargetSettings
+  - mealLog: MealLog
+  + parseCommand(input: String): Command
+  - parseResetPlan(arguments: String): Command
+}
+class ResetPlanCommand {
+  - activePlan: ActiveMealPlan
+  + execute(recipeBook: RecipeBook): String
+}
+class ActiveMealPlan {
+  - plan: MealPlan
+  - request: Optional<GeneratePlanRequest>
+  - groceryList: Optional<List<GroceryItem>>
+  + clear(): void
+}
+class RecipeBook
+class DietarySettings
+class TargetSettings
+class MealLog
+
+ResetPlanCommand ..|> Command
+Parser ..> ResetPlanCommand : creates
+Parser --> ActiveMealPlan : shares
+Parser --> DietarySettings : retains
+Parser --> TargetSettings : retains
+Parser --> MealLog : retains
+ResetPlanCommand --> ActiveMealPlan : clears
+Command ..> RecipeBook : execution parameter
+
+note bottom of ResetPlanCommand
+  The reset only owns a reference to the plan holder.
+  It does not read or change recipes, preferences, saved targets,
+  or recorded meals.
+end note
+note bottom of ActiveMealPlan
+  clear() removes the plan, its generation request,
+  and its grocery snapshot together.
+end note
+@enduml
+'@@author

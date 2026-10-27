@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include style.iuml
 title Successful parsing: check-shortfall cal/2000 p/100
@@ -52,3 +53,4 @@ note over Parser, Check
   and these explicit targets for execution.
 end note
 @enduml
+'@@author

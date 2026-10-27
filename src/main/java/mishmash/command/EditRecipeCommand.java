@@ -9,11 +9,12 @@ import mishmash.model.RecipeBook;
 import mishmash.model.RecipeChanges;
 import mishmash.ui.RecipeViewer;
 
+//@@author Rixte
 /**
  * Replaces one recipe in place using validated edits, keeping all omitted fields.
  */
 public class EditRecipeCommand implements Command {
-    /** Records successful edits without including recipe contents. */
+    /** Records successful edits and rejected positions without including recipe contents. */
     private static final Logger LOGGER = Logger.getLogger(EditRecipeCommand.class.getName());
 
     private final int index;
@@ -47,11 +48,14 @@ public class EditRecipeCommand implements Command {
     @Override
     public String execute(RecipeBook recipeBook) throws MishMashException {
         Objects.requireNonNull(recipeBook, "recipeBook");
-        if (recipeBook.size() == 0) {
+        int originalSize = recipeBook.size();
+        if (originalSize == 0) {
+            LOGGER.fine("Recipe edit rejected: recipe book is empty");
             throw new MishMashException("There are no recipes to edit.");
         }
-        if (index > recipeBook.size()) {
-            throw new MishMashException("Recipe index must be between 1 and " + recipeBook.size() + ".");
+        if (index > originalSize) {
+            LOGGER.fine(() -> "Recipe edit rejected: index " + index + "; recipe count: " + originalSize);
+            throw new MishMashException("Recipe index must be between 1 and " + originalSize + ".");
         }
 
         Recipe edited = changes.applyTo(recipeBook.getRecipes().get(index - 1));
@@ -59,7 +63,10 @@ public class EditRecipeCommand implements Command {
                 + System.lineSeparator() + "Existing meal plans and grocery lists are unchanged."
                 + " Generate a new plan and grocery list to use this edit.";
         recipeBook.replace(index - 1, edited);
+        // Editing replaces an entry; adding or removing an entry here would invalidate displayed indices.
+        assert recipeBook.size() == originalSize : "Editing must preserve the recipe count.";
         LOGGER.fine(() -> "Recipe edited at index " + index + "; recipe count: " + recipeBook.size());
         return confirmation;
     }
 }
+//@@author

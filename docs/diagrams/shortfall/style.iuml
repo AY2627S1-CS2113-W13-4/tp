@@ -1,3 +1,4 @@
+'@@author Rixte
 ' Shared visual settings for the shortfall diagrams.
 skinparam backgroundColor white
 skinparam defaultFontName Arial
@@ -19,3 +20,4 @@ skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #C4AC70
 skinparam maxMessageSize 240
 hide footbox
+'@@author

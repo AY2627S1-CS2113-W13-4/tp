@@ -23,6 +23,7 @@ import mishmash.parser.Parser;
 import mishmash.testutil.TestRecipes;
 import mishmash.ui.RecipeViewer;
 
+//@@author Rixte
 /** Checks positional edits, atomic failures, execution-time lookup, and generated snapshots. */
 class EditRecipeCommandTest {
     /** Builds a protein-only change for direct command tests. */
@@ -273,12 +274,14 @@ class EditRecipeCommandTest {
 
         parser.parseCommand("edit-recipe 1 cal/1000").execute(book);
         Recipe edited = book.getRecipes().getFirst();
+        List<Recipe> editedRecipes = book.getRecipes();
         assertThrows(MishMashException.class,
                 () -> parser.parseCommand("generate-plan d/1 cal/1700").execute(book));
 
         assertSame(plan, active.get().orElseThrow());
         assertSame(request, active.getRequest().orElseThrow());
         assertSame(groceries, active.getGroceryList().orElseThrow());
+        assertEquals(editedRecipes, book.getRecipes());
         assertEquals(before, parser.parseCommand("view-plan").execute(book));
         assertSame(edited, book.getRecipes().getFirst());
         assertEquals(1000, edited.getCalories());
@@ -298,12 +301,16 @@ class EditRecipeCommandTest {
         parser.parseCommand("generate-list").execute(book);
         var originalPlan = active.get().orElseThrow();
         var originalGroceries = active.getGroceryList().orElseThrow();
+        var originalRequest = active.getRequest().orElseThrow();
 
         parser.parseCommand("edit-recipe 1 i/Tofu:200g").execute(book);
+        List<Recipe> editedRecipes = book.getRecipes();
         assertThrows(MishMashException.class, () -> parser.parseCommand("generate-plan d/1").execute(book));
 
         assertSame(originalPlan, active.get().orElseThrow());
+        assertSame(originalRequest, active.getRequest().orElseThrow());
         assertSame(originalGroceries, active.getGroceryList().orElseThrow());
+        assertEquals(editedRecipes, book.getRecipes());
         assertEquals(FoodInfo.parseField("none"), book.getRecipes().getFirst().getFoodInfo());
         parser.parseCommand("edit-recipe 1 i/Rice:200g").execute(book);
         parser.parseCommand("generate-plan d/1").execute(book);
@@ -312,3 +319,4 @@ class EditRecipeCommandTest {
                 .map(Object::toString).toList());
     }
 }
+//@@author

@@ -22,6 +22,7 @@ import mishmash.model.FoodInfo;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 
+//@@author Rixte
 /** Checks edit syntax, shared recipe validation, and preservation of omitted fields. */
 class ParserEditRecipeTest {
     private final Parser parser = new Parser();
@@ -253,3 +254,4 @@ class ParserEditRecipeTest {
         assertTrue(Parser.COMMAND_USAGE.contains(Parser.EDIT_RECIPE_USAGE));
     }
 }
+//@@author

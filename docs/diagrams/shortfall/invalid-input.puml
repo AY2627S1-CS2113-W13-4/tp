@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include style.iuml
 title Invalid input: check-shortfall cal/0
@@ -37,3 +38,4 @@ note over Parser, TargetParser
   No plan, recipe, or grocery data is read or changed.
 end note
 @enduml
+'@@author

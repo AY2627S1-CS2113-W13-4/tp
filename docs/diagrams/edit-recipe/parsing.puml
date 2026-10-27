@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include ../shortfall/style.iuml
 
@@ -53,3 +54,4 @@ note over Parser, Edit
   A supplied ingredient list replaces the entire list; omitted fields are read from the target later.
 end note
 @enduml
+'@@author

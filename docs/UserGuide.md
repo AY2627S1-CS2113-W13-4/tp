@@ -8,6 +8,7 @@ This guide covers the current team version, including meal-plan viewing, grocery
 
 ## Quick Start
 
+<!-- @@author Rixte -->
 ### Set Up and Launch
 
 1. **Install Java 25.** Use Java 25 for this project.
@@ -41,6 +42,7 @@ This guide covers the current team version, including meal-plan viewing, grocery
 
 4. **Enter your name** when MishMash asks `What is your name?`, then press Enter. The first line you type is your name, rather than an application command.
 5. **Enter one command per line** and press Enter to run it. Enter `bye` to exit.
+<!-- @@author -->
 
 ### Try Your First Command
 
@@ -56,8 +58,7 @@ MishMash confirms the addition and shows the recipe's nutrition and ingredients.
 bye
 ```
 
-> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, grocery list, and recorded meals. There is no save or load command.
-
+> **Session Data:** Closing or restarting the current application clears the recipes, saved daily targets, meal plan, grocery list, and recorded meals. There is no save or load command.
 ## Commands at a Glance
 
 Click a task to jump directly to its instructions. The commands below are supported by the current team version.
@@ -68,7 +69,10 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [List recipes](#listing-recipes) | `list-recipes [INDEX]` | Omit the index to list all recipes; supply one to see its full details. |
 | [Edit a recipe](#editing-a-recipe) | `edit-recipe INDEX p/55` | Use an index from the latest recipe list and supply at least one field. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
+| [Set daily targets](#setting-daily-targets) | `set-targets cal/2000 p/150` | Supply at least one target; use `none` to remove one. |
+| [View daily targets](#viewing-daily-targets) | `view-targets` | No prerequisites. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
+| [Reset my meal plan](#resetting-a-meal-plan) | `reset-plan` | Clears the current plan and groceries; keeps your other session data. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
@@ -84,11 +88,12 @@ Click a task to jump directly to its instructions. The commands below are suppor
 Use this sequence to generate meals and their groceries:
 
 1. **Add at least three recipes** with `add-recipe`.
-2. **Generate meals** with `generate-plan d/3`.
-3. **Review meals** with `view-plan` or `view-plan d/1`.
-4. **Check daily nutrition** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional.
-5. **Generate ingredients** with `generate-list`.
-6. **Check your shopping list** with `view-list`.
+2. **Save your daily targets** with `set-targets cal/2000 p/150`, replacing the example numbers with your own. This step is optional; without it, `generate-plan` uses only the targets you type in that command.
+3. **Generate meals** with `generate-plan d/3`.
+4. **Review meals** with `view-plan` or `view-plan d/1`.
+5. **Check daily nutrition** with `check-shortfall cal/2000 p/100`, replacing the example targets with your own. This step is optional.
+6. **Generate ingredients** with `generate-list`.
+7. **Check your shopping list** with `view-list`.
 
 After generating a replacement plan, generate the grocery list again so the ingredients match the meals you intend to prepare.
 
@@ -98,6 +103,7 @@ To track what you actually eat, use this separate sequence at any time after add
 2. **Record the meal** with `record-meal 1`, replacing `1` with that number.
 3. **Review your intake** with `view-meals`, which shows each recorded meal's nutrition and the totals.
 
+<!-- @@author Rixte -->
 ## Reading Command Formats
 
 - Enter each command on **one line**. Long examples may wrap visually; do not insert a line break within a command.
@@ -107,6 +113,7 @@ To track what you actually eat, use this separate sequence at any time after add
 - Separate arguments with spaces. Names may contain spaces without quotation marks, for example `n/Chicken and Rice`.
 - For recipe ingredients, use `NAME:QUANTITY_UNIT`, such as `Chicken Breast:200g` or `Olive Oil:2.5ml`. Repeat `i/` for each ingredient.
 - `/` is reserved for argument prefixes and is not accepted inside recipe field values.
+<!-- @@author -->
 
 | Prefix or Abbreviation | Meaning |
 | --- | --- |
@@ -117,29 +124,74 @@ To track what you actually eat, use this separate sequence at any time after add
 | `c/`, `C` | Carbohydrates, measured in grams. |
 | `f/`, `F` | Fats, measured in grams. |
 | `i/` | Ingredient name, quantity, and unit. |
+| `none` | In `set-targets`, written instead of a number to remove a saved target, for example `cal/none`. |
 
+<!-- @@author peilingggg -->
 ## Adding a Recipe
 
-<!-- OWNER: Pei Ling. Cover required fields, nutrition limits, positive quantities, allowed units, repeated ingredients, and duplicate recipes. -->
-
-**Purpose:** {Explain what adding a recipe lets the user do.}
+**Purpose:** Adds a recipe to your recipe book so you can use it to generate meal plans and grocery lists, or record it as a meal you have eaten.
 
 **Format:**
 
 ```text
-add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]
+add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITYUNIT [i/INGREDIENT:QUANTITYUNIT ...] [food/TAG[,TAG...]]
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+**Before You Start:** No recipes or meal plans are required. Have the recipe's calories, protein, carbohydrates, fats, and ingredient quantities ready.
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:** Enter this command on one line after entering your name:
 
-**Result:** {Show the actual output from the application.}
+```text
+add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/White Rice:150g i/Olive Oil:10ml food/poultry
+```
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+**Result:**
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+```text
+New recipe added!
+Chicken and Rice
+650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
+Ingredients:
+- Chicken Breast: 200g
+- White Rice: 150g
+- Olive Oil: 10ml
+Food tags: poultry
+```
 
+Use `list-recipes` to find the new recipe's number.
+
+**Rules:**
+
+- Include `n/`, `cal/`, `p/`, `c/`, and `f/` exactly once, and at least one `i/` field. Optional `food/` can appear once. Fields may appear in any order, separated by spaces; prefixes are case-sensitive.
+- Recipe and ingredient names must not be blank. Names can contain spaces without quotation marks. `/` is reserved for prefixes and cannot appear in field values; `:` separates an ingredient name from its quantity.
+- All four nutrition values must be whole numbers from 0 to 2,147,483,647. Signs and decimal values are rejected. Calories use kcal; protein, carbohydrates, and fats use grams. MishMash uses the nutrition you enter and does not calculate it from the ingredients.
+- Each ingredient needs a name, a quantity greater than zero, and a unit. Quantities may be whole numbers or decimals, such as `200g` or `2.5ml`. Write `0.5g`, rather than `.5g`. Units must contain only letters (`A–Z` or `a–z`); there is no fixed list of accepted units. Examples include `g`, `kg`, `ml`, and `cups`. Units are not converted.
+- Repeat `i/` for each ingredient. Repeated ingredient names are accepted and remain separate entries in the recipe, in the order entered. Grocery generation later combines entries only when both their names and units match exactly.
+- Duplicate recipe names and identical recipes are accepted as separate recipes. Adding never replaces an existing recipe; use `edit-recipe INDEX` to change one.
+- Optional `food/` declares all applicable supported food categories, separated by commas, for example `food/poultry,soy,legume`. Enter `help` for the supported tags. Tags are not inferred from ingredient names. Use `food/none` only when none of the supported categories apply; do not combine `none` with other tags. Omitting `food/` displays `Food tags: Unclassified`, and unclassified recipes are excluded when dietary restrictions are active. `food/none` displays `Food tags: None declared`.
+- Adding a recipe does not change existing meal plans, grocery lists, or recorded meals. To use it in a plan, run `generate-plan` again, then `generate-list` for updated groceries.
+- Recipes are kept only for the current session and are lost when the application closes.
+
+**Errors and Recovery:**
+
+The examples below modify the complete example command above; keep its other fields unchanged.
+
+| Invalid input or change | Response | What to Do |
+| --- | --- | --- |
+| Omit `f/15` | `Error: Missing required field: f/` | Restore `f/15`. Supply all five required recipe fields. |
+| Leave `n/` blank | `Error: Value must not be blank: n/` | Use `n/Chicken and Rice`. Every supplied prefix needs a value. |
+| Use `p/-5` or `p/2.5` | `Error: Protein must be a non-negative integer.` | Use a whole number such as `p/50`. The same rule applies to all four nutrition fields. |
+| Use `cal/2147483648` | `Error: Calories must not exceed 2147483647.` | Use a value within the supported range, such as `cal/650`. |
+| Remove every `i/` field | `Error: At least one ingredient is required. Use i/INGREDIENT:QUANTITYUNIT, for example i/Rice:150g.` | Restore at least one complete ingredient, such as `i/White Rice:150g`. |
+| Use `i/White Rice:0g` | `Error: Ingredient quantity must be greater than zero.` | Use `i/White Rice:150g` or another positive quantity. |
+| Use `i/White Rice:150` without a unit | `Error: Invalid ingredient format. Use i/INGREDIENT:QUANTITYUNIT, for example i/Chicken Breast:200g.` | Include a unit containing only letters: `i/White Rice:150g`. Negative quantities also fail the ingredient format check. |
+| Use `i/:150g` | `Error: Ingredient name must not be blank.` | Include the name: `i/White Rice:150g`. |
+| Add a second `n/` field | `Error: Repeated field: n/` | Keep only `n/Chicken and Rice`. Only `i/` may be repeated. |
+| Use `protein/50` instead of `p/50` | `Error: Unknown field: protein/` | Use the supported prefix `p/50`. |
+| Use `food/poultry,poultry` | `Error: Repeated food tag: poultry.` | Declare each category once: `food/poultry`. Unsupported tags display an error followed by the valid food tags; choose the applicable supported tags. |
+
+Invalid input also displays the `add-recipe` format and an example. No recipe is added until the whole command is valid. Correct the command and enter it again at the next prompt.
+<!-- @@author -->
 <!-- @@author neil0618 -->
 ## Listing Recipes
 
@@ -213,6 +265,7 @@ Food tags: poultry
 The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: list-recipes [INDEX]`. Enter the corrected command at the next prompt; errors never change your recipes.
 <!-- @@author -->
 
+<!-- @@author Rixte -->
 ## Editing a Recipe
 
 Update a saved recipe's name, nutrition, ingredients, quantities, or food tags when you change how you prepare it.
@@ -269,6 +322,7 @@ For a smaller correction, `edit-recipe 1 p/60` changes only the protein value.
 | `edit-recipe 1 p/-5` | `Protein must be a non-negative integer.` Use a whole number such as `p/55`. |
 | `edit-recipe 1 i/Rice:0g` | `Ingredient quantity must be greater than zero.` Supply a positive quantity and the complete replacement ingredient list. |
 | A prefix is blank, unknown, or repeated | The error identifies the invalid field and shows edit usage. Supply a nonblank value and use each prefix once, except repeated `i/`. |
+<!-- @@author -->
 
 <!-- @@author neil0618 -->
 ## Deleting a Recipe
@@ -352,6 +406,115 @@ Cancelled. Nothing was changed.
 An index problem is reported before MishMash asks you to confirm, so nothing is deleted. The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: delete-recipe INDEX`. Enter the corrected command at the next prompt.
 <!-- @@author -->
 
+<!-- @@author neil0618 -->
+## Setting Daily Targets
+
+Saves your daily calorie, protein, carbohydrate, and fat targets for the rest of the session, so you do not have to type them every time you generate a meal plan. Each later [`generate-plan`](#generating-a-meal-plan) uses the saved targets for any nutrient you leave out of that command. Setting a target never changes a meal plan you have already generated.
+
+**Before You Start:** None. You can set targets before or after adding recipes.
+
+**Format:**
+
+```text
+set-targets [cal/CALORIES|none] [p/PROTEIN|none] [c/CARBS|none] [f/FATS|none]
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `cal/CALORIES` | Daily calories in kcal, as a positive whole number. |
+| `p/PROTEIN` | Daily protein in grams, as a positive whole number. |
+| `c/CARBS` | Daily carbohydrates in grams, as a positive whole number. |
+| `f/FATS` | Daily fats in grams, as a positive whole number. |
+| `none` | Written instead of a number, it removes that nutrient's saved target, for example `cal/none`. |
+
+Supply at least one parameter, in any order. A nutrient you do not mention keeps its saved target.
+
+**Example:**
+
+In a fresh session, after entering your name, enter these commands one line at a time:
+
+```text
+set-targets cal/1500 p/80
+set-targets f/37
+set-targets p/none
+```
+
+**Example Output:**
+
+```text
+Daily targets saved: 1500 kcal, 80 g protein.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+`set-targets f/37` adds a third target and keeps the first two:
+
+```text
+Daily targets saved: 1500 kcal, 80 g protein, 37 g fats.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+`set-targets p/none` removes the protein target only:
+
+```text
+Daily targets saved: 1500 kcal, 37 g fats.
+They apply to the next 'generate-plan'; your current meal plan is unchanged.
+```
+
+**Rules:**
+
+- Each target must be a positive whole number up to 2147483647. Calories are in kcal; protein, carbohydrates, and fats are in grams.
+- `set-targets` changes only the nutrients you name. To replace a target, set it again. To remove one, write `none` (any letter case) as its value. When the last saved target is removed, MishMash replies `All daily targets cleared.`
+- Each nutrient may appear only once in a command.
+- The next [`generate-plan`](#generating-a-meal-plan) uses a saved target for every nutrient you leave out of that command. A target typed in `generate-plan` replaces the saved one for that plan only; it does not change what is saved.
+- Saved targets do not affect [`check-shortfall`](#checking-nutrition-shortfalls), which always uses the targets you type in that command.
+- Targets are kept only for the current session. Closing MishMash clears them.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| `set-targets` with nothing after it | `Error: Supply at least one daily target to set or clear.` | Add at least one target, for example `set-targets cal/2000`. |
+| `set-targets cal/0`, `cal/-5`, `cal/abc`, or `cal/1.5` | `Error: Calories target (cal/) must be a positive whole number from 1 to 2147483647, or 'none'.` | Enter a positive whole number, or `none` to remove the target. The message names the nutrient you mistyped. |
+| `set-targets cal/` | `Error: Missing value after cal/` | Add a number or `none` after the slash. |
+| `set-targets x/5` or `set-targets 2000` | `Error: Unrecognized parameter: x/5` | Use only `cal/`, `p/`, `c/`, and `f/`. |
+| `set-targets cal/1 cal/2` | `Error: Parameter cal/ was given more than once.` | Give each nutrient once. |
+
+Every error is followed by `Format: set-targets ...` and leaves your saved targets unchanged, because MishMash checks the whole command before saving anything. Enter the corrected command at the next prompt.
+
+## Viewing Daily Targets
+
+Shows the daily targets you saved with [`set-targets`](#setting-daily-targets). Viewing never changes them.
+
+**Format:**
+
+```text
+view-targets
+```
+
+**Example Output:**
+
+After `set-targets cal/1500 p/80 f/37`:
+
+```text
+Daily targets:
+Calories: 1500 kcal
+Protein: 80 g
+Carbs: not set
+Fats: 37 g
+```
+
+With no targets saved, `view-targets` replies:
+
+```text
+No daily targets saved. Use 'set-targets' to set them.
+```
+
+**Rules:**
+
+- `view-targets` takes no arguments. `view-targets now` shows `Error: view-targets does not accept arguments.` and `Format: view-targets`.
+- A nutrient shown as `not set` has no target, so `generate-plan` does not constrain it unless you type one in that command.
+<!-- @@author -->
+
 ## Generating a Meal Plan
 
 Builds a plan containing three distinct recipes per day, using recipes from your recipe book.
@@ -385,15 +548,73 @@ Use 'view-plan' to inspect your planned meals.
 - Calories use kcal; protein, carbohydrates, and fats use grams. Omitted nutrients have no target.
 - Without targets, meals are selected randomly. With targets, every day's totals must be within ±15% of
   every supplied target. For large recipe books, generation searches a bounded sample of combinations.
-- The application retains your supplied targets. `view-plan` warns whenever a daily total exceeds its exact
-  target, even when that day is within the generation tolerance. These warnings are informational.
+- Targets you saved with [`set-targets`](#setting-daily-targets) apply to every nutrient you leave out of the
+  command. A target typed here replaces the saved one for this plan only. When a saved target is used, the
+  confirmation adds a `Daily targets used:` line listing every target that was applied.
+- The application retains the targets that were applied. `view-plan` warns whenever a daily total exceeds its exact
+  target, even when that day is within the generation tolerance. These warnings are informational. They keep using
+  the targets the plan was generated with, even if you change the saved targets afterwards.
 - Successful generation replaces the active plan and its targets and clears its generated grocery list.
   A replacement generated without targets has no nutrition warnings. Plans and targets last only for this session.
+
+**Example with saved targets:** After `set-targets cal/1500 p/80`, a plain `generate-plan d/1` builds a day within 15% of 1500 kcal and 80 g protein, and the confirmation names the targets it used:
+
+```text
+Meal plan successfully generated for 1 day(s)!
+Daily targets used: 1500 kcal, 80 g protein.
+Use 'view-plan' to inspect your planned meals.
+```
+
+`generate-plan d/1 cal/1400` instead replaces the saved calories with 1400 for that plan and still uses the saved 80 g of protein. It reports `Daily targets used: 1400 kcal, 80 g protein.`
 
 **Errors and Recovery:** If generation reports that it cannot find three recipes meeting your daily targets
 within 15%, try different targets or add recipes. If fewer than three eligible recipes are available, add
 or classify suitable recipes before retrying. Failed generation leaves the previous plan, targets, and
-grocery list intact.
+grocery list intact. If a saved target was applied, the error adds a line such as `Daily targets applied: 1500 kcal,
+200 g protein (including your saved targets). Change those with 'set-targets'.` Use `view-targets` to see what is saved,
+then change or remove a target with `set-targets`. There is no way to ignore a saved target for a single `generate-plan`;
+remove it with `none` first.
+
+<!-- @@author Rixte -->
+## Resetting a Meal Plan
+
+Use `reset-plan` when you want to start planning again without re-entering recipes or losing your recorded meals.
+
+**Format:**
+
+```text
+reset-plan
+```
+
+This removes the current meal plan, the targets attached to that plan, and its generated grocery list.
+Your recipes, dietary preferences (including avoided food categories and excluded ingredients), saved
+daily targets from `set-targets`, and recorded meals stay available. The reset takes effect immediately
+and cannot be undone.
+
+**Example:**
+
+```text
+generate-plan d/2 cal/1650
+generate-list
+reset-plan
+```
+
+The first two commands require enough suitable recipes. After the reset, MishMash displays:
+
+```text
+Meal plan reset. Recipes, dietary preferences, and recorded meals are unchanged.
+```
+
+`view-plan` and `check-shortfall` will ask you to generate a plan first. `view-list` will ask you to generate
+groceries first. You can still use `list-recipes`, `view-diet`, and `view-meals` to see the data you kept.
+To start again, run `generate-plan d/1`, then `generate-list`. Your saved daily targets still apply to
+nutrients you leave out of the generation command. Targets supplied only for the removed plan are not
+reused; supply those again if needed. Use `view-targets` to check your saved targets.
+
+If there is no current plan, MishMash displays `No active meal plan to reset.` and lets you continue.
+Repeating the reset is safe. The command accepts no arguments: `reset-plan d/1` produces
+`reset-plan does not accept arguments.` followed by `Format: reset-plan`, and keeps the current plan unchanged.
+<!-- @@author -->
 
 ## Viewing a Meal Plan
 
@@ -497,6 +718,7 @@ There is no separate excess-checking command: use `view-plan` or `view-plan d/DA
 generating a plan with targets. Generating without targets produces daily totals without warnings.
 <!-- @@author -->
 
+<!-- @@author Rixte -->
 ## Checking Nutrition Shortfalls
 
 Use `check-shortfall` to see which days in your active meal plan fall below your supplied daily calorie, protein, carbohydrate, or fat targets, and by how much.
@@ -588,6 +810,7 @@ Supply the targets each time; the check does not save them as personal settings 
 | `check-shortfall cal/ 2000` | `Error: Missing value after cal/.` | Remove the space after the prefix: `check-shortfall cal/2000`. |
 
 Invalid input also displays the command format. Enter the corrected command at the next prompt; errors leave your existing data unchanged.
+<!-- @@author -->
 
 <!-- @@author oilybikechain -->
 ## Generating a Grocery List
