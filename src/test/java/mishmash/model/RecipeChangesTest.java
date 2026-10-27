@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+//@@author Rixte
 /** Checks model validation and immutable ingredient edits independently of command parsing. */
 class RecipeChangesTest {
     @Test
@@ -109,3 +110,4 @@ class RecipeChangesTest {
                 () -> new RecipeChanges(null, null, null, null, null, List.of(rice, zero), null));
     }
 }
+//@@author

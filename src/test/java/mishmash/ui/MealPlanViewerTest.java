@@ -95,6 +95,7 @@ class MealPlanViewerTest {
         assertThrows(NullPointerException.class, () -> viewer.view(createMealsByDay(), 1, null));
     }
 
+    //@@author Rixte
     /**
      * Creates two days with different totals and a repeated meal on day 2.
      */
@@ -104,12 +105,16 @@ class MealPlanViewerTest {
         MealSummary salmon = new MealSummary("Salmon Salad", 550, 42, 20, 32);
         return List.of(List.of(oatmeal, chicken, salmon), List.of(chicken, chicken, oatmeal));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_singleDayPlan_matchesSpecifiedOutput() {
         assertEquals(DAY_ONE_DISPLAY, viewer.view(List.of(createMealsByDay().get(0))));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_multipleDays_displaysEachDayWithIndependentTotals() {
         String expected = DAY_ONE_DISPLAY + System.lineSeparator() + System.lineSeparator()
@@ -117,7 +122,9 @@ class MealPlanViewerTest {
 
         assertEquals(expected, viewer.view(createMealsByDay()));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_daysWithDifferentMealCounts_restartsNumberingAndCalculatesTotals() {
         List<List<MealSummary>> mealsByDay = List.of(
@@ -140,17 +147,23 @@ class MealPlanViewerTest {
 
         assertEquals(expected, viewer.view(mealsByDay));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_firstDay_displaysOnlyFirstDay() {
         assertEquals(DAY_ONE_DISPLAY, viewer.view(createMealsByDay(), 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_lastDay_preservesDayNumberAndCountsRepeatedMeals() {
         assertEquals(DAY_TWO_DISPLAY, viewer.view(createMealsByDay(), 2));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_middleDay_displaysOnlySelectedDay() {
         List<List<MealSummary>> originalMealsByDay = createMealsByDay();
@@ -159,7 +172,9 @@ class MealPlanViewerTest {
 
         assertEquals(DAY_TWO_DISPLAY, viewer.view(mealsByDay, 2));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_emptyDayBetweenMeals_preservesDayNumbers() {
         List<List<MealSummary>> originalMealsByDay = createMealsByDay();
@@ -180,7 +195,9 @@ class MealPlanViewerTest {
         assertEquals(emptyDayDisplay, viewer.view(mealsByDay, 2));
         assertEquals(thirdDayDisplay, viewer.view(mealsByDay, 3));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_differentPlans_displaysOnlyLatestInput() {
         viewer.view(createMealsByDay());
@@ -198,7 +215,9 @@ class MealPlanViewerTest {
         assertEquals(expected, viewer.view(replacementMealsByDay, 1));
         assertEquals("No active meal plan. Use 'generate-plan' first.", viewer.view(List.of()));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_dayOutsidePlan_throwsIllegalArgumentException() {
         List<List<MealSummary>> mealsByDay = createMealsByDay();
@@ -207,7 +226,9 @@ class MealPlanViewerTest {
         assertThrows(IllegalArgumentException.class, () -> viewer.view(mealsByDay, 0));
         assertThrows(IllegalArgumentException.class, () -> viewer.view(mealsByDay, 3));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_emptyPlan_displaysGeneratePlanPrompt() {
         String expected = "No active meal plan. Use 'generate-plan' first.";
@@ -215,7 +236,9 @@ class MealPlanViewerTest {
         assertEquals(expected, viewer.view(List.of()));
         assertEquals(expected, viewer.view(List.of(), 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_emptyDay_displaysZeroTotals() {
         String expected = String.join(System.lineSeparator(),
@@ -228,7 +251,9 @@ class MealPlanViewerTest {
         assertEquals(expected, viewer.view(mealsByDay));
         assertEquals(expected, viewer.view(mealsByDay, 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_largeNutritionValues_totalsDoNotOverflow() {
         MealSummary meal = new MealSummary("Large meal", Integer.MAX_VALUE,
@@ -244,7 +269,9 @@ class MealPlanViewerTest {
 
         assertEquals(expected, viewer.view(List.of(List.of(meal, meal))));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_repeatedCalls_doesNotChangePlan() {
         List<List<MealSummary>> originalMealsByDay = createMealsByDay();
@@ -259,13 +286,17 @@ class MealPlanViewerTest {
         assertEquals(firstDisplay, viewer.view(mealsByDay));
         assertEquals(originalMealsByDay, mealsByDay);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_nullPlan_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> viewer.view(null));
         assertThrows(NullPointerException.class, () -> viewer.view(null, 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_nullDay_throwsNullPointerException() {
         // Arrays.asList permits null so the viewer's validation is exercised.
@@ -274,7 +305,9 @@ class MealPlanViewerTest {
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 2));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_validDayWithAnotherNullDay_displaysOnlySelectedDay() {
         // Viewing one day only needs the selected day's meals to be valid.
@@ -282,7 +315,9 @@ class MealPlanViewerTest {
 
         assertEquals(DAY_ONE_DISPLAY, viewer.view(mealsByDay, 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_nullMeal_throwsNullPointerException() {
         List<MealSummary> meals = Arrays.asList(new MealSummary("Rice", 200, 4, 45, 1), null);
@@ -291,7 +326,9 @@ class MealPlanViewerTest {
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay));
         assertThrows(NullPointerException.class, () -> viewer.view(mealsByDay, 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_validPlanAfterRejectedInput_displaysOnlyValidMealsAndTotals() {
         // A meal is formatted before the null entry interrupts the failed call.
@@ -304,18 +341,24 @@ class MealPlanViewerTest {
         assertThrows(NullPointerException.class, () -> viewer.view(invalidMealsByDay, 1));
         assertEquals(DAY_ONE_DISPLAY, viewer.view(validMealsByDay, 1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void mealSummary_nullName_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new MealSummary(null, 100, 1, 2, 3));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void mealSummary_blankName_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("", 100, 1, 2, 3));
         assertThrows(IllegalArgumentException.class, () -> new MealSummary(" \t ", 100, 1, 2, 3));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void mealSummary_negativeNutrition_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", -1, 1, 2, 3));
@@ -323,7 +366,9 @@ class MealPlanViewerTest {
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", 100, 1, -1, 3));
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", 100, 1, 2, -1));
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void view_zeroNutrition_displaysZeroValues() {
         MealSummary meal = new MealSummary("Water", 0, 0, 0, 0);
@@ -336,4 +381,5 @@ class MealPlanViewerTest {
 
         assertEquals(expected, viewer.view(List.of(List.of(meal))));
     }
+    //@@author
 }

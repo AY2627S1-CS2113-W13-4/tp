@@ -54,6 +54,7 @@ class MishMashTest {
     private static final String ADD_OATS = "add-recipe n/Oats cal/150 p/5 c/27 f/3 i/Oats:40g";
     private static final String CONTINUE_PROMPT = "Enter a command, or type 'help' for all commands or 'bye' to exit.";
 
+    //@@author Rixte
     @Test
     void main_editRecipe_recoversFromErrorsAndShowsUpdatedDetails() {
         String output = runCli(session("edit-recipe 1 p/10", ADD_RICE, "edit-recipe 1 n/Changed p/bad",
@@ -71,7 +72,9 @@ class MishMashTest {
         assertEquals(9, countOccurrences(output, CONTINUE_PROMPT), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_editAfterDeletion_usesNewIndexWithoutAnotherConfirmation() {
         String output = runCli(session(ADD_RICE, ADD_OATS, "delete-recipe 1", "y",
@@ -85,7 +88,9 @@ class MishMashTest {
         assertEquals(0, countOccurrences(output, "Error: "), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_lateEditErrors_preserveDetailsAndAllowSuccessfulRetry() {
         String output = runCli(session(ADD_RICE, "edit-recipe 1 n/Changed i/Water:100ml food/milk,",
@@ -104,7 +109,9 @@ class MishMashTest {
         assertEquals(1, countOccurrences(output, "Recipe updated!"), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_editBetweenGenerations_keepsOldWarningsAndGroceriesUntilNewPlan() {
         String output = runCli(session(
@@ -128,6 +135,7 @@ class MishMashTest {
         assertEquals(0, countOccurrences(output, "Error: "), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
     @Test
     void main_helpAndRecovery_promptAfterEveryCommand() {
@@ -145,6 +153,7 @@ class MishMashTest {
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
 
+    //@@author Rixte
     @Test
     void main_checkShortfall_handlesMissingPlanInvalidTargetsAndSuccessfulCheck() {
         String output = runCli(session("check-shortfall cal/2000", "check-shortfall cal/0",
@@ -162,7 +171,9 @@ class MishMashTest {
         assertEquals(10, countOccurrences(output, CONTINUE_PROMPT), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_shortfallMissingValues_showsSpecificErrorsAndContinuesWithoutConfirmation() {
         String output = runCli(session("check-shortfall cal/", "check-shortfall p/",
@@ -180,7 +191,9 @@ class MishMashTest {
         assertEquals(7, countOccurrences(output, CONTINUE_PROMPT), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_shortfallErrorsAndRepeatedChecks_keepPlanAndGroceriesUsable() {
         String output = runCli(session(
@@ -203,7 +216,9 @@ class MishMashTest {
         assertEquals(13, countOccurrences(output, CONTINUE_PROMPT), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_endOfInputAfterInvalidShortfall_exitsAfterDisplayingRecoverableError() {
         String output = runCli(session("check-shortfall cal/"));
@@ -213,6 +228,7 @@ class MishMashTest {
         assertEquals(2, countOccurrences(output, CONTINUE_PROMPT), output);
         assertEquals(0, countOccurrences(output, "No active meal plan."), output);
     }
+    //@@author
 
     @Test
     void main_cancelledDelete_promptsOnceAfterCancellation() {
@@ -275,6 +291,7 @@ class MishMashTest {
     }
     //@@author
 
+    //@@author Rixte
     @Test
     void main_viewingWithoutGeneratedData_displaysPromptsAndContinues() {
         String output = runCli(String.join(System.lineSeparator(),
@@ -285,7 +302,9 @@ class MishMashTest {
         assertEquals(0, countOccurrences(output, "Error: "), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_invalidViewingArguments_recoversWithRelevantUsage() {
         String output = runCli(String.join(System.lineSeparator(), "Tester",
@@ -300,6 +319,7 @@ class MishMashTest {
         assertTrue(output.contains("New recipe added!"), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
+    //@@author
 
     @Test
     void main_invalidThenValid_displaysExpectedOutput() {
@@ -336,6 +356,7 @@ class MishMashTest {
         assertEquals(expected, output);
     }
 
+    //@@author Rixte
     @Test
     void main_repeatedSessions_logsSubpackagesAndRestoresConfiguration() {
         Logger appLogger = Logger.getLogger("mishmash");
@@ -377,7 +398,9 @@ class MishMashTest {
             appLogger.setUseParentHandlers(wasUsingParentHandlers);
         }
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_runtimeFailure_logsCauseAndRethrowsAfterCleanup() {
         IllegalStateException failure = new IllegalStateException("Broken application dependency");
@@ -390,7 +413,9 @@ class MishMashTest {
 
         assertFailureIsLoggedAndRethrown(failingInput, failure);
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void main_assertionFailure_logsCauseAndRethrowsAfterCleanup() {
         AssertionError failure = new AssertionError("Broken internal invariant");
@@ -403,7 +428,9 @@ class MishMashTest {
 
         assertFailureIsLoggedAndRethrown(failingInput, failure);
     }
+    //@@author
 
+    //@@author Rixte
     /**
      * Checks that an unexpected failure is logged once and rethrown with logging configuration restored.
      *
@@ -435,7 +462,9 @@ class MishMashTest {
             appLogger.setUseParentHandlers(wasUsingParentHandlers);
         }
     }
+    //@@author
 
+    //@@author Rixte
     @Test
     void greet_nullScanner_rejectsBeforeDisplayingPrompt() {
         PrintStream originalOutput = System.out;
@@ -449,6 +478,7 @@ class MishMashTest {
             System.setOut(originalOutput);
         }
     }
+    //@@author
 
     /**
      * Captures records propagated from application subpackages for logging integration checks.

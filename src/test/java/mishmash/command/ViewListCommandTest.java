@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import mishmash.model.GroceryItem;
 import mishmash.model.RecipeBook;
 
+//@@author Rixte
 /**
  * Checks display of supplied grocery data, including absent and generated-empty lists.
  */
@@ -86,3 +87,4 @@ class ViewListCommandTest {
         assertThrows(NullPointerException.class, () -> new ViewListCommand(null));
     }
 }
+//@@author
