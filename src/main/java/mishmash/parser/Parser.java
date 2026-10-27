@@ -22,8 +22,10 @@ import mishmash.command.GenerateListCommand;
 import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
 import mishmash.command.ListRecipeCommand;
+import mishmash.command.RecordMealCommand;
 import mishmash.command.SetDietCommand;
 import mishmash.command.ViewListCommand;
+import mishmash.command.ViewMealsCommand;
 import mishmash.command.ViewPlanCommand;
 import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
@@ -33,6 +35,7 @@ import mishmash.model.DietarySettings;
 import mishmash.model.FoodInfo;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
+import mishmash.model.MealLog;
 import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
@@ -83,6 +86,8 @@ public class Parser {
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
+    public static final String RECORD_MEAL_USAGE = RecordMealCommand.USAGE;
+    public static final String VIEW_MEALS_USAGE = ViewMealsCommand.USAGE;
 
     /**
      * Describes how to generate groceries for the active meal plan.
@@ -95,7 +100,7 @@ public class Parser {
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
-            DietaryPreferencesParser.USAGE, "Format: view-diet",
+            DietaryPreferencesParser.USAGE, "Format: view-diet", RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
             "Format: help", "Format: bye");
 
     /**
@@ -150,10 +155,46 @@ public class Parser {
     private final DietarySettings dietarySettings = new DietarySettings();
 
     /**
-     * Creates a parser sharing one active plan and grocery snapshot across generation and viewing.
+     * The meals recorded as eaten; record-meal adds to it and view-meals reads it. It is separate from the
+     * active plan, which holds meals the user intends to eat.
+     */
+    private final MealLog mealLog;
+
+    /**
+     * Creates a parser sharing one active plan and grocery snapshot across generation and viewing,
+     * and one log of recorded meals.
      */
     public Parser() {
         this(new MealPlanGenerator(new Random()), new ActiveMealPlan());
+    }
+
+    /**
+     * Creates a parser that records meals into the caller's log, so the log can be checked independently
+     * of the commands. Plan generation and viewing share one new active plan.
+     *
+     * @param mealLog The log that record-meal adds to and view-meals reads.
+     * @throws NullPointerException If the meal log is null.
+     */
+    public Parser(MealLog mealLog) {
+        this(mealLog, new MealPlanGenerator(new Random()), new ActiveMealPlan());
+    }
+
+    /**
+     * Connects generation, viewing, and meal recording to caller-supplied data.
+     *
+     * The log comes first so that this constructor cannot be confused with the one taking a grocery source.
+     *
+     * @param mealLog The log that record-meal adds to and view-meals reads.
+     * @param mealPlanGenerator The generator used by generate-plan commands.
+     * @param activeMealPlan The shared plan and its generated grocery snapshot.
+     * @throws NullPointerException If any argument is null.
+     */
+    public Parser(MealLog mealLog, MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan) {
+        this(mealPlanGenerator, activeMealPlan,
+                () -> activeMealPlan.get().map(MealPlan::toMealSummaries).orElse(List.of()),
+                Objects.requireNonNull(activeMealPlan, "activeMealPlan")::getGroceryList,
+                () -> activeMealPlan.getRequest().map(GeneratePlanRequest::targets).orElseGet(NutritionTargets::none),
+                mealLog);
     }
 
     /**
@@ -182,7 +223,7 @@ public class Parser {
     public Parser(Supplier<List<List<MealSummary>>> mealPlanSource,
             Supplier<Optional<List<GroceryItem>>> groceryListSource) {
         this(new MealPlanGenerator(new Random()), new ActiveMealPlan(), mealPlanSource, groceryListSource,
-                NutritionTargets::none);
+                NutritionTargets::none, new MealLog());
     }
 
     /**
@@ -200,27 +241,31 @@ public class Parser {
         this(mealPlanGenerator, activeMealPlan,
                 () -> activeMealPlan.get().map(MealPlan::toMealSummaries).orElse(List.of()),
                 groceryListSource,
-                () -> activeMealPlan.getRequest().map(GeneratePlanRequest::targets).orElseGet(NutritionTargets::none));
+                () -> activeMealPlan.getRequest().map(GeneratePlanRequest::targets).orElseGet(NutritionTargets::none),
+                new MealLog());
     }
 
     /**
-     * Initializes generation and viewing dependencies shared by the public constructors.
+     * Initializes generation, viewing, and meal-recording dependencies shared by the public constructors.
      *
      * @param mealPlanGenerator The generator used by generate-plan commands.
      * @param activeMealPlan The destination for newly generated plans and groceries.
      * @param mealPlanSource The source read by meal-plan viewing commands.
      * @param groceryListSource The source of generated groceries, if available.
      * @param targetsSource The daily targets associated with the displayed meals.
+     * @param mealLog The log that record-meal adds to and view-meals reads.
      * @throws NullPointerException If any dependency is null.
      */
     private Parser(MealPlanGenerator mealPlanGenerator, ActiveMealPlan activeMealPlan,
             Supplier<List<List<MealSummary>>> mealPlanSource,
-            Supplier<Optional<List<GroceryItem>>> groceryListSource, Supplier<NutritionTargets> targetsSource) {
+            Supplier<Optional<List<GroceryItem>>> groceryListSource, Supplier<NutritionTargets> targetsSource,
+            MealLog mealLog) {
         this.mealPlanGenerator = Objects.requireNonNull(mealPlanGenerator, "mealPlanGenerator");
         this.activeMealPlan = Objects.requireNonNull(activeMealPlan, "activeMealPlan");
         this.mealPlanSource = Objects.requireNonNull(mealPlanSource, "mealPlanSource");
         this.groceryListSource = Objects.requireNonNull(groceryListSource, "groceryListSource");
         this.targetsSource = Objects.requireNonNull(targetsSource, "targetsSource");
+        this.mealLog = Objects.requireNonNull(mealLog, "mealLog");
     }
 
     /**
@@ -272,6 +317,12 @@ public class Parser {
         }
         if (commandWord.equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
+        }
+        if (commandWord.equals(RecordMealCommand.COMMAND_WORD)) {
+            return parseRecordMeal(arguments);
+        }
+        if (commandWord.equals(ViewMealsCommand.COMMAND_WORD)) {
+            return parseViewMeals(arguments);
         }
         if (commandWord.equals(COMMAND_GENERATE_PLAN)) {
             return parseGeneratePlan(arguments);
@@ -451,6 +502,44 @@ public class Parser {
         }
     }
 
+    //@@author GauthamNandi
+    /**
+     * Creates a command that records the recipe at the typed position as a meal that has been eaten.
+     *
+     * @param arguments The text after record-meal.
+     * @return A command that adds that recipe to the shared meal log when it runs.
+     * @throws MishMashException If the index is missing or is not a positive whole number.
+     */
+    private Command parseRecordMeal(String arguments) throws MishMashException {
+        try {
+            int index = parseRecipeIndex(arguments);
+            RecordMealCommand command = new RecordMealCommand(index, mealLog);
+            LOGGER.fine(() -> "Parsed record-meal for index " + index);
+            return command;
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage()
+                    + System.lineSeparator() + RECORD_MEAL_USAGE, e);
+        }
+    }
+
+    /**
+     * Creates a command that displays the recorded meals after rejecting unexpected arguments.
+     *
+     * @param arguments The text after view-meals.
+     * @return A command that reads the shared meal log only when it runs.
+     * @throws MishMashException If arguments are supplied.
+     */
+    private Command parseViewMeals(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            LOGGER.warning("view-meals rejected: unexpected arguments");
+            throw new MishMashException("view-meals does not accept arguments."
+                    + System.lineSeparator() + VIEW_MEALS_USAGE);
+        }
+        LOGGER.fine("Parsed view-meals with no arguments");
+        return new ViewMealsCommand(mealLog);
+    }
+    //@@author
+
     /**
      * Creates a command that lists all recipes, or shows one in full if an index is given.
      *
@@ -475,7 +564,7 @@ public class Parser {
     }
 
     /**
-     * Reads the single recipe index that follows delete-recipe or list-recipe.
+     * Reads the single recipe index that follows delete-recipe, list-recipes, or record-meal.
      * Whether a recipe exists at that position is only known when the command runs.
      *
      * @param arguments The text after the command word.

@@ -1,6 +1,7 @@
 package mishmash;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -681,9 +682,102 @@ class MishMashTest {
                 + System.lineSeparator() + "Goodbye!" + System.lineSeparator()), output);
     }
 
+    //@@author GauthamNandi
+    @Test
+    void main_recordAndViewMeals_showsFeedbackAndCumulativeTotals() {
+        String output = runCli(session(
+                "add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken:200g",
+                "add-recipe n/Protein Oatmeal cal/450 p/35 c/60 f/8 i/Oats:50g",
+                "record-meal 1", "record-meal 2", "view-meals", "bye"));
+
+        assertTrue(output.contains("Meal recorded!" + System.lineSeparator()
+                + "Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)" + System.lineSeparator()
+                + "Total so far: 650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g"), output);
+        assertTrue(output.contains("Total so far: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g"), output);
+        assertTrue(output.contains("================ Recorded Meals ================" + System.lineSeparator()
+                + "Meal 1: Chicken and Rice (650 kcal | P: 50g, C: 70g, F: 15g)" + System.lineSeparator()
+                + "Meal 2: Protein Oatmeal (450 kcal | P: 35g, C: 60g, F: 8g)" + System.lineSeparator()
+                + "------------------------------------------------" + System.lineSeparator()
+                + "Total: 1100 kcal | Protein: 85g | Carbs: 130g | Fats: 23g" + System.lineSeparator()
+                + "================================================"), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertEquals(6, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_mealCommandErrors_showMessagesAndKeepSessionRunning() {
+        String output = runCli(session("view-meals", "record-meal 1",
+                "add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken:200g",
+                "record-meal 9", "record-meal 0", "record-meal x", "record-meal", "view-meals extra",
+                "view-meals", "record-meal 1", "view-meals", "bye"));
+
+        assertEquals(2, countOccurrences(output, "No meals recorded yet."), output);
+        assertTrue(output.contains("Error: There are no recipes to record. Use 'add-recipe' to add one."), output);
+        assertTrue(output.contains("Error: Recipe index must be between 1 and 1."), output);
+        assertTrue(output.contains("Error: Recipe index must be at least 1."), output);
+        assertTrue(output.contains("Error: Recipe index is required."), output);
+        assertTrue(output.contains("Error: Recipe index must be a single positive whole number."), output);
+        assertTrue(output.contains("Error: view-meals does not accept arguments."), output);
+        assertEquals(6, countOccurrences(output, "Error: "), output);
+        // The failed commands record nothing; only the final successful recording appears in the last view.
+        assertEquals(1, countOccurrences(output, "Meal recorded!"), output);
+        assertEquals(1, countOccurrences(output, "Meal 1: Chicken and Rice"), output);
+        assertEquals(12, countOccurrences(output, CONTINUE_PROMPT), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_recordedMealsAndPlan_areIndependent() {
+        String output = runCli(session(
+                "add-recipe n/A cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "record-meal 1", "view-plan", "view-meals", "bye"));
+
+        assertTrue(output.contains("No active meal plan. Use 'generate-plan' first."), output);
+        assertTrue(output.contains("Meal 1: A (600 kcal | P: 30g, C: 50g, F: 10g)"), output);
+    }
+
+    @Test
+    void main_helpAfterMealCommands_listsThem() {
+        String output = runCli(session("help", "bye"));
+
+        assertTrue(output.contains("record-meal - Record a recipe you have eaten"), output);
+        assertTrue(output.contains("Format: record-meal INDEX"), output);
+        assertTrue(output.contains("view-meals - View the meals you have recorded"), output);
+        assertTrue(output.contains("Format: view-meals"), output);
+    }
+    //@@author
+
     /**
      * Builds console input: the answer to the name prompt, then each line, ending with a newline.
      */
+    @Test
+    void main_editAndDeleteAfterRecording_keepMealAsRecorded() {
+        String output = runCli(session(
+                "add-recipe n/A cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "record-meal 1", "edit-recipe 1 p/99", "delete-recipe 1", "y", "view-meals", "bye"));
+
+        String recorded = "Meal 1: A (600 kcal | P: 30g, C: 50g, F: 10g)";
+        assertEquals(1, countOccurrences(output, recorded), output);
+        assertFalse(output.contains("P: 99g"), output);
+        assertTrue(output.contains("Total: 600 kcal | Protein: 30g | Carbs: 50g | Fats: 10g"), output);
+        assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+    }
+
+    @Test
+    void main_generatePlanThenRecordMeal_recordsOnlyTheChosenRecipe() {
+        String output = runCli(session(
+                "add-recipe n/A cal/600 p/30 c/50 f/10 i/Rice:100g",
+                "add-recipe n/B cal/400 p/20 c/40 f/5 i/Oats:50g",
+                "add-recipe n/C cal/200 p/5 c/20 f/8 i/Kale:50g",
+                "generate-plan d/1", "record-meal 2", "view-meals", "bye"));
+
+        assertEquals(1, countOccurrences(output, "Meal recorded!"), output);
+        assertTrue(output.contains("B (400 kcal | P: 20g, C: 40g, F: 5g)"), output);
+        assertTrue(output.contains("Recorded Meals"), output);
+        assertEquals(0, countOccurrences(output, "Error: "), output);
+    }
+
     private static String session(String... lines) {
         return "Tester" + System.lineSeparator()
                 + String.join(System.lineSeparator(), lines) + System.lineSeparator();
