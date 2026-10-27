@@ -4,7 +4,7 @@ MishMash is a command-line meal prep planner. Add your recipes, use them to plan
 
 **Start Here:** [Set up and launch](#quick-start) · [Find a command](#commands-at-a-glance) · [View meals](#viewing-a-meal-plan) · [Check nutrition](#checking-nutrition-shortfalls) · [View groceries](#viewing-a-grocery-list) · [Record meals](#recording-a-meal) · [Fix a problem](#troubleshooting)
 
-This guide covers the current team version, including meal-plan viewing, grocery-list viewing, nutrition shortfall checking, and meal recording.
+This guide covers the current team version, including meal-plan viewing, grocery-list viewing, nutrition shortfall checking, meal recording, and setting and viewing dietary preferences.
 
 ## Quick Start
 
@@ -56,7 +56,7 @@ MishMash confirms the addition and shows the recipe's nutrition and ingredients.
 bye
 ```
 
-> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, grocery list, and recorded meals. There is no save or load command.
+> **Session Data:** Closing or restarting the current application clears the recipes, meal plan, grocery list, recorded meals, and dietary preferences. There is no save or load command.
 
 ## Commands at a Glance
 
@@ -68,6 +68,8 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [List recipes](#listing-recipes) | `list-recipes [INDEX]` | Omit the index to list all recipes; supply one to see its full details. |
 | [Edit a recipe](#editing-a-recipe) | `edit-recipe INDEX p/55` | Use an index from the latest recipe list and supply at least one field. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
+| [Set dietary preferences](#setting-dietary-preferences) | `set-diet diet/vegan avoid/peanut` | Classify recipes before generating restricted meals. |
+| [View dietary preferences](#viewing-dietary-preferences) | `view-diet` | No prerequisites. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
@@ -98,6 +100,184 @@ To track what you actually eat, use this separate sequence at any time after add
 2. **Record the meal** with `record-meal 1`, replacing `1` with that number.
 3. **Review your intake** with `view-meals`, which shows each recorded meal's nutrition and the totals.
 
+## Setting Dietary Preferences
+
+**Purpose:** Choose a named diet, avoid food categories, or exclude complete ingredient names.
+These preferences apply to future plans and can update an existing plan.
+
+**Format:**
+
+```text
+set-diet [diet/DIET] [avoid/TAG[,TAG...]] [exclude/INGREDIENT[,INGREDIENT...]]
+```
+
+**Before You Start:** Preferences can be saved before adding recipes. To generate or repair a
+restricted plan, add at least three compatible recipes with complete `food/` declarations.
+
+**Example:**
+
+```text
+set-diet diet/vegan avoid/peanut,soy exclude/mushroom,bell pepper
+```
+
+With no active meal plan, the result is:
+
+```text
+Dietary preferences saved. Future meal plans will use them.
+```
+
+**Rules:**
+
+- Supply at least one field. Each prefix may appear once, in any order.
+- Each command **replaces the entire profile**. Omitted fields are cleared. For example,
+  `set-diet avoid/peanut` removes a previously selected vegan diet and any ingredient exclusions.
+  Include every restriction you want to retain.
+- Command names and prefixes are case-sensitive. Diet and food-tag values ignore case and
+  surrounding spaces; hyphens and underscores are accepted in multiword values.
+- Separate categories and ingredient exclusions with commas. Blank entries and duplicates are rejected,
+  including aliases of the same tag and ingredient names equal after normalization.
+- `diet/none` removes the named diet only; any `avoid/` and `exclude/` fields in the same command still apply.
+- Preferences and recipe classifications last only for the current session.
+
+### Supported Diets and Food Categories
+
+| Diet | Excluded categories |
+| --- | --- |
+| `none` (alias: `omnivore`) | No exclusions from a named diet. |
+| `pescatarian` | Beef, pork, poultry, other meat, meat derivatives, and other animal products. |
+| `vegetarian` (alias: `lacto-ovo-vegetarian`) | All pescatarian exclusions, plus fish, crustaceans, molluscs, and gelatin. |
+| `lacto-vegetarian` | All vegetarian exclusions, plus eggs. |
+| `ovo-vegetarian` | All vegetarian exclusions, plus milk and lactose. |
+| `vegan` | All vegetarian exclusions, plus milk, lactose, eggs, and honey. |
+
+Supported tags for `food/` and `avoid/` are:
+
+```text
+milk, lactose, egg, peanut, tree-nut, soy, wheat, gluten,
+fish, crustacean, mollusc, sesame, mustard, celery, lupin, sulphite,
+beef, pork, poultry, other-meat, meat-derivative, gelatin, honey,
+other-animal-product, alcohol, coconut, corn, oat, legume, allium, mushroom
+```
+
+Aliases are `dairy` (milk), `soya` (soy), `sulfite` (sulphite), `eggs` (egg),
+`peanuts` (peanut), `tree-nuts` (tree-nut), `crustaceans` (crustacean), and
+`molluscs` (mollusc). Use `avoid/peanut,tree-nut` to exclude both nut categories.
+Categories are matched independently: for example, declare both `milk,lactose` or
+`wheat,gluten` when both apply, and include `legume` alongside specific legume categories where applicable.
+
+### Classifying Recipes
+
+Append the optional `food/TAG[,TAG...]` field when adding a recipe. Declare **every applicable
+category**, including categories in sauces, stocks, and compound ingredients:
+
+```text
+add-recipe n/Pancakes cal/400 p/12 c/60 f/10 i/Flour:100g i/Milk:150ml i/Egg:1pc food/milk,lactose,egg,wheat,gluten
+add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g food/none
+```
+
+`food/none` explicitly declares that no supported categories apply. Omitting `food/` leaves
+the recipe **unclassified**. Any active restriction excludes unclassified recipes, including an
+ingredient-only exclusion. `food/none` cannot be combined with tags; `avoid/none` is not supported.
+
+MishMash uses your declarations; it does not identify undeclared allergens or cross-contact.
+Category names describe food content, not halal or kosher certification.
+`meat-derivative` covers land-animal derivatives such as stock and lard; also declare the source
+category where known. Declare both `gelatin` and its source category where known.
+Use `other-animal-product` for animal-derived ingredients without a more specific category.
+The vegetarian, vegan, and pescatarian presets exclude that category conservatively.
+
+Ingredient exclusions match **complete names**, ignoring case, surrounding spaces, and repeated
+spaces. They do not infer synonyms or match substrings: `exclude/chicken` does not exclude
+`Chicken Breast`; use `avoid/poultry` for the category. Commas separate exclusions and cannot
+be part of an excluded name.
+
+### Updating an Existing Plan
+
+| Current state | Result of a valid dietary update |
+| --- | --- |
+| No active plan | Save preferences for future generation. |
+| Every planned recipe is compatible | Save preferences; preserve all days and groceries. |
+| Some days conflict and replacement succeeds | Preserve compatible days in their original positions; replace each conflicting day in full. |
+| A grocery list exists when repair succeeds | Rebuild it from every meal occurrence in the updated plan. |
+| No grocery list exists when repair succeeds | Keep groceries ungenerated; use `generate-list` when needed. |
+| Replacement fails | Save preferences and clear the previous plan and grocery list. |
+
+Replacement uses the original daily nutrition targets and the generator's +/-15% tolerance.
+All three meals in a conflicting day may change. At least three compatible, classified recipes
+are needed while restrictions are active; having three alone does not guarantee that the
+nutrition targets can be met. For large recipe pools, generation checks a bounded sample of combinations.
+
+After successful repair with an existing grocery list:
+
+```text
+Dietary preferences saved. Conflicting days were replaced.
+Your grocery list has also been updated.
+```
+
+**Example: Generate a Restricted Plan**
+
+In a fresh session, enter these commands one line at a time after entering your name:
+
+```text
+add-recipe n/Rice cal/600 p/10 c/20 f/5 i/Rice:200g food/none
+add-recipe n/Beans cal/600 p/10 c/20 f/5 i/Beans:200g food/legume
+add-recipe n/Tofu cal/600 p/10 c/20 f/5 i/Tofu:200g food/soy,legume
+set-diet diet/vegan
+generate-plan d/2 cal/1800
+view-plan
+generate-list
+view-list
+```
+
+Each day contains these three recipes in an order that may vary. Each day's totals are
+1800 kcal, 30 g protein, 60 g carbs, and 15 g fats. The grocery list contains 400 g each
+of Rice, Beans, and Tofu; item order may vary. The nutrition values are example inputs.
+
+**Errors and Recovery:**
+
+| Input or situation | Response | What to do |
+| --- | --- | --- |
+| `set-diet diet/keto` | `Invalid diet 'keto'.`, followed by valid diets, aliases, and command format. | Choose a supported value, such as `set-diet diet/vegan`. |
+| `set-diet vegan` | Invalid dietary input, supported prefixes, valid diets, and format. | Add a prefix: `set-diet diet/vegan`. |
+| `set-diet` | Missing dietary input and guidance. | Supply at least one field. |
+| `set-diet avoid/milk,dairy` | `Repeated food tag: milk.` and format. | Use `set-diet avoid/milk`. |
+| `set-diet avoid/peanut,` | Blank food-tag error, valid tags, and format. | Remove the trailing comma. |
+| `set-diet diet/vegan diet/vegetarian` | `Repeated field: diet/` and format. | Supply the intended diet once. |
+| `set-diet exclude/Chicken, chicken` | Repeated excluded ingredient error and format. | Supply each normalized name once. |
+| Fewer than three compatible recipes, or no acceptable replacement found | Preferences are saved; a failed-repair explanation is shown and the old plan and groceries are cleared. | Add suitable classified recipes or adjust targets, then use `generate-plan`. |
+
+Malformed commands preserve preferences, plans, and groceries. A **valid update with failed
+repair saves the new preferences and clears generated data**. Check `view-diet` and generate
+a new plan before viewing groceries again.
+
+## Viewing Dietary Preferences
+
+Shows the active dietary profile without changing recipes, preferences, meals, or groceries.
+
+**Before You Start:** No prerequisites. A fresh session has no restrictions.
+
+**Format:**
+
+```text
+view-diet
+```
+
+**Example:** After `set-diet diet/vegan avoid/peanut,soy exclude/mushroom,bell pepper`, enter `view-diet`.
+
+**Example Output:**
+
+```text
+Diet: vegan
+Avoided food categories: peanut, soy
+Excluded ingredients: bell pepper, mushroom
+```
+
+**Rules:** Exclusions appear in sorted order. Empty lists display `none`. The diet also displays
+`none` in a fresh session. Viewing reads the current profile when executed and never regenerates meals.
+
+**Errors and Recovery:** `view-diet extra` produces `view-diet does not accept arguments.`
+followed by `Format: view-diet`. Retry with the command alone; session data is unchanged.
+
 ## Reading Command Formats
 
 - Enter each command on **one line**. Long examples may wrap visually; do not insert a line break within a command.
@@ -117,6 +297,8 @@ To track what you actually eat, use this separate sequence at any time after add
 | `c/`, `C` | Carbohydrates, measured in grams. |
 | `f/`, `F` | Fats, measured in grams. |
 | `i/` | Ingredient name, quantity, and unit. |
+| `food/` | Complete recipe food-category declaration; `none` means no supported categories apply. |
+| `diet/`, `avoid/`, `exclude/` | Named diet, avoided categories, and complete ingredient exclusions. |
 
 ## Adding a Recipe
 
@@ -945,8 +1127,9 @@ Not yet. There is currently no command to remove or edit a recorded meal. Restar
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`,
-`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `record-meal`, `view-meals`, `help`, and `bye`.
+`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
 A divider and an input prompt appear when the command session starts and after every
 command, including invalid commands and cancelled actions. Type `bye` to exit.
+
