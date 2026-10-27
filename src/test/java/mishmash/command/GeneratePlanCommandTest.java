@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Random;
 
 import org.junit.jupiter.api.Test;
@@ -15,10 +16,12 @@ import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.GeneratePlanRequest;
+import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.parser.GeneratePlanParser;
+import mishmash.testutil.LogCapture;
 import mishmash.testutil.TestRecipes;
 
 /**
@@ -75,12 +78,23 @@ class GeneratePlanCommandTest {
     @Test
     void execute_failure_keepsPreviousPlan() throws MishMashException {
         command("d/2").execute(recipeBook);
+        new GenerateListCommand(activePlan).execute(recipeBook);
         MealPlan previous = activePlan.get().orElseThrow();
+        GeneratePlanRequest previousRequest = activePlan.getRequest().orElseThrow();
+        List<GroceryItem> previousGroceries = activePlan.getGroceryList().orElseThrow();
+        List<Recipe> originalRecipes = recipeBook.getRecipes();
+        RecipeBook emptyBook = new RecipeBook();
 
-        assertThrows(MishMashException.class, () -> command("d/3 cal/99999").execute(recipeBook));
-        assertThrows(MishMashException.class, () -> command("d/3").execute(new RecipeBook()));
+        for (RecipeBook source : List.of(recipeBook, emptyBook)) {
+            String arguments = source == recipeBook ? "d/3 cal/99999" : "d/3";
+            assertThrows(MishMashException.class, () -> command(arguments).execute(source));
 
-        assertSame(previous, activePlan.get().orElseThrow());
+            assertSame(previous, activePlan.get().orElseThrow());
+            assertSame(previousRequest, activePlan.getRequest().orElseThrow());
+            assertSame(previousGroceries, activePlan.getGroceryList().orElseThrow());
+            assertEquals(originalRecipes, recipeBook.getRecipes());
+            assertTrue(emptyBook.getRecipes().isEmpty());
+        }
     }
 
     @Test
@@ -91,6 +105,29 @@ class GeneratePlanCommandTest {
         assertTrue(e.getMessage().contains("recipe book is empty"));
         assertInstanceOf(IllegalArgumentException.class, e.getCause());
         assertEquals(e.getMessage(), e.getCause().getMessage());
+    }
+
+    @Test
+    void execute_failedGeneration_logsRejectionWithoutClaimingSuccess() throws MishMashException {
+        command("d/1").execute(recipeBook);
+        MealPlan savedPlan = activePlan.get().orElseThrow();
+        GeneratePlanRequest savedRequest = activePlan.getRequest().orElseThrow();
+        var savedGroceries = activePlan.getGroceryList();
+        List<Recipe> originalRecipes = recipeBook.getRecipes();
+        try (LogCapture logs = new LogCapture(GeneratePlanCommand.class)) {
+            MishMashException error = assertThrows(MishMashException.class,
+                    () -> command("d/2 cal/99999").execute(recipeBook));
+
+            assertSame(savedPlan, activePlan.get().orElseThrow());
+            assertSame(savedRequest, activePlan.getRequest().orElseThrow());
+            assertEquals(savedGroceries, activePlan.getGroceryList());
+            assertEquals(originalRecipes, recipeBook.getRecipes());
+            assertInstanceOf(IllegalArgumentException.class, error.getCause());
+            assertEquals(1, logs.getRecords().size());
+            assertTrue(logs.getMessages().contains("generation rejected for 2 days"));
+            assertTrue(logs.getRecords().stream()
+                    .noneMatch(record -> record.getMessage().contains("Stored generated")));
+        }
     }
 
     @Test
@@ -106,7 +143,12 @@ class GeneratePlanCommandTest {
         RecipeBook small = bookOf(
                 TestRecipes.recipe("A", 100, 1, 1, 1),
                 TestRecipes.recipe("B", 100, 1, 1, 1));
+        List<Recipe> originalRecipes = small.getRecipes();
         assertThrows(MishMashException.class, () -> command("d/1").execute(small));
+        assertTrue(activePlan.get().isEmpty());
+        assertTrue(activePlan.getRequest().isEmpty());
+        assertTrue(activePlan.getGroceryList().isEmpty());
+        assertEquals(originalRecipes, small.getRecipes());
 
         small.add(TestRecipes.recipe("C", 100, 1, 1, 1));
         command("d/1").execute(small);
