@@ -498,22 +498,31 @@ Use 'view-plan' to inspect your planned meals.
 - Without targets, meals are selected randomly. With targets, every day's totals must be within ±15% of
   every supplied target. For large recipe books, generation searches a bounded sample of combinations.
 - Targets you saved with [`set-targets`](#setting-daily-targets) apply to every nutrient you leave out of the
-  command. A target typed here replaces the saved one for this plan only.
+  command. A target typed here replaces the saved one for this plan only. When a saved target is used, the
+  confirmation adds a `Daily targets used:` line listing every target that was applied.
 - The application retains the targets that were applied. `view-plan` warns whenever a daily total exceeds its exact
-  target, even when that day is within the generation tolerance. These warnings are informational.
+  target, even when that day is within the generation tolerance. These warnings are informational. They keep using
+  the targets the plan was generated with, even if you change the saved targets afterwards.
 - Successful generation replaces the active plan and its targets and clears its generated grocery list.
   A replacement generated without targets has no nutrition warnings. Plans and targets last only for this session.
 
-**Example with saved targets:** After `set-targets cal/1500 p/80`, a plain `generate-plan d/1` builds a day within 15%
-of 1500 kcal and 80 g protein, and prints the usual confirmation. `generate-plan d/1 cal/1400` instead replaces the
-saved calories with 1400 for that plan and still uses the saved 80 g of protein. `view-plan` then warns if the day's
-calories exceed 1400.
+**Example with saved targets:** After `set-targets cal/1500 p/80`, a plain `generate-plan d/1` builds a day within 15% of 1500 kcal and 80 g protein, and the confirmation names the targets it used:
+
+```text
+Meal plan successfully generated for 1 day(s)!
+Daily targets used: 1500 kcal, 80 g protein.
+Use 'view-plan' to inspect your planned meals.
+```
+
+`generate-plan d/1 cal/1400` instead replaces the saved calories with 1400 for that plan and still uses the saved 80 g of protein. It reports `Daily targets used: 1400 kcal, 80 g protein.`
 
 **Errors and Recovery:** If generation reports that it cannot find three recipes meeting your daily targets
 within 15%, try different targets or add recipes. If fewer than three eligible recipes are available, add
 or classify suitable recipes before retrying. Failed generation leaves the previous plan, targets, and
-grocery list intact. Saved targets apply here too, so if a plain `generate-plan` fails, check `view-targets` and change
-or remove a target with `set-targets`.
+grocery list intact. If a saved target was applied, the error adds a line such as `Daily targets applied: 1500 kcal,
+200 g protein (including your saved targets). Change those with 'set-targets'.` Use `view-targets` to see what is saved,
+then change or remove a target with `set-targets`. There is no way to ignore a saved target for a single `generate-plan`;
+remove it with `none` first.
 
 ## Viewing a Meal Plan
 

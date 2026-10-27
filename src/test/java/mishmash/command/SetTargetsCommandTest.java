@@ -232,6 +232,62 @@ class SetTargetsCommandTest {
     }
 
     @Test
+    void generate_savedTargetsUsed_confirmationNamesThem() throws MishMashException {
+        addRecipes();
+        set("cal/1000 p/90").execute(book);
+
+        String message = generate("d/1").execute(book);
+
+        assertEquals("Meal plan successfully generated for 1 day(s)!" + NEWLINE
+                + "Daily targets used: 1000 kcal, 90 g protein." + NEWLINE
+                + "Use 'view-plan' to inspect your planned meals.", message);
+    }
+
+    @Test
+    void generate_typedAndSavedTargets_confirmationListsTheMergedTargets() throws MishMashException {
+        addRecipes();
+        set("cal/5000 p/90").execute(book);
+
+        String message = generate("d/1 cal/1000").execute(book);
+
+        assertTrue(message.contains("Daily targets used: 1000 kcal, 90 g protein."), message);
+    }
+
+    @Test
+    void generate_everySavedNutrientTyped_doesNotMentionSavedTargets() throws MishMashException {
+        addRecipes();
+        set("cal/5000").execute(book);
+
+        String message = generate("d/1 cal/1000").execute(book);
+
+        assertTrue(!message.contains("Daily targets used"), message);
+    }
+
+    @Test
+    void generate_impossibleSavedTarget_errorNamesTheAppliedTargets() throws MishMashException {
+        addRecipes();
+        set("cal/50").execute(book);
+
+        MishMashException error = assertThrows(MishMashException.class, () -> generate("d/1").execute(book));
+
+        assertTrue(error.getMessage().contains("Daily targets applied: 50 kcal (including your saved targets)."),
+                error.getMessage());
+        assertTrue(error.getMessage().contains("set-targets"), error.getMessage());
+    }
+
+    @Test
+    void generate_impossibleTypedTarget_errorDoesNotBlameSavedTargets() throws MishMashException {
+        addRecipes();
+        set("cal/1000").execute(book);
+
+        // The typed calories replace the saved ones, so no saved target took part in the failure.
+        MishMashException error = assertThrows(MishMashException.class,
+                () -> generate("d/1 cal/50").execute(book));
+
+        assertTrue(!error.getMessage().contains("including your saved targets"), error.getMessage());
+    }
+
+    @Test
     void generate_rejectsNullTargetSettings() {
         assertThrows(NullPointerException.class, () -> new GeneratePlanCommand(
                 new GeneratePlanParser().parse("d/1"), new MealPlanGenerator(new Random(1)), activePlan,
