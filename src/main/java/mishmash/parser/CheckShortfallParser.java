@@ -6,6 +6,7 @@ import java.util.Map;
 
 import mishmash.model.NutritionTargets;
 
+//@@author Rixte
 /**
  * Parses explicit daily targets for check-shortfall without modifying the targets used for generation.
  */
@@ -93,3 +94,4 @@ public class CheckShortfallParser {
         }
     }
 }
+//@@author

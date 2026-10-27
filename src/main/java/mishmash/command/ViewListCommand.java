@@ -10,6 +10,7 @@ import mishmash.model.GroceryItem;
 import mishmash.model.RecipeBook;
 import mishmash.ui.GroceryListViewer;
 
+//@@author Rixte
 /**
  * Displays an already generated grocery list without generating or storing groceries.
  */
@@ -63,3 +64,4 @@ public class ViewListCommand implements Command {
         return result;
     }
 }
+//@@author

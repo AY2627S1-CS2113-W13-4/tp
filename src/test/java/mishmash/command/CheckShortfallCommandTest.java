@@ -23,6 +23,7 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.TestRecipes;
 
+//@@author Rixte
 /**
  * Checks daily comparison boundaries, omitted targets, and preservation of existing plan data.
  */
@@ -367,3 +368,4 @@ class CheckShortfallCommandTest {
         return new DayPlan(List.of(TestRecipes.recipe("Meal", calories, protein, carbs, fats)));
     }
 }
+//@@author

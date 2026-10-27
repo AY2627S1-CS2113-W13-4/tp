@@ -104,6 +104,7 @@ public class MealPlanViewer {
         return result.toString();
     }
 
+    //@@author Rixte
     /**
      * Formats each meal in its planned order, starting the numbering at one for each day.
      *
@@ -126,6 +127,7 @@ public class MealPlanViewer {
         }
         return result.toString();
     }
+    //@@author
 
     /**
      * Sums a day's nutrition and formats the footer, including zero totals for an empty day.
@@ -175,6 +177,7 @@ public class MealPlanViewer {
                 + " (" + actual + " " + unit + " actual; " + target + " " + unit + " target).";
     }
 
+    //@@author Rixte
     /**
      * Holds only the meal details needed for display, independently of recipe storage and plan generation.
      * A record supplies read-only accessors such as {@code name()} and {@code calories()}.
@@ -202,4 +205,5 @@ public class MealPlanViewer {
             }
         }
     }
+    //@@author
 }

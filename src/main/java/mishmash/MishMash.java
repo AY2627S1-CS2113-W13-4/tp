@@ -112,6 +112,7 @@ public class MishMash {
         }
     }
 
+    //@@author Rixte
     /**
      * Runs the greeting and command loop using the supplied dependencies, leaving setup to the caller.
      * Logs unexpected failures once before rethrowing the same exception or assertion error.
@@ -154,6 +155,7 @@ public class MishMash {
             return null;
         }
     }
+    //@@author
 
     /**
      * Reads commands until the user exits or console input ends.

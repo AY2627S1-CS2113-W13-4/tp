@@ -23,6 +23,7 @@ import mishmash.command.GeneratePlanCommand;
 import mishmash.command.HelpCommand;
 import mishmash.command.ListRecipeCommand;
 import mishmash.command.RecordMealCommand;
+import mishmash.command.ResetPlanCommand;
 import mishmash.command.SetDietCommand;
 import mishmash.command.SetTargetsCommand;
 import mishmash.command.ViewListCommand;
@@ -87,6 +88,9 @@ public class Parser {
     public static final String LIST_RECIPE_USAGE = "Format: list-recipes [INDEX]";
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
+    //@@author Rixte
+    public static final String RESET_PLAN_USAGE = ResetPlanCommand.USAGE;
+    //@@author
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
@@ -107,7 +111,7 @@ public class Parser {
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
+            VIEW_PLAN_USAGE, RESET_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
             DietaryPreferencesParser.USAGE, "Format: view-diet", SET_TARGETS_USAGE, VIEW_TARGETS_USAGE,
             RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
             "Format: help", "Format: bye");
@@ -339,6 +343,11 @@ public class Parser {
         if (commandWord.equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
         }
+        //@@author Rixte
+        if (commandWord.equals(ResetPlanCommand.COMMAND_WORD)) {
+            return parseResetPlan(arguments);
+        }
+        //@@author
         if (commandWord.equals(RecordMealCommand.COMMAND_WORD)) {
             return parseRecordMeal(arguments);
         }
@@ -365,6 +374,24 @@ public class Parser {
         }
         throw new MishMashException("Unknown command: " + commandWord);
     }
+
+    //@@author Rixte
+    /**
+     * Accepts a reset without arguments and leaves all state changes until execution.
+     *
+     * @param arguments The text following reset-plan.
+     * @return A command connected to the current plan holder.
+     * @throws MishMashException If any arguments are supplied.
+     */
+    private Command parseResetPlan(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            LOGGER.fine("reset-plan rejected: unexpected arguments");
+            throw new MishMashException("reset-plan does not accept arguments.", RESET_PLAN_USAGE, null);
+        }
+        LOGGER.fine("Parsed reset-plan with no arguments");
+        return new ResetPlanCommand(activeMealPlan);
+    }
+    //@@author
 
     /**
      * Parses a proposed dietary update and attaches command-specific usage to validation errors.
@@ -429,6 +456,7 @@ public class Parser {
         }
     }
 
+    //@@author Rixte
     /**
      * Creates a read-only shortfall check and attaches command usage to invalid target errors.
      *
@@ -446,7 +474,9 @@ public class Parser {
             throw new MishMashException(e.getMessage(), CHECK_SHORTFALL_USAGE, e);
         }
     }
+    //@@author
 
+    //@@author Rixte
     /**
      * Parses only supplied edits using the same field and ingredient validation as recipe addition.
      *
@@ -477,11 +507,14 @@ public class Parser {
             throw new MishMashException(e.getMessage(), EDIT_RECIPE_USAGE, e);
         }
     }
+    //@@author
 
+    //@@author Rixte
     /** Returns validated nutrition when supplied, or null to preserve the current recipe value. */
     private Integer parseOptionalNutrition(Map<String, String> fields, String prefix, String fieldName) {
         return fields.containsKey(prefix) ? parseNutrition(fields.get(prefix), fieldName) : null;
     }
+    //@@author
 
     //@@author peilingggg
     /**
@@ -639,6 +672,7 @@ public class Parser {
         return index;
     }
 
+    //@@author Rixte
     /**
      * Creates a grocery viewing command after rejecting unexpected arguments.
      *
@@ -653,6 +687,7 @@ public class Parser {
         LOGGER.fine("Parsed view-list with no arguments");
         return new ViewListCommand(groceryListSource);
     }
+    //@@author
 
     /**
      * Parses an optional day while leaving checks against the active plan to command execution.

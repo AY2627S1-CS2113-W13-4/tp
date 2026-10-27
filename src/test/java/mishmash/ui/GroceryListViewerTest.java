@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import mishmash.model.GroceryItem;
 
+//@@author Rixte
 /**
  * Checks the view-list display, including empty lists and preservation of grocery data.
  */
@@ -165,3 +166,4 @@ class GroceryListViewerTest {
         return String.join(System.lineSeparator(), lines);
     }
 }
+//@@author

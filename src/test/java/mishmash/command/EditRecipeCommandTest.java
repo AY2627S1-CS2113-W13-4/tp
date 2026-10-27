@@ -23,6 +23,7 @@ import mishmash.parser.Parser;
 import mishmash.testutil.TestRecipes;
 import mishmash.ui.RecipeViewer;
 
+//@@author Rixte
 /** Checks positional edits, atomic failures, execution-time lookup, and generated snapshots. */
 class EditRecipeCommandTest {
     /** Builds a protein-only change for direct command tests. */
@@ -318,3 +319,4 @@ class EditRecipeCommandTest {
                 .map(Object::toString).toList());
     }
 }
+//@@author

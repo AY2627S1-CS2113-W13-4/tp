@@ -42,6 +42,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `set-targets` | Save, replace, or remove daily calorie, protein, carbohydrate, and fat targets for later plans. |
 | `view-targets` | Display the saved daily targets. |
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. Saved targets fill in nutrients that the command leaves out. |
+| `reset-plan` | Clear the current plan, its generation request, and derived groceries; preserve other session data. |
 | `view-plan` | Display the active meal plan or one selected day. |
 | `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
@@ -91,6 +92,87 @@ Diagnostic logs are written to disk, but they do not save or restore the recipe 
 
 ## Implementation
 
+<!-- @@author Rixte -->
+### Resetting a meal plan
+
+#### Purpose and command contract
+
+This enhancement implements #53: **As a returning user, I want to clear my current meal plan and its generated
+grocery list while keeping my recipes, personal settings, and food intake records so that I can start planning
+again without losing my other information.**
+
+`reset-plan` accepts no arguments. A valid reset removes the active `MealPlan`, its `GeneratePlanRequest`
+(including that plan's daily nutrition targets), and its optional grocery snapshot. It preserves the
+`RecipeBook`, `DietarySettings`, `TargetSettings`, and `MealLog`. The targets attached to the removed
+generation request are cleared; personal targets saved with `set-targets` remain available for later
+generation. Repeating a reset on an empty holder returns a no-plan message.
+
+#### Parsing, execution, and ownership
+
+![Reset command ownership and retained session data.](images/reset-plan/classes.svg)
+
+`Parser.parseResetPlan` validates arguments before constructing `ResetPlanCommand`. Parsing only retains
+the shared `ActiveMealPlan` reference; it does not clear state. Arguments produce a `MishMashException` with
+reset-specific usage, allowing the user to retry at the next prompt without losing data.
+
+![Parsing a reset without changing application data.](images/reset-plan/parsing.svg)
+
+At execution, the command checks whether a plan or groceries were present, then calls the existing
+`ActiveMealPlan.clear()`. That method clears the plan, original generation request, and groceries together.
+The command verifies the clear postcondition before success is logged or reported. A failed clear or
+remaining plan state produces a recoverable `MishMashException`, so the session can continue with its
+recipes, dietary settings, and recorded meals. This check runs whether Java assertions are enabled or
+disabled. The original cause is retained for diagnostics when clearing throws a runtime exception.
+`FINE` logging records only whether plan and grocery state were present, without recipe names or contents.
+
+![Reset-plan parsing and execution.](images/reset-plan/execution.svg)
+
+The command only holds the active-plan object. It does not receive dietary settings, saved targets, or the
+meal log, and does not read or mutate the recipe-book parameter inherited from `Command.execute`. This limited access
+makes preserving unrelated session data straightforward. Existing immutable snapshots held by callers
+remain valid after the active holder is cleared.
+
+#### Design choices and boundaries
+
+Reusing `ActiveMealPlan.clear()` avoids duplicating state-clearing logic already used by dietary repair.
+Creating a replacement `ActiveMealPlan` instead would break references held by the parser and commands.
+Clearing individual fields from the command would expose model internals and risk retaining stale targets
+or groceries. Clearing the recipe book or reconstructing the parser would remove unrelated session data.
+
+The command reads state when it executes, so a command parsed before generation also clears a subsequently
+generated plan. Legacy plans without a retained generation request and present-but-empty grocery snapshots
+are supported. A grocery snapshot remaining without a plan is also removed. No new plan or groceries are
+created during reset.
+
+![Invalid reset arguments and recovery at the next prompt.](images/reset-plan/invalid-input.svg)
+
+This change implements the reset operation only. The separate confirmation story #61 will define
+confirmation before clearing or replacing a plan using the existing `Command.confirmationPrompt` hook.
+
+#### Tests and manual verification
+
+`ResetPlanCommandTest` covers plan/request/grocery clearing, repeated resets, legacy and empty plans,
+current-state lookup, null dependencies, and recoverable failures. `ResetPlanDiagnosticsTest` captures state
+summaries with temporary logging settings and checks failure and retry diagnostics. `ParserResetPlanTest`
+covers whitespace, rejected arguments, case sensitivity, deferred execution, and help.
+`ResetPlanIntegrationTest` verifies preservation of recipes, dietary restrictions, recorded meals, and old
+immutable snapshots, followed by regeneration. It also distinguishes preserved personal targets from
+the removed plan's targets and checks generation using saved targets after reset.
+`MishMashResetPlanTest` exercises supplied application
+sessions, ordered recovery after invalid input or failed reset, and end-of-input behaviour. Failed-reset
+cases include an exception with a null message and verify retained data before retrying successfully.
+The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
+recipe entries, repeated reset cycles, resets after failed generation, and isolation between parser sessions.
+
+For manual verification, add three suitable recipes, record a meal, set compatible dietary preferences,
+generate a targeted two-day plan, and generate groceries. Run `reset-plan`, then check `view-plan`,
+`view-list`, and `check-shortfall`: each should report missing generated data. Verify `list-recipes`,
+`view-diet`, and `view-meals` are unchanged. Generate a new one-day plan and groceries, then verify they
+use the retained recipes and dietary settings. Try `reset-plan extra` before a valid reset; rejection
+must preserve the existing plan and groceries. Repeat a valid reset and verify the no-plan message.
+<!-- @@author -->
+
+<!-- @@author Rixte -->
 ### Editing a recipe
 
 #### Purpose and command contract
@@ -177,6 +259,7 @@ The class diagram and three sequence diagrams have editable sources and renderin
 [`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md). When updating the implementation,
 check method names, object creation, message order, exception paths, and relationship multiplicities
 against the code, then regenerate and visually inspect all four SVGs.
+<!-- @@author -->
 
 <!-- @@author peilingggg -->
 ### Adding a recipe

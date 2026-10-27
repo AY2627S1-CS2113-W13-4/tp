@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include ../shortfall/style.iuml
 title Execution: validate the current position, then replace the recipe
@@ -53,3 +54,4 @@ note over Edit, Book
   Existing plans and groceries retain their original snapshots.
 end note
 @enduml
+'@@author

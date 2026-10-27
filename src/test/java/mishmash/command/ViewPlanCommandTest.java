@@ -15,6 +15,7 @@ import mishmash.parser.Parser;
 import mishmash.testutil.TestRecipes;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
+//@@author Rixte
 /**
  * Checks meal-plan command execution, missing plans, day bounds, and access to the latest supplied data.
  */
@@ -142,3 +143,4 @@ class ViewPlanCommandTest {
         assertThrows(NullPointerException.class, () -> new ViewPlanCommand(null, 1));
     }
 }
+//@@author

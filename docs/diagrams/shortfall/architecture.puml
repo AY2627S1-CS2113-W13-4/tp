@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !pragma layout smetana
 !include style.iuml
@@ -28,3 +29,4 @@ legend bottom
   Dashed arrows show dependencies, not new Java interfaces.
 endlegend
 @enduml
+'@@author
