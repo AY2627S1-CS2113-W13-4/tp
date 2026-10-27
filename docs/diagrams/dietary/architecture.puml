@@ -1,0 +1,42 @@
+@startuml
+!pragma layout smetana
+title Dietary restrictions: architecture context
+top to bottom direction
+skinparam nodesep 60
+skinparam ranksep 60
+rectangle "Command parsing" {
+  class Parser
+  class DietaryPreferencesParser
+}
+rectangle "Commands" {
+  class SetDietCommand
+  class GeneratePlanCommand
+}
+rectangle "Planning logic" {
+  class DietaryPlanner
+  class MealPlanGenerator
+  class GroceryListGenerator
+}
+rectangle "Session model" {
+  class DietarySettings
+  class ActiveMealPlan
+  class RecipeBook
+}
+Parser ..> DietaryPreferencesParser : validates
+Parser ..> SetDietCommand : creates
+Parser ..> GeneratePlanCommand : creates
+SetDietCommand ..> DietaryPlanner : repairs
+GeneratePlanCommand ..> DietaryPlanner : generates
+DietaryPlanner ..> MealPlanGenerator : delegates
+SetDietCommand ..> GroceryListGenerator : rebuilds groceries
+SetDietCommand ..> DietarySettings : saves
+GeneratePlanCommand ..> DietarySettings : reads
+SetDietCommand ..> ActiveMealPlan : updates
+GeneratePlanCommand ..> ActiveMealPlan : publishes
+SetDietCommand ..> RecipeBook : reads recipes
+legend bottom
+  Dependencies show selected uses, not runtime order or exclusive ownership.
+  Viewing, model value types, CLI interaction, and library operations are omitted.
+endlegend
+@enduml
+

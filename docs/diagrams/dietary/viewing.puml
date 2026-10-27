@@ -1,0 +1,30 @@
+@startuml
+title Viewing current dietary preferences
+autonumber
+participant "parser: Parser" as P
+participant "view: Command lambda" as C
+participant "settings: DietarySettings" as S
+participant "profile: DietaryPreferences" as D
+[-> P : parseCommand("view-diet")
+activate P
+P -> P : requireNoDietArguments(commandWord, arguments)
+note over P : Extra arguments throw MishMashException with usage.
+create C
+P -> C : create lambda capturing shared settings
+P -->[ : command
+deactivate P
+note over C, S : Settings may change between parsing and execution.
+[-> C : execute(recipeBook)
+activate C
+C -> S : get()
+S --> C : current profile
+C -> D : describe()
+D --> C : diet and sorted exclusion lists
+C -->[ : three-line description
+deactivate C
+legend bottom
+  The lambda is shown as a Command instance; it is not a named Java class.
+  No recipe, plan, grocery, or preference mutation occurs.
+  Dispatch helpers and string formatting internals are condensed.
+endlegend
+@enduml
