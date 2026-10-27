@@ -2,6 +2,7 @@ package mishmash.command;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import mishmash.exception.MishMashException;
 import mishmash.logic.DietaryPlanner;
@@ -20,6 +21,8 @@ import mishmash.model.TargetSettings;
  * and makes it the active plan.
  */
 public class GeneratePlanCommand implements Command {
+    private static final Logger LOGGER = Logger.getLogger(GeneratePlanCommand.class.getName());
+
     private final GeneratePlanRequest request;
     private final MealPlanGenerator generator;
     private final ActiveMealPlan activePlan;
@@ -112,6 +115,7 @@ public class GeneratePlanCommand implements Command {
             plan = new DietaryPlanner(generator).generate(recipeBook.getRecipes(), effective, dietarySettings.get());
         } catch (IllegalArgumentException e) {
             // The generator reports user-fixable problems this way; show them like any other input error.
+            LOGGER.fine(() -> "Meal-plan generation rejected for " + request.days() + " days");
             String message = e.getMessage();
             //@@author neil0618
             if (usesSavedTargets) {
@@ -124,6 +128,7 @@ public class GeneratePlanCommand implements Command {
 
         // Store the effective request, so view-plan and set-diet repair use the targets actually applied.
         activePlan.setGenerated(plan, effective, Optional.empty());
+        LOGGER.fine(() -> "Stored generated meal plan for " + plan.getNumberOfDays() + " days");
         String confirmation = "Meal plan successfully generated for " + plan.getNumberOfDays() + " day(s)!";
         //@@author neil0618
         if (usesSavedTargets) {

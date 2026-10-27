@@ -106,8 +106,7 @@ public class ViewPlanCommand implements Command {
         if (dayNumber > mealsByDay.size()) {
             LOGGER.fine(() -> "view-plan rejected day " + dayNumber
                     + ": active plan contains " + mealsByDay.size() + " days");
-            throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + "."
-                    + System.lineSeparator() + USAGE);
+            throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + ".", USAGE, null);
         }
         String result = viewer.view(mealsByDay, dayNumber, targetsSource.get());
         LOGGER.fine(() -> "view-plan displayed day " + dayNumber);

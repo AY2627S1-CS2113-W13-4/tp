@@ -15,7 +15,7 @@ public interface Command {
      * reads the answer, and calls {@link #execute(RecipeBook)} only if the user agrees.
      *
      * @param recipeBook The recipe book the action would change; it is not modified.
-     * @return The question to ask, or empty if the action can run immediately.
+     * @return The non-blank question to ask, or empty if the action can run immediately.
      * @throws MishMashException If the action could not be carried out, so there is nothing to confirm.
      */
     default Optional<String> confirmationPrompt(RecipeBook recipeBook) throws MishMashException {

@@ -58,22 +58,26 @@ public class CheckShortfallCommand implements Command {
     public String execute(RecipeBook recipeBook) {
         MealPlan plan = activePlan.get().orElse(null);
         if (plan == null || plan.getNumberOfDays() == 0) {
+            LOGGER.fine("Shortfall check skipped: no active days to check");
             return "No active meal plan. Use 'generate-plan' first.";
         }
 
         List<String> outputLines = new ArrayList<>();
         outputLines.add("Daily nutrition shortfalls (compared with the supplied targets):");
+        int daysWithShortfalls = 0;
         for (int index = 0; index < plan.getNumberOfDays(); index++) {
             List<String> shortfalls = findShortfalls(plan.getDays().get(index));
             if (shortfalls.isEmpty()) {
                 outputLines.add("Day " + (index + 1) + ": No shortfalls for the supplied targets.");
             } else {
+                daysWithShortfalls++;
                 outputLines.add("Day " + (index + 1) + ":");
                 outputLines.addAll(shortfalls);
             }
         }
 
-        LOGGER.fine(() -> "Checked nutrition shortfalls for " + plan.getNumberOfDays() + " days");
+        LOGGER.fine("Checked nutrition shortfalls for " + plan.getNumberOfDays()
+                + " days; days with shortfalls: " + daysWithShortfalls);
         return String.join(System.lineSeparator(), outputLines);
     }
 
@@ -104,6 +108,8 @@ public class CheckShortfallCommand implements Command {
      */
     private void addShortfall(List<String> shortfalls, String nutrientName, String unit,
             long plannedTotal, Integer dailyTarget) {
+        // Recipes contain nonnegative nutrition; a negative total indicates a broken model invariant.
+        assert plannedTotal >= 0 : "Planned nutrition totals must not be negative.";
         if (dailyTarget != null && plannedTotal < dailyTarget) {
             shortfalls.add("- " + nutrientName + ": " + plannedTotal + "/" + dailyTarget + " " + unit
                     + " (short by " + (dailyTarget - plannedTotal) + " " + unit + ").");
