@@ -350,6 +350,7 @@ public class Parser {
         throw new MishMashException("Unknown command: " + commandWord);
     }
 
+    //@@author Rixte
     /**
      * Accepts a reset without arguments and leaves all state changes until execution.
      *
@@ -364,6 +365,7 @@ public class Parser {
         }
         return new ResetPlanCommand(activeMealPlan);
     }
+    //@@author
 
     /**
      * Parses a proposed dietary update and attaches command-specific usage to validation errors.
@@ -395,6 +397,7 @@ public class Parser {
         }
     }
 
+    //@@author Rixte
     /**
      * Creates a read-only shortfall check and attaches command usage to invalid target errors.
      *
@@ -411,7 +414,9 @@ public class Parser {
                     + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
         }
     }
+    //@@author
 
+    //@@author Rixte
     /**
      * Parses only supplied edits using the same field and ingredient validation as recipe addition.
      *
@@ -440,11 +445,14 @@ public class Parser {
             throw new MishMashException(e.getMessage() + System.lineSeparator() + EDIT_RECIPE_USAGE, e);
         }
     }
+    //@@author
 
+    //@@author Rixte
     /** Returns validated nutrition when supplied, or null to preserve the current recipe value. */
     private Integer parseOptionalNutrition(Map<String, String> fields, String prefix, String fieldName) {
         return fields.containsKey(prefix) ? parseNutrition(fields.get(prefix), fieldName) : null;
     }
+    //@@author
 
     //@@author peilingggg
     /**
@@ -611,6 +619,7 @@ public class Parser {
         return index;
     }
 
+    //@@author Rixte
     /**
      * Creates a grocery viewing command after rejecting unexpected arguments.
      *
@@ -626,6 +635,7 @@ public class Parser {
         LOGGER.fine("Parsed view-list with no arguments");
         return new ViewListCommand(groceryListSource);
     }
+    //@@author
 
     /**
      * Parses an optional day while leaving checks against the active plan to command execution.

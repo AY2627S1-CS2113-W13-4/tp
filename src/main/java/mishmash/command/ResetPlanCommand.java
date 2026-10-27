@@ -3,6 +3,7 @@ package mishmash.command;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.RecipeBook;
 
+//@@author Rixte
 /**
  * Clears the active meal plan and its derived state without accessing other session data.
  */
@@ -39,3 +40,4 @@ public class ResetPlanCommand implements Command {
         return "Meal plan reset. Recipes, dietary preferences, and recorded meals are unchanged.";
     }
 }
+//@@author

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import mishmash.command.ResetPlanCommand;
 
+//@@author Rixte
 /**
  * Checks the reset command's complete console workflow, preservation of session data, and error recovery.
  */
@@ -123,3 +124,4 @@ class MishMashResetPlanTest {
         return output.split(Pattern.quote(fragment), -1).length - 1;
     }
 }
+//@@author

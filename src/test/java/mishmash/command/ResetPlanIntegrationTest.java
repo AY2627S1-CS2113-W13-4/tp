@@ -23,6 +23,7 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.parser.Parser;
 
+//@@author Rixte
 /**
  * Checks resetting through shared parser state while preserving recipes, dietary rules, and food intake records.
  */
@@ -269,3 +270,4 @@ class ResetPlanIntegrationTest {
         return recipes;
     }
 }
+//@@author

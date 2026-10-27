@@ -31,6 +31,7 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.TestRecipes;
 
+//@@author Rixte
 /**
  * Checks reset syntax, deferred execution, error recovery, and discovery through help and general usage.
  */
@@ -112,3 +113,4 @@ class ParserResetPlanTest {
         assertTrue(active.getGroceryList().isEmpty());
     }
 }
+//@@author

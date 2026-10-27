@@ -24,6 +24,7 @@ import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.TestRecipes;
 
+//@@author Rixte
 /**
  * Checks that resetting clears every plan-owned field and preserves recipe and earlier plan snapshots.
  */
@@ -174,3 +175,4 @@ class ResetPlanCommandTest {
         return "Meals per day: " + current.getDays().stream().map(day -> day.getMeals().size()).toList();
     }
 }
+//@@author
