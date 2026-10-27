@@ -10,7 +10,9 @@ import mishmash.model.ActiveMealPlan;
 import mishmash.model.DietarySettings;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.MealPlan;
+import mishmash.model.NutritionTargets;
 import mishmash.model.RecipeBook;
+import mishmash.model.TargetSettings;
 
 /**
  * Runs a parsed {@code generate-plan} command: generates a plan from the recipe book
@@ -21,6 +23,9 @@ public class GeneratePlanCommand implements Command {
     private final MealPlanGenerator generator;
     private final ActiveMealPlan activePlan;
     private final DietarySettings dietarySettings;
+    //@@author neil0618
+    private final TargetSettings targetSettings;
+    //@@author
 
     /**
      * Creates a command for the given request.
@@ -31,7 +36,7 @@ public class GeneratePlanCommand implements Command {
      * @throws NullPointerException If any argument is null.
      */
     public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
-            ActiveMealPlan activePlan) {
+                               ActiveMealPlan activePlan) {
         this(request, generator, activePlan, new DietarySettings());
     }
 
@@ -47,12 +52,34 @@ public class GeneratePlanCommand implements Command {
      * @throws NullPointerException If any argument is null.
      */
     public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
-            ActiveMealPlan activePlan, DietarySettings dietarySettings) {
+                               ActiveMealPlan activePlan, DietarySettings dietarySettings) {
+        this(request, generator, activePlan, dietarySettings, new TargetSettings());
+    }
+
+    //@@author neil0618
+    /**
+     * Creates a generation command that also falls back on the session's saved daily targets.
+     *
+     * <p>The saved targets are read during execution, so a later {@code set-targets} is respected.
+     * A target typed in the command itself always replaces the saved one for that nutrient.
+     *
+     * @param request The validated plan length and the targets typed in the command (possibly none).
+     * @param generator The generator used to select distinct daily recipes.
+     * @param activePlan The destination for the generated plan and original settings.
+     * @param dietarySettings The shared session preferences used to filter recipes.
+     * @param targetSettings The shared targets saved with {@code set-targets}.
+     * @throws NullPointerException If any argument is null.
+     */
+    public GeneratePlanCommand(GeneratePlanRequest request, MealPlanGenerator generator,
+                               ActiveMealPlan activePlan, DietarySettings dietarySettings,
+                               TargetSettings targetSettings) {
         this.request = Objects.requireNonNull(request, "request");
         this.generator = Objects.requireNonNull(generator, "generator");
         this.activePlan = Objects.requireNonNull(activePlan, "activePlan");
         this.dietarySettings = Objects.requireNonNull(dietarySettings, "dietarySettings");
+        this.targetSettings = Objects.requireNonNull(targetSettings, "targetSettings");
     }
+    //@@author
 
     /**
      * Generates the plan from the recipes in the book and stores it as the active plan.
@@ -69,15 +96,25 @@ public class GeneratePlanCommand implements Command {
     public String execute(RecipeBook recipeBook) throws MishMashException {
         Objects.requireNonNull(recipeBook, "recipeBook");
 
+        //@@author neil0618
+        // Typed targets win; nutrients left out of the command fall back on the saved ones.
+        // With nothing saved the request is used as typed, so behaviour is unchanged.
+        NutritionTargets saved = targetSettings.get();
+        GeneratePlanRequest effective = saved.hasAnyTarget()
+                ? new GeneratePlanRequest(request.days(), saved.overriddenBy(request.targets()))
+                : request;
+        //@@author
+
         MealPlan plan;
         try {
-            plan = new DietaryPlanner(generator).generate(recipeBook.getRecipes(), request, dietarySettings.get());
+            plan = new DietaryPlanner(generator).generate(recipeBook.getRecipes(), effective, dietarySettings.get());
         } catch (IllegalArgumentException e) {
             // The generator reports user-fixable problems this way; show them like any other input error.
             throw new MishMashException(e.getMessage(), e);
         }
 
-        activePlan.setGenerated(plan, request, Optional.empty());
+        // Store the effective request, so view-plan and set-diet repair use the targets actually applied.
+        activePlan.setGenerated(plan, effective, Optional.empty());
         return "Meal plan successfully generated for " + plan.getNumberOfDays() + " day(s)!"
                 + System.lineSeparator() + "Use 'view-plan' to inspect your planned meals.";
     }

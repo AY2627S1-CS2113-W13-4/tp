@@ -56,6 +56,17 @@ public class HelpCommand implements Command {
                 "view-diet - View current dietary preferences.",
                 "Format: view-diet",
                 "",
+                //@@author neil0618
+                SetTargetsCommand.COMMAND_WORD
+                        + " - Save daily calorie and macronutrient targets for future meal plans.",
+                Parser.SET_TARGETS_USAGE,
+                "Supply at least one field. Use 'none' to remove a target; omitted fields keep their saved value.",
+                "generate-plan uses saved targets for nutrients you leave out; targets typed in it take priority.",
+                "",
+                ViewTargetsCommand.COMMAND_WORD + " - View your saved daily targets.",
+                Parser.VIEW_TARGETS_USAGE,
+                //@@author
+                "",
                 RecordMealCommand.COMMAND_WORD + " - Record a recipe you have eaten, by its displayed index.",
                 Parser.RECORD_MEAL_USAGE,
                 "",
