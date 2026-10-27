@@ -19,9 +19,9 @@ public final class TargetChanges {
     /**
      * Creates a change request.
      *
-     * @param changes For each nutrient to change, its new positive value, or an empty Optional to clear it.
+     * @param changes For each nutrient to change, its new value, or an empty Optional to clear it.
      * @throws NullPointerException If the map, a key, or a value is null.
-     * @throws IllegalArgumentException If no nutrient is mentioned or a new value is not positive.
+     * @throws IllegalArgumentException If no nutrient is mentioned.
      */
     public TargetChanges(Map<Nutrient, Optional<Integer>> changes) {
         Objects.requireNonNull(changes, "changes");
@@ -30,11 +30,8 @@ public final class TargetChanges {
         }
         for (Map.Entry<Nutrient, Optional<Integer>> entry : changes.entrySet()) {
             Objects.requireNonNull(entry.getKey(), "nutrient");
-            Optional<Integer> value = Objects.requireNonNull(entry.getValue(), "value");
-            if (value.isPresent() && value.get() <= 0) {
-                throw new IllegalArgumentException(entry.getKey().getLabel() + " target must be positive.");
-            }
-            this.changes.put(entry.getKey(), value);
+            Objects.requireNonNull(entry.getValue(), "value");
+            this.changes.put(entry.getKey(), entry.getValue());
         }
     }
 

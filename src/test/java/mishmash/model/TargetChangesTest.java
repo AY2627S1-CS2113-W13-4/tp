@@ -77,13 +77,6 @@ class TargetChangesTest {
     }
 
     @Test
-    void constructor_nonPositiveValue_throws() {
-        Map<Nutrient, Optional<Integer>> map = changes();
-        map.put(Nutrient.FATS, Optional.of(0));
-        assertThrows(IllegalArgumentException.class, () -> new TargetChanges(map));
-    }
-
-    @Test
     void constructor_nulls_throw() {
         assertThrows(NullPointerException.class, () -> new TargetChanges(null));
         Map<Nutrient, Optional<Integer>> map = changes();
