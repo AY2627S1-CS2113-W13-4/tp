@@ -121,28 +121,72 @@ To track what you actually eat, use this separate sequence at any time after add
 | `i/` | Ingredient name, quantity, and unit. |
 | `none` | In `set-targets`, written instead of a number to remove a saved target, for example `cal/none`. |
 
+<!-- @@author peilingggg -->
 ## Adding a Recipe
 
-<!-- OWNER: Pei Ling. Cover required fields, nutrition limits, positive quantities, allowed units, repeated ingredients, and duplicate recipes. -->
-
-**Purpose:** {Explain what adding a recipe lets the user do.}
+**Purpose:** Adds a recipe to your recipe book so you can use it to generate meal plans and grocery lists, or record it as a meal you have eaten.
 
 **Format:**
 
 ```text
-add-recipe n/NAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITY_UNIT [i/INGREDIENT:QUANTITY_UNIT ...]
+add-recipe n/DISHNAME cal/CALORIES p/PROTEIN c/CARBS f/FATS i/INGREDIENT:QUANTITYUNIT [i/INGREDIENT:QUANTITYUNIT ...] [food/TAG[,TAG...]]
 ```
 
-**Before You Start:** {State prerequisites, or say there are none.}
+**Before You Start:** No recipes or meal plans are required. Have the recipe's calories, protein, carbohydrates, fats, and ingredient quantities ready.
 
-**Example:** {Add a complete command that a user can copy.}
+**Example:** Enter this command on one line after entering your name:
 
-**Result:** {Show the actual output from the application.}
+```text
+add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/White Rice:150g i/Olive Oil:10ml food/poultry
+```
 
-**Rules:** {Describe required values, limits, and effects on existing data.}
+**Result:**
 
-**Errors and recovery:** {Give invalid-input examples, their messages, and corrected commands.}
+```text
+New recipe added!
+Chicken and Rice
+650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
+Ingredients:
+- Chicken Breast: 200g
+- White Rice: 150g
+- Olive Oil: 10ml
+Food tags: poultry
+```
 
+Use `list-recipes` to find the new recipe's number.
+
+**Rules:**
+
+- Include `n/`, `cal/`, `p/`, `c/`, and `f/` exactly once, and at least one `i/` field. Optional `food/` can appear once. Fields may appear in any order, separated by spaces; prefixes are case-sensitive.
+- Recipe and ingredient names must not be blank. Names can contain spaces without quotation marks. `/` is reserved for prefixes and cannot appear in field values; `:` separates an ingredient name from its quantity.
+- All four nutrition values must be whole numbers from 0 to 2,147,483,647. Signs and decimal values are rejected. Calories use kcal; protein, carbohydrates, and fats use grams. MishMash uses the nutrition you enter and does not calculate it from the ingredients.
+- Each ingredient needs a name, a quantity greater than zero, and a unit. Quantities may be whole numbers or decimals, such as `200g` or `2.5ml`. Write `0.5g`, rather than `.5g`. Units must contain only letters (`A–Z` or `a–z`); there is no fixed list of accepted units. Examples include `g`, `kg`, `ml`, and `cups`. Units are not converted.
+- Repeat `i/` for each ingredient. Repeated ingredient names are accepted and remain separate entries in the recipe, in the order entered. Grocery generation later combines entries only when both their names and units match exactly.
+- Duplicate recipe names and identical recipes are accepted as separate recipes. Adding never replaces an existing recipe; use `edit-recipe INDEX` to change one.
+- Optional `food/` declares all applicable supported food categories, separated by commas, for example `food/poultry,soy,legume`. Enter `help` for the supported tags. Tags are not inferred from ingredient names. Use `food/none` only when none of the supported categories apply; do not combine `none` with other tags. Omitting `food/` displays `Food tags: Unclassified`, and unclassified recipes are excluded when dietary restrictions are active. `food/none` displays `Food tags: None declared`.
+- Adding a recipe does not change existing meal plans, grocery lists, or recorded meals. To use it in a plan, run `generate-plan` again, then `generate-list` for updated groceries.
+- Recipes are kept only for the current session and are lost when the application closes.
+
+**Errors and Recovery:**
+
+The examples below modify the complete example command above; keep its other fields unchanged.
+
+| Invalid input or change | Response | What to Do |
+| --- | --- | --- |
+| Omit `f/15` | `Error: Missing required field: f/` | Restore `f/15`. Supply all five required recipe fields. |
+| Leave `n/` blank | `Error: Value must not be blank: n/` | Use `n/Chicken and Rice`. Every supplied prefix needs a value. |
+| Use `p/-5` or `p/2.5` | `Error: Protein must be a non-negative integer.` | Use a whole number such as `p/50`. The same rule applies to all four nutrition fields. |
+| Use `cal/2147483648` | `Error: Calories must not exceed 2147483647.` | Use a value within the supported range, such as `cal/650`. |
+| Remove every `i/` field | `Error: At least one ingredient is required. Use i/INGREDIENT:QUANTITYUNIT, for example i/Rice:150g.` | Restore at least one complete ingredient, such as `i/White Rice:150g`. |
+| Use `i/White Rice:0g` | `Error: Ingredient quantity must be greater than zero.` | Use `i/White Rice:150g` or another positive quantity. |
+| Use `i/White Rice:150` without a unit | `Error: Invalid ingredient format. Use i/INGREDIENT:QUANTITYUNIT, for example i/Chicken Breast:200g.` | Include a unit containing only letters: `i/White Rice:150g`. Negative quantities also fail the ingredient format check. |
+| Use `i/:150g` | `Error: Ingredient name must not be blank.` | Include the name: `i/White Rice:150g`. |
+| Add a second `n/` field | `Error: Repeated field: n/` | Keep only `n/Chicken and Rice`. Only `i/` may be repeated. |
+| Use `protein/50` instead of `p/50` | `Error: Unknown field: protein/` | Use the supported prefix `p/50`. |
+| Use `food/poultry,poultry` | `Error: Repeated food tag: poultry.` | Declare each category once: `food/poultry`. Unsupported tags display an error followed by the valid food tags; choose the applicable supported tags. |
+
+Invalid input also displays the `add-recipe` format and an example. No recipe is added until the whole command is valid. Correct the command and enter it again at the next prompt.
+<!-- @@author -->
 <!-- @@author neil0618 -->
 ## Listing Recipes
 
