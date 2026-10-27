@@ -660,14 +660,14 @@ certification checking, or persistence is implemented.
 and `SetDietCommand`. Parsing creates commands without changing session state.
 `view-diet` is a `Command` lambda reading the current holder at execution time.
 
-Diagram shows the feature's architecture; its editable source is
+Figure 6 shows the feature's architecture; its editable source is
 [architecture.puml](diagrams/dietary/architecture.puml).
 Its dependencies show command creation, shared session data, and generation delegation;
 they do not represent runtime message order.
 
-[PlantUML source: Architecture context for dietary restrictions.](diagrams/dietary/architecture.puml)
+![Figure 6. Architecture context for dietary restrictions.](images/dietary/architecture.svg)
 
-*Diagram: Dependencies between parsing, commands, planning logic, and shared session data.
+*Figure 6: Dependencies between parsing, commands, planning logic, and shared session data.
 Arrows show selected uses rather than runtime message order.*
 
 #### Class-level responsibilities and relationships
@@ -684,21 +684,21 @@ Arrows show selected uses rather than runtime message order.*
 | `SetDietCommand` | Save preferences and coordinate plan and grocery updates. |
 | `ActiveMealPlan` | Retain the plan, its original request, and an optional grocery snapshot. |
 
-Diagram ([source](diagrams/dietary/classes.puml)) shows selected stored references and
+Figure 7 ([source](diagrams/dietary/classes.puml)) shows selected stored references and
 dependencies. Associations use private role names and target-end multiplicities; reverse
 multiplicities are unspecified. References are not duplicated as attributes. Parameter-only
 dependencies and interface realization use dashed arrows. Model collection copying protects
 collection structure; shared recipe and day objects are not deep-copied.
 
-[PlantUML source: Selected classes and relationships for dietary restrictions.](diagrams/dietary/classes.puml)
+![Figure 7. Selected classes and relationships for dietary restrictions.](images/dietary/classes.svg)
 
-*Diagram: Only feature-relevant members and references are shown; parameter types are abbreviated.
+*Figure 7: Only feature-relevant members and references are shown; parameter types are abbreviated.
 Solid arrows show stored references with private role names and target-end multiplicities.
 Dashed arrows show dependencies or interface realization; reverse multiplicities are unspecified.*
 
 #### Successful command parsing
 
-Diagram ([source](diagrams/dietary/parsing.puml)) follows `set-diet diet/vegan`.
+Figure 8 ([source](diagrams/dietary/parsing.puml)) follows `set-diet diet/vegan`.
 `Parser.parseSetDiet` delegates to `DietaryPreferencesParser.parse`.
 `collectFields` rejects leading unprefixed text, unsupported or repeated prefixes, blank
 values, and embedded slashes. Diet and tag parsers normalize case, resolve aliases, and
@@ -709,14 +709,14 @@ names using trimming, `Locale.ROOT` lowercasing, and collapsed whitespace. Blank
 normalized names are rejected. The parser then creates a `SetDietCommand`; neither settings
 nor active planning data changes until execution.
 
-[PlantUML source: Sequence for parsing a valid dietary command.](diagrams/dietary/parsing.puml)
+![Figure 8. Sequence for parsing a valid dietary command.](images/dietary/parsing.svg)
 
-*Diagram: Parsing creates a command without changing session state. Dashed arrows represent returns,
+*Figure 8: Parsing creates a command without changing session state. Dashed arrows represent returns,
 and constructor messages begin new lifelines. Constructor internals and dispatch helpers are condensed.*
 
 #### Execution and partial plan repair
 
-Diagram ([source](diagrams/dietary/execution.puml)) focuses on a conflicting plan with
+Figure 9 ([source](diagrams/dietary/execution.puml)) focuses on a conflicting plan with
 an existing grocery list and successful repair. The command handles these branches:
 
 1. Without an active plan, clear stale derived state and save the profile.
@@ -736,14 +736,14 @@ day, the original +/-15% target tolerance, and the existing bounded candidate se
 groceries. A compatible legacy plan can be preserved without a request. A conflicting legacy
 plan cannot be repaired without its original settings and follows the failure branch below.
 
-[PlantUML source: Sequence for repairing a conflicting plan and rebuilding groceries.](diagrams/dietary/execution.puml)
+![Figure 9. Sequence for repairing a conflicting plan and rebuilding groceries.](images/dietary/execution.svg)
 
-*Diagram: The successful repair branch with an existing grocery list is shown. Recipe-book lookup,
+*Figure 9: The successful repair branch with an existing grocery list is shown. Recipe-book lookup,
 library operations, and generation internals are condensed; the other branches are described above.*
 
 #### Invalid input and recovery
 
-Diagram ([source](diagrams/dietary/invalid-input.puml)) follows the unsupported
+Figure 10 ([source](diagrams/dietary/invalid-input.puml)) follows the unsupported
 value `diet/keto`. `Diet.parse` throws `IllegalArgumentException` with valid diets and
 aliases. `Parser.parseSetDiet` appends command-specific usage and wraps it in
 `MishMashException`, preserving the cause. The CLI displays the error and continues.
@@ -762,9 +762,9 @@ assertions are disabled. `setGenerated` validates and copies arguments before as
 A failed repair deliberately invalidates old generated data rather than showing an
 incompatible plan under newly saved restrictions.
 
-[PlantUML source: Sequence for rejecting an unsupported diet and recovering.](diagrams/dietary/invalid-input.puml)
+![Figure 10. Sequence for rejecting an unsupported diet and recovering.](images/dietary/invalid-input.svg)
 
-*Diagram: Exception messages show exceptional control flow. No dietary command is created and no
+*Figure 10: Exception messages show exceptional control flow. No dietary command is created and no
 session data changes. The application displays the error and continues its command loop.*
 
 #### Rationale and alternatives
@@ -794,9 +794,9 @@ With Java 25, run:
 ```
 
 Sources and SVG-generation instructions are in [diagrams/dietary](diagrams/dietary/README.md).
-The guide links to editable sources until SVGs are generated. Add inspected SVGs under
-`docs/images/dietary` and replace the source links with image embeds when ready. Recheck
-method names, message order, guards, and relationships after code changes.
+The rendered SVGs under `docs/images/dietary` are embedded as Figures 6 to 11 so the guide
+renders without a PlantUML plugin. After changing a source, regenerate and inspect its SVG.
+Recheck method names, message order, guards, and relationships after code changes.
 <!-- @@author -->
 
 <!-- @@author Rixte -->
@@ -816,7 +816,13 @@ change the recipe book, active plan, original generation request, or grocery sna
 `DietaryPreferences.describe()` prints the named diet and sorted explicit category and
 ingredient exclusions on three lines, using `none` for empty lists.
 
-[PlantUML sequence source](diagrams/dietary/viewing.puml).
+Figure 11 ([source](diagrams/dietary/viewing.puml)) shows parsing and execution-time
+profile lookup without changing session data.
+
+![Figure 11. Sequence for viewing current dietary preferences.](images/dietary/viewing.svg)
+
+*Figure 11: The lambda captures the shared settings holder and reads its current profile during
+execution. Parsing helpers and formatting internals are condensed; no session data is changed.*
 
 #### Invalid input and verification
 
@@ -848,14 +854,14 @@ not saved as personal settings or inferred from a previous generation command.
 
 #### Architecture-level view
 
-Figure 6 shows the enhancement in the existing architecture. `MishMash` reads the input,
+Figure 12 shows the enhancement in the existing architecture. `MishMash` reads the input,
 asks `Parser` for a `Command`, executes it, and displays its returned text. The shortfall
 feature follows that command workflow. Parsing validates syntax and creates the action;
 execution reads the current session models and performs the comparison.
 
-![Figure 6. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
+![Figure 12. Architecture context for shortfall checking.](images/shortfall/architecture.svg)
 
-*Figure 6: Dependencies between existing responsibilities. Each box groups the named
+*Figure 12: Dependencies between existing responsibilities. Each box groups the named
 implementation classes; it does not introduce a new Java component or service.*
 
 The normal `Parser()` constructor shares its `ActiveMealPlan` between plan generation,
@@ -867,11 +873,11 @@ the parser's `ActiveMealPlan`.
 
 #### Class-level responsibilities and relationships
 
-Figure 7 expands the implementation classes and the model references used by the check.
+Figure 13 expands the implementation classes and the model references used by the check.
 
-![Figure 7. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
+![Figure 13. Selected classes and relationships used by shortfall checking.](images/shortfall/classes.svg)
 
-*Figure 7: Only members relevant to this enhancement are shown. Solid arrows are
+*Figure 13: Only members relevant to this enhancement are shown. Solid arrows are
 navigable associations with private role names; dashed arrows show dependencies or
 interface realization. Each reference is shown either as a typed attribute or as an
 association end, without duplication. The `addShortfall` parameter list is abbreviated.*
@@ -904,15 +910,15 @@ three distinct recipe entries per day.
 
 #### Successful command parsing
 
-Figure 8 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
+Figure 14 follows `check-shortfall cal/2000 p/100` through object creation. The dispatch
 from `parseCommand` through `parseNamedCommand` to `parseCheckShortfall` is condensed into
 the parser lifeline. A new target parser is created for the request. Its `parse` method
 collects values by calling `readTarget` for each supplied token, then constructs
 `NutritionTargets(2000, 100, null, null)`.
 
-![Figure 8. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
+![Figure 14. Sequence for parsing a valid shortfall command.](images/shortfall/parsing.svg)
 
-*Figure 8: Parsing returns a command without reading any plan. Dashed return arrows
+*Figure 14: Parsing returns a command without reading any plan. Dashed return arrows
 represent returned values; constructor messages start the new objects' lifelines.*
 
 The outer parser creates `CheckShortfallCommand` only after argument validation succeeds.
@@ -922,13 +928,13 @@ altering its data and lets tests inspect or defer a command before running it.
 
 #### Execution and daily comparison
 
-Figure 9 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
+Figure 15 starts when `MishMash` calls `execute(recipeBook)` on the parsed command. The
 inherited confirmation method returns an empty `Optional`, so this read-only action
 requires no confirmation. That common interface step is omitted from the diagram.
 
-![Figure 9. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
+![Figure 15. Sequence for checking the active plan and its daily totals.](images/shortfall/execution.svg)
 
-*Figure 9: The calorie getter/comparison calls are expanded; the equivalent calls for
+*Figure 15: The calorie getter/comparison calls are expanded; the equivalent calls for
 protein, carbohydrates, and fat are summarized in the note. Repeated day-count reads,
 list indexing, logging, and string-building details are condensed.*
 
@@ -969,15 +975,15 @@ The command's `FINE` log records the number of checked days; it installs no log 
 
 #### Invalid input and recovery
 
-Figure 10 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
+Figure 16 shows a rejected zero target. `CheckShortfallParser.parseTarget` throws
 `IllegalArgumentException`; `Parser.parseCheckShortfall` wraps it as `MishMashException`,
 preserves its cause, and appends `CHECK_SHORTFALL_USAGE`. `MishMash.executeCommand` catches
 that recoverable exception and displays the error. The read loop then prints another
 command prompt instead of ending the session.
 
-![Figure 10. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
+![Figure 16. Sequence for rejecting an invalid target and recovering.](images/shortfall/invalid-input.svg)
 
-*Figure 10: Exception returns are labeled explicitly. For this invalid request, neither
+*Figure 16: Exception returns are labeled explicitly. For this invalid request, neither
 the target object nor the shortfall command is constructed, and the plan is not accessed.*
 
 An invalid request is an input error, whereas a valid request with no active plan returns
@@ -1079,9 +1085,9 @@ execution reads or changes session data. A new model class, `MealLog`, holds the
 `ActiveMealPlan`, it is session data shared between commands, but it is separate from the plan: the plan
 holds meals the user intends to eat, and the log holds meals the user has eaten.
 
-![Figure 11. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
+![Figure 17. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
 
-*Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
+*Figure 17: Only members relevant to this enhancement are shown. Solid arrows are navigable
 associations with private role names; dashed arrows show dependencies or interface realization.
 `NutritionTotals` is the existing value record that `DayPlan` also uses for daily totals, and `MealLog`
 reuses it; its values are `long` so that adding many recipes cannot overflow. `MacroSplit` is new.*
@@ -1103,12 +1109,12 @@ reuses it; its values are `long` so that adding many recipes cannot overflow. `M
 
 #### Recording a meal
 
-Figure 12 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
+Figure 18 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
 `parseRecordMeal` is condensed into the parser lifeline.
 
-![Figure 12. Sequence for recording a meal.](images/record-meal/record-meal.svg)
+![Figure 18. Sequence for recording a meal.](images/record-meal/record-meal.svg)
 
-*Figure 12: Parsing returns a command without reading any data. The inherited confirmation step is
+*Figure 18: Parsing returns a command without reading any data. The inherited confirmation step is
 omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
 `alt` fragment. The viewer asks `MacroSplit` for the recorded meal's split; its other formatting steps
 are omitted.*
@@ -1126,9 +1132,9 @@ immediately. Recording a meal needs no confirmation: it is quick to repeat, and 
 
 #### Viewing recorded meals and totals
 
-![Figure 13. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
+![Figure 19. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
 
-*Figure 13: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
+*Figure 19: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
 fragment, and the per-meal macro split lookup as a `loop`.*
 
 `view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
