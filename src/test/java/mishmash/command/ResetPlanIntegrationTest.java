@@ -2,6 +2,7 @@ package mishmash.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,8 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
@@ -305,6 +309,86 @@ class ResetPlanIntegrationTest {
         assertTrue(activePlan.get().isEmpty());
         assertTrue(activePlan.getRequest().isEmpty());
         assertTrue(activePlan.getGroceryList().isEmpty());
+    }
+
+    @TestFactory
+    Stream<DynamicTest> execute_resetInDifferentPlanStates_preservesSavedPersonalTargets() {
+        return Stream.of("no plan", "generated plan", "orphan groceries")
+                .map(state -> DynamicTest.dynamicTest(state, () -> {
+                    ActiveMealPlan active = new ActiveMealPlan();
+                    Parser current = new Parser(new MealPlanGenerator(new Random(1)), active);
+                    RecipeBook recipes = createRecipeBook();
+                    current.parseCommand("set-targets cal/1500 p/60 c/150 f/30").execute(recipes);
+                    String savedTargets = current.parseCommand("view-targets").execute(recipes);
+                    if (state.equals("generated plan")) {
+                        current.parseCommand("generate-plan d/1").execute(recipes);
+                        current.parseCommand("generate-list").execute(recipes);
+                    } else if (state.equals("orphan groceries")) {
+                        active.setGroceryList(List.of(new GroceryItem("Rice", BigDecimal.ONE, "g")));
+                    }
+
+                    current.parseCommand("reset-plan").execute(recipes);
+                    current.parseCommand("reset-plan").execute(recipes);
+
+                    assertEquals(savedTargets, current.parseCommand("view-targets").execute(recipes));
+                    assertTrue(active.get().isEmpty());
+                    assertTrue(active.getRequest().isEmpty());
+                    assertTrue(active.getGroceryList().isEmpty());
+                    current.parseCommand("generate-plan d/1").execute(recipes);
+                    assertEquals(1500, active.getRequest().orElseThrow().targets().getCalories());
+                    assertEquals(60, active.getRequest().orElseThrow().targets().getProtein());
+                    assertEquals(150, active.getRequest().orElseThrow().targets().getCarbs());
+                    assertEquals(30, active.getRequest().orElseThrow().targets().getFats());
+                }));
+    }
+
+    @Test
+    void execute_planOverridesSavedTargets_resetDiscardsOverridesAndRegeneratesUsingPersonalSettings()
+            throws MishMashException {
+        parser.parseCommand("set-targets cal/1500 p/60").execute(book);
+        String savedTargets = parser.parseCommand("view-targets").execute(book);
+        parser.parseCommand("generate-plan d/1 cal/1450").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+        GeneratePlanRequest oldRequest = activePlan.getRequest().orElseThrow();
+        MealPlan oldPlan = activePlan.get().orElseThrow();
+
+        parser.parseCommand("reset-plan").execute(book);
+
+        assertTrue(activePlan.get().isEmpty());
+        assertTrue(activePlan.getRequest().isEmpty());
+        assertTrue(activePlan.getGroceryList().isEmpty());
+        assertEquals(savedTargets, parser.parseCommand("view-targets").execute(book));
+
+        String generated = parser.parseCommand("generate-plan d/2").execute(book);
+
+        assertTrue(generated.contains("Daily targets used: 1500 kcal, 60 g protein."), generated);
+        assertEquals(1500, activePlan.getRequest().orElseThrow().targets().getCalories());
+        assertEquals(60, activePlan.getRequest().orElseThrow().targets().getProtein());
+        assertTrue(activePlan.getGroceryList().isEmpty());
+        assertEquals(1450, oldRequest.targets().getCalories());
+        assertEquals(1, oldPlan.getNumberOfDays());
+    }
+
+    @Test
+    void execute_savedTargetsChangedAfterParsingReset_preservesLatestSettingsAndAllowsLaterUpdates()
+            throws MishMashException {
+        parser.parseCommand("set-targets cal/1500 p/60").execute(book);
+        parser.parseCommand("generate-plan d/1").execute(book);
+        Command pendingReset = parser.parseCommand("reset-plan");
+        parser.parseCommand("set-targets cal/1600 p/none").execute(book);
+        String latestTargets = parser.parseCommand("view-targets").execute(book);
+
+        pendingReset.execute(book);
+
+        assertEquals(latestTargets, parser.parseCommand("view-targets").execute(book));
+        assertTrue(activePlan.getRequest().isEmpty());
+        parser.parseCommand("generate-plan d/1").execute(book);
+        assertEquals(1600, activePlan.getRequest().orElseThrow().targets().getCalories());
+        assertNull(activePlan.getRequest().orElseThrow().targets().getProtein());
+        parser.parseCommand("reset-plan").execute(book);
+        parser.parseCommand("set-targets cal/none").execute(book);
+        parser.parseCommand("generate-plan d/1").execute(book);
+        assertFalse(activePlan.getRequest().orElseThrow().targets().hasAnyTarget());
     }
 
     /**

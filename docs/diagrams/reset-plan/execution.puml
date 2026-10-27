@@ -49,7 +49,7 @@ else clear succeeds
 end
 deactivate Reset
 note over Reset, Active
-  Recipes, dietary settings, and recorded meals
+  Recipes, dietary settings, saved targets, and recorded meals
   are owned elsewhere and remain unchanged.
 end note
 @enduml

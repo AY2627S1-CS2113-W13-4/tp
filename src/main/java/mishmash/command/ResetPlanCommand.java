@@ -34,7 +34,7 @@ public class ResetPlanCommand implements Command {
 
     /**
      * Clears plan state, including an empty generated grocery snapshot, and safely supports repeated resets.
-     * Recipes, dietary preferences, and recorded meals are owned elsewhere and are not modified.
+     * Recipes, dietary preferences, saved targets, and recorded meals are owned elsewhere and are not modified.
      *
      * @param recipeBook The shared command context; resetting does not read or change recipes.
      * @return A reset confirmation, or a message when no plan or groceries were present.

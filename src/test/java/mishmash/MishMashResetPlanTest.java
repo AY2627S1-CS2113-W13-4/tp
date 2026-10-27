@@ -125,6 +125,25 @@ class MishMashResetPlanTest {
                 .map(scenario -> DynamicTest.dynamicTest(scenario, () -> verifyRecoverableReset(scenario)));
     }
 
+    @Test
+    void run_resetWithSavedTargets_preservesPersonalSettingsAndUsesThemForNextPlan() {
+        String output = runCli(
+                "add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
+                "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
+                "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
+                "set-targets cal/1500 p/60", "generate-plan d/1 cal/1450", "generate-list",
+                "reset-plan extra", "view-targets", "reset-plan", "view-plan", "view-list", "view-targets",
+                "generate-plan d/2", "generate-list", "view-list", "bye");
+
+        assertInOrder(output, "Daily targets used: 1450 kcal, 60 g protein.",
+                "Error: reset-plan does not accept arguments.", ResetPlanCommand.USAGE,
+                "Calories: 1500 kcal", "Protein: 60 g", "Meal plan reset.",
+                "No active meal plan.", "No grocery list generated.", "Calories: 1500 kcal", "Protein: 60 g",
+                "Daily targets used: 1500 kcal, 60 g protein.", "[ ] Rice: 600g", "Goodbye!");
+        assertEquals(1, countOccurrences(output, "Error: "));
+        assertEquals(1, countOccurrences(output, ResetPlanCommand.USAGE));
+    }
+
     /** Checks state immediately after a failed reset, then retries with the same session dependencies. */
     private void verifyRecoverableReset(String scenario) throws MishMashException {
         ActiveMealPlan active = failsFirstReset(scenario);
@@ -138,6 +157,8 @@ class MishMashResetPlanTest {
         parser.parseCommand("generate-plan d/1 cal/1500").execute(book);
         parser.parseCommand("generate-list").execute(book);
         parser.parseCommand("set-diet diet/vegetarian").execute(book);
+        parser.parseCommand("set-targets cal/1600 p/60").execute(book);
+        String savedTargets = parser.parseCommand("view-targets").execute(book);
         MealPlan plan = active.get().orElseThrow();
         GeneratePlanRequest request = active.getRequest().orElseThrow();
         List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
@@ -146,11 +167,11 @@ class MishMashResetPlanTest {
 
         try (LogCapture logs = new LogCapture(MishMash.class)) {
             String failed = runSession(parser, book, "reset-plan", "view-plan", "view-list", "view-meals",
-                    "view-diet", "list-recipes", "bye");
+                    "view-diet", "view-targets", "list-recipes", "bye");
 
             assertInOrder(failed, "Error: The meal plan could not be reset. Please try again.", ResetPlanCommand.USAGE,
-                    "Daily Totals: 1500 kcal", "[ ] Rice: 300g", "Meal 1: A", "vegetarian", "1. A (500 kcal)",
-                    "Goodbye!");
+                    "Daily Totals: 1500 kcal", "[ ] Rice: 300g", "Meal 1: A", "vegetarian",
+                    "Calories: 1600 kcal", "Protein: 60 g", "1. A (500 kcal)", "Goodbye!");
             assertEquals(1, countOccurrences(failed, ResetPlanCommand.USAGE));
             assertFalse(failed.contains("Private model details"), failed);
             assertSame(plan, active.get().orElseThrow());
@@ -158,6 +179,7 @@ class MishMashResetPlanTest {
             assertSame(groceries, active.getGroceryList().orElseThrow());
             assertEquals(recipes, book.getRecipes());
             assertEquals(recordedMeals, meals.getMeals());
+            assertEquals(savedTargets, parser.parseCommand("view-targets").execute(book));
 
             String retried = runSession(parser, book, "reset-plan", "view-plan", "view-list", "bye");
 
@@ -168,6 +190,7 @@ class MishMashResetPlanTest {
             assertTrue(active.getGroceryList().isEmpty());
             assertEquals(recipes, book.getRecipes());
             assertEquals(recordedMeals, meals.getMeals());
+            assertEquals(savedTargets, parser.parseCommand("view-targets").execute(book));
             assertEquals(0, logs.getRecords().stream().filter(record -> record.getLevel() == Level.SEVERE).count());
         }
     }

@@ -25,9 +25,11 @@ import mishmash.command.ListRecipeCommand;
 import mishmash.command.RecordMealCommand;
 import mishmash.command.ResetPlanCommand;
 import mishmash.command.SetDietCommand;
+import mishmash.command.SetTargetsCommand;
 import mishmash.command.ViewListCommand;
 import mishmash.command.ViewMealsCommand;
 import mishmash.command.ViewPlanCommand;
+import mishmash.command.ViewTargetsCommand;
 import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
@@ -41,6 +43,8 @@ import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeChanges;
+import mishmash.model.TargetChanges;
+import mishmash.model.TargetSettings;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
 /**
@@ -92,6 +96,10 @@ public class Parser {
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
     public static final String RECORD_MEAL_USAGE = RecordMealCommand.USAGE;
     public static final String VIEW_MEALS_USAGE = ViewMealsCommand.USAGE;
+    //@@author neil0618
+    public static final String SET_TARGETS_USAGE = SetTargetsParser.USAGE;
+    public static final String VIEW_TARGETS_USAGE = ViewTargetsCommand.USAGE;
+    //@@author
 
     /**
      * Describes how to generate groceries for the active meal plan.
@@ -104,7 +112,8 @@ public class Parser {
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
             VIEW_PLAN_USAGE, RESET_PLAN_USAGE, CHECK_SHORTFALL_USAGE, GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
-            DietaryPreferencesParser.USAGE, "Format: view-diet", RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
+            DietaryPreferencesParser.USAGE, "Format: view-diet", SET_TARGETS_USAGE, VIEW_TARGETS_USAGE,
+            RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
             "Format: help", "Format: bye");
 
     /**
@@ -157,6 +166,11 @@ public class Parser {
     private final ActiveMealPlan activeMealPlan;
     /** Shares session preferences without changing them during command parsing. */
     private final DietarySettings dietarySettings = new DietarySettings();
+
+    //@@author neil0618
+    /** Shares the saved daily targets between set-targets, view-targets and generate-plan. */
+    private final TargetSettings targetSettings = new TargetSettings();
+    //@@author
 
     /**
      * The meals recorded as eaten; record-meal adds to it and view-meals reads it. It is separate from the
@@ -306,6 +320,14 @@ public class Parser {
             requireNoDietArguments(commandWord, arguments);
             return recipeBook -> dietarySettings.get().describe();
         }
+        //@@author neil0618
+        if (commandWord.equals(SetTargetsCommand.COMMAND_WORD)) {
+            return parseSetTargets(arguments);
+        }
+        if (commandWord.equals(ViewTargetsCommand.COMMAND_WORD)) {
+            return parseViewTargets(arguments);
+        }
+        //@@author
         if (commandWord.equals("help")) {
             if (!arguments.isBlank()) {
                 throw new MishMashException("help does not accept arguments.", "Format: help", null);
@@ -386,6 +408,39 @@ public class Parser {
             throw new MishMashException(e.getMessage(), DietaryPreferencesParser.USAGE, e);
         }
     }
+
+    //@@author neil0618
+    /**
+     * Parses the targets to save and attaches set-targets usage to validation errors.
+     *
+     * @param arguments The text after set-targets.
+     * @return A command that changes the saved targets only when executed.
+     * @throws MishMashException If nothing is supplied or any argument is invalid.
+     */
+    private Command parseSetTargets(String arguments) throws MishMashException {
+        try {
+            TargetChanges changes = new SetTargetsParser().parse(arguments);
+            return new SetTargetsCommand(changes, targetSettings);
+        } catch (IllegalArgumentException e) {
+            throw new MishMashException(e.getMessage() + System.lineSeparator() + SET_TARGETS_USAGE, e);
+        }
+    }
+
+    /**
+     * Creates a read-only command that shows the saved targets.
+     *
+     * @param arguments The text after view-targets, which must be blank.
+     * @return A command that reads the saved targets when executed.
+     * @throws MishMashException If any argument is supplied.
+     */
+    private Command parseViewTargets(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException(ViewTargetsCommand.COMMAND_WORD + " does not accept arguments."
+                    + System.lineSeparator() + VIEW_TARGETS_USAGE);
+        }
+        return new ViewTargetsCommand(targetSettings);
+    }
+    //@@author
 
     /**
      * Rejects arguments for dietary commands that accept none.
@@ -506,7 +561,8 @@ public class Parser {
         try {
             GeneratePlanRequest request = new GeneratePlanParser().parse(arguments);
             LOGGER.fine(() -> "Parsed generate-plan for " + request.days() + " days");
-            return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan, dietarySettings);
+            return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan, dietarySettings,
+                    targetSettings);
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage(), GENERATE_PLAN_USAGE, e);
         }
@@ -812,5 +868,3 @@ public class Parser {
         return new GroceryItem(matcher.group(1), quantity, matcher.group(3));
     }
 }
-
-
