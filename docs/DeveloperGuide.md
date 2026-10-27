@@ -141,9 +141,10 @@ confirmation before clearing or replacing a plan using the existing `Command.con
 #### Tests and manual verification
 
 `ResetPlanCommandTest` covers plan/request/grocery clearing, repeated resets, legacy and empty plans,
-current-state lookup, null dependencies, and the clear invariant. `ResetPlanDiagnosticsTest` checks state
-summaries and restoration of logging configuration. `ParserResetPlanTest` covers whitespace, rejected
-arguments, case sensitivity, deferred execution, and help. `ResetPlanIntegrationTest` verifies preservation
+current-state lookup, null dependencies, and the clear invariant. `ResetPlanDiagnosticsTest` captures state
+summaries with temporary logging settings and checks failure and retry diagnostics. `ParserResetPlanTest`
+covers whitespace, rejected arguments, case sensitivity, deferred execution, and help.
+`ResetPlanIntegrationTest` verifies preservation
 of recipes, dietary restrictions, recorded meals, and old immutable snapshots, followed by regeneration.
 `MishMashResetPlanTest` exercises the real console entry point, ordered recovery after invalid reset input,
 and end-of-input behaviour. The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
