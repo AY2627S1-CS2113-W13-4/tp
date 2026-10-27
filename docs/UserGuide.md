@@ -117,7 +117,7 @@ To track what you actually eat, use this separate sequence at any time after add
 | `c/`, `C` | Carbohydrates, measured in grams. |
 | `f/`, `F` | Fats, measured in grams. |
 | `i/` | Ingredient name, quantity, and unit. |
-
+<!-- @@author peilingggg -->
 ## Adding a Recipe
 
 **Purpose:** Adds a recipe to your recipe book so you can use it to generate meal plans and grocery lists, or record it as a meal you have eaten.
@@ -182,7 +182,7 @@ The examples below modify the complete example command above; keep its other fie
 | Use `food/poultry,poultry` | `Error: Repeated food tag: poultry.` | Declare each category once: `food/poultry`. Unsupported tags display an error followed by the valid food tags; choose the applicable supported tags. |
 
 Invalid input also displays the `add-recipe` format and an example. No recipe is added until the whole command is valid. Correct the command and enter it again at the next prompt.
-
+<!-- @@author -->
 <!-- @@author neil0618 -->
 ## Listing Recipes
 
