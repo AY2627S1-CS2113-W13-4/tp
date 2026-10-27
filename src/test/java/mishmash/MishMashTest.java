@@ -1,5 +1,6 @@
 package mishmash;
 
+import static mishmash.testutil.CliAssertions.assertInOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -173,6 +174,11 @@ class MishMashTest {
         assertEquals(1, countOccurrences(output, "[ ] Tofu: 200g"), output);
         assertEquals(1, countOccurrences(output, "No grocery list generated. Use 'generate-list' first."), output);
         assertEquals(0, countOccurrences(output, "Error: "), output);
+        assertInOrder(output, "Meal plan successfully generated for 1 day(s)!",
+                "Daily Totals: 1800 kcal", "Warning: Calories exceed target by 100 kcal", "[ ] Rice: 300g",
+                "Recipe updated!", "Daily Totals: 1800 kcal", "Warning: Calories exceed target by 100 kcal",
+                "[ ] Rice: 300g", "Meal plan successfully generated for 1 day(s)!", "Daily Totals: 2000 kcal",
+                "No grocery list generated.", "Grocery list generated.", "[ ] Tofu: 200g", "Goodbye!");
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
 
