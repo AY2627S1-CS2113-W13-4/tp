@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import mishmash.model.GroceryItem;
 import mishmash.model.RecipeBook;
+import mishmash.testutil.TestRecipes;
 
 /**
  * Checks display of supplied grocery data, including absent and generated-empty lists.
@@ -23,6 +24,21 @@ class ViewListCommandTest {
 
     private final RecipeBook recipeBook = new RecipeBook();
     private final GroceryItem rice = new GroceryItem("Rice", new BigDecimal("200"), "g");
+
+    @Test
+    void execute_nonEmptyBook_preservesRecipesAcrossAllGroceryStates() {
+        recipeBook.add(TestRecipes.recipe("Stored recipe", 300, 20, 40, 5));
+        recipeBook.add(TestRecipes.recipe("Another stored recipe", 200, 10, 30, 4));
+        var originalRecipes = recipeBook.getRecipes();
+        for (ViewListCommand command : List.of(new ViewListCommand(Optional::empty),
+                new ViewListCommand(() -> Optional.of(List.of())),
+                new ViewListCommand(() -> Optional.of(List.of(rice))))) {
+            command.execute(recipeBook);
+
+            assertEquals(originalRecipes, recipeBook.getRecipes());
+            assertEquals(2, recipeBook.size());
+        }
+    }
 
     @Test
     void execute_generatedList_displaysSuppliedItemsWithoutChangingRecipes() {
