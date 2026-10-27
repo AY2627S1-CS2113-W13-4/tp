@@ -14,11 +14,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DynamicTest;
@@ -27,8 +29,14 @@ import org.junit.jupiter.api.TestFactory;
 
 import mishmash.command.Command;
 import mishmash.exception.MishMashException;
+import mishmash.logic.MealPlanGenerator;
+import mishmash.model.ActiveMealPlan;
+import mishmash.model.MealPlan;
+import mishmash.model.NutritionTargets;
+import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.parser.Parser;
+import mishmash.testutil.AddRecipeTestData;
 import mishmash.testutil.LogCapture;
 
 /**
@@ -128,23 +136,29 @@ class MishMashSessionTest {
     }
 
     @TestFactory
-    Stream<DynamicTest> run_brokenCommandContract_reportsDependencyWithoutLoggingSuccess() {
+    Stream<DynamicTest> run_brokenCommandContract_displaysErrorAndKeepsRecipesForNextCommand() {
         return Stream.of("command", "confirmationPrompt", "command feedback")
                 .map(contract -> DynamicTest.dynamicTest(contract, () -> {
                     Command command = brokenCommand(contract);
                     Parser parser = new Parser() {
                         @Override
-                        public Command parseCommand(String input) {
-                            return command;
+                        public Command parseCommand(String input) throws MishMashException {
+                            return input.equals("bad") ? command : super.parseCommand(input);
                         }
                     };
                     try (LogCapture logs = new LogCapture(MishMash.class)) {
-                        NullPointerException error = assertThrows(NullPointerException.class,
-                                () -> runSession("Tester\ncommand\n", parser));
+                        RecipeBook book = new RecipeBook();
+                        String output = runSession("Tester\n" + AddRecipeTestData.VALID_COMMAND
+                                + "\nbad\nlist-recipes\nbye\n", parser, book);
 
-                        assertEquals(contract, error.getMessage());
-                        assertFalse(logs.getMessages().contains("Completed "));
+                        assertInOrder(output, "New recipe added!", "Error: ", "1. Rice (200 kcal)", "Goodbye!");
+                        assertEquals(1, book.size());
                         assertEquals(1, logs.getRecords().stream()
+                                .filter(record -> record.getMessage().equals("Command rejected")
+                                        && record.getThrown() instanceof MishMashException).count());
+                        assertEquals(2, logs.getRecords().stream()
+                                .filter(record -> record.getMessage().startsWith("Completed ")).count());
+                        assertEquals(0, logs.getRecords().stream()
                                 .filter(record -> record.getLevel() == Level.SEVERE).count());
                     }
                 }));
@@ -171,10 +185,13 @@ class MishMashSessionTest {
     }
 
     @Test
-    void run_blankConfirmation_assertsBeforeExecutingAndLogsOriginalFailure() {
+    void run_blankConfirmation_rejectsWithoutExecutingAndPreservesNextInput() {
         Parser parser = new Parser() {
             @Override
-            public Command parseCommand(String input) {
+            public Command parseCommand(String input) throws MishMashException {
+                if (!input.equals("bad")) {
+                    return super.parseCommand(input);
+                }
                 return new Command() {
                     @Override
                     public Optional<String> confirmationPrompt(RecipeBook recipeBook) {
@@ -189,22 +206,74 @@ class MishMashSessionTest {
             }
         };
         try (LogCapture logs = new LogCapture(MishMash.class)) {
-            AssertionError error = assertThrows(AssertionError.class, () -> runSession("Tester\ncommand\n", parser));
+            RecipeBook book = new RecipeBook();
+            String output = runSession("Tester\n" + AddRecipeTestData.VALID_COMMAND
+                    + "\nbad\nlist-recipes\nbye\n", parser, book);
 
-            assertEquals("Confirmation prompts must not be blank.", error.getMessage());
-            assertSame(error, logs.getRecords().stream().filter(record -> record.getLevel() == Level.SEVERE)
-                    .findFirst().orElseThrow().getThrown());
+            assertInOrder(output, "New recipe added!", "Error: Confirmation prompts must not be blank.",
+                    "1. Rice (200 kcal)", "Goodbye!");
+            assertEquals(1, book.size());
+            assertEquals(0, logs.getRecords().stream().filter(record -> record.getLevel() == Level.SEVERE).count());
         }
+    }
+
+    @Test
+    void run_generationFailureWithoutMessage_showsFallbackAndContinuesWithRecipes() {
+        IllegalArgumentException failure = new IllegalArgumentException();
+        MealPlanGenerator generator = new MealPlanGenerator(new Random(1)) {
+            @Override
+            public MealPlan generate(List<Recipe> recipes, int days, NutritionTargets targets) {
+                throw failure;
+            }
+        };
+        Parser parser = new Parser(generator, new ActiveMealPlan());
+        RecipeBook book = new RecipeBook();
+        try (LogCapture logs = new LogCapture(MishMash.class)) {
+            String output = runSession("Tester\n" + AddRecipeTestData.VALID_COMMAND
+                    + "\ngenerate-plan d/1\nlist-recipes\nbye\n", parser, book);
+
+            assertInOrder(output, "New recipe added!", "Error: Command could not be completed.",
+                    "1. Rice (200 kcal)", "Goodbye!");
+            assertEquals(1, book.size());
+            LogRecord rejection = logs.getRecords().stream()
+                    .filter(record -> record.getMessage().equals("Command rejected")).findFirst().orElseThrow();
+            assertSame(failure, rejection.getThrown().getCause());
+            assertEquals(0, logs.getRecords().stream().filter(record -> record.getLevel() == Level.SEVERE).count());
+        }
+    }
+
+    @TestFactory
+    Stream<DynamicTest> run_invalidCommandSyntax_displaysUsageExactlyOnce() {
+        return Stream.of("help extra", "set-diet nonsense", "view-diet extra", "check-shortfall cal/",
+                "edit-recipe", "add-recipe", "generate-list extra", "generate-plan", "delete-recipe",
+                "record-meal", "view-meals extra", "list-recipes bad", "view-list extra", "view-plan bad",
+                "view-plan d/0").map(input -> DynamicTest.dynamicTest(input, () -> {
+                    MishMashException error = assertThrows(MishMashException.class,
+                            () -> new Parser().parseCommand(input));
+                    String usage = error.getUsage().orElseThrow();
+                    assertFalse(error.getExplanation().contains("Format: "), error.getExplanation());
+
+                    String output = runSession("Tester\n" + input + "\nbye\n", new Parser());
+
+                    assertEquals(1, output.split(Pattern.quote(usage), -1).length - 1, output);
+                    assertEquals(1, output.split("Format: ", -1).length - 1, output);
+                    assertInOrder(output, "Error: " + error.getExplanation(), usage, "Goodbye!");
+                }));
     }
 
     /**
      * Runs a session with local streams; the test owns and closes those streams after execution.
      */
     private String runSession(String input, Parser parser) {
+        return runSession(input, parser, new RecipeBook());
+    }
+
+    /** Runs a session with a recipe book that the caller can inspect after recovery. */
+    private String runSession(String input, Parser parser, RecipeBook recipeBook) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (Scanner scanner = new Scanner(input);
                 PrintStream output = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
-            new MishMash(scanner, output, parser, new RecipeBook()).run();
+            new MishMash(scanner, output, parser, recipeBook).run();
         }
         return bytes.toString(StandardCharsets.UTF_8);
     }

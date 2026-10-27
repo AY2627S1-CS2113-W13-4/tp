@@ -1,6 +1,5 @@
 package mishmash.exception;
 
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -32,14 +31,14 @@ public class MishMashException extends Exception {
     /**
      * Creates an input error with separate command guidance and an optional original cause.
      *
-     * @param message The explanation of what went wrong, without appended usage instructions.
+     * @param message The explanation without usage instructions, or null to use a generic explanation.
      * @param usage The command guidance to display, or null to use the application's general help.
      * @param cause The original failure, or null if no underlying exception exists.
-     * @throws NullPointerException If the explanation is null.
      * @throws IllegalArgumentException If supplied usage is blank.
      */
     public MishMashException(String message, String usage, Throwable cause) {
-        super(Objects.requireNonNull(message, "message"), cause);
+        // Throwable.getMessage() may be null when wrapping a validation failure.
+        super(message == null ? "Command could not be completed." : message, cause);
         if (usage != null && usage.isBlank()) {
             throw new IllegalArgumentException("Command usage must not be blank.");
         }

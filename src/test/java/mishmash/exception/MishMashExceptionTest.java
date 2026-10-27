@@ -5,7 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 
 /**
  * Checks separate error explanations, optional usage, and preservation of the original failure.
@@ -36,8 +40,26 @@ class MishMashExceptionTest {
     }
 
     @Test
-    void constructor_missingExplanationOrBlankUsage_rejectsInvalidMetadata() {
-        assertThrows(NullPointerException.class, () -> new MishMashException(null));
+    void constructor_blankUsage_rejectsInvalidMetadata() {
         assertThrows(IllegalArgumentException.class, () -> new MishMashException("Error", " ", null));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> constructor_missingExplanation_usesFallbackAndPreservesCauseAndUsage() {
+        IllegalArgumentException cause = new IllegalArgumentException();
+        MishMashException simple = new MishMashException(null);
+        return Stream.of(simple, new MishMashException(cause.getMessage(), cause),
+                new MishMashException(cause.getMessage(), "Format: generate-plan d/DAYS", cause))
+                .map(error -> DynamicTest.dynamicTest(error.getMessage(), () -> {
+                    assertEquals("Command could not be completed.", error.getExplanation());
+                    if (error.getUsage().isPresent()) {
+                        assertEquals("Format: generate-plan d/DAYS", error.getUsage().orElseThrow());
+                        assertEquals(error.getExplanation() + System.lineSeparator()
+                                + error.getUsage().orElseThrow(), error.getMessage());
+                    } else {
+                        assertEquals(error.getExplanation(), error.getMessage());
+                    }
+                    assertSame(error == simple ? null : cause, error.getCause());
+                }));
     }
 }

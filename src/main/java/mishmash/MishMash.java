@@ -93,7 +93,15 @@ public class MishMash {
         boolean wasUsingParentHandlers = APP_LOGGER.getUseParentHandlers();
         FileHandler logFile = configureLogging();
         try (Scanner scanner = new Scanner(System.in)) {
-            new MishMash(scanner, System.out, new Parser(), new RecipeBook()).run();
+            MishMash session;
+            try {
+                session = new MishMash(scanner, System.out, new Parser(), new RecipeBook());
+            } catch (RuntimeException | AssertionError e) {
+                // run() handles its own failures; construction must be logged separately to avoid duplicates.
+                LOGGER.log(Level.SEVERE, "Unexpected application startup failure", e);
+                throw e;
+            }
+            session.run();
         } finally {
             if (logFile != null) {
                 APP_LOGGER.removeHandler(logFile);
@@ -111,7 +119,7 @@ public class MishMash {
     public void run() {
         try {
             LOGGER.info("MishMash started");
-            greet(scanner, output);
+            greet();
             output.println("Welcome to MishMash!");
             output.println("Type 'help' to view all commands and what they do, or 'bye' to exit.");
             readCommands();
@@ -173,18 +181,27 @@ public class MishMash {
      */
     private void executeCommand(String input) {
         try {
-            Command command = Objects.requireNonNull(parser.parseCommand(input), "command");
-            Optional<String> question = Objects.requireNonNull(command.confirmationPrompt(recipeBook),
-                    "confirmationPrompt");
-            // A command must provide a readable question before requesting confirmation.
-            assert question.isEmpty() || !question.get().isBlank() : "Confirmation prompts must not be blank.";
+            Command command = parser.parseCommand(input);
+            if (command == null) {
+                throw new MishMashException("The parser did not return a command.");
+            }
+            Optional<String> question = command.confirmationPrompt(recipeBook);
+            if (question == null) {
+                throw new MishMashException("The command did not return a confirmation prompt.");
+            }
+            if (question.isPresent() && question.get().isBlank()) {
+                throw new MishMashException("Confirmation prompts must not be blank.");
+            }
             if (question.isPresent() && !userConfirms(question.get())) {
                 LOGGER.fine(() -> "Cancelled " + command.getClass().getSimpleName());
                 output.println("Cancelled. Nothing was changed.");
                 return;
             }
             LOGGER.fine(() -> "Executing " + command.getClass().getSimpleName());
-            String feedback = Objects.requireNonNull(command.execute(recipeBook), "command feedback");
+            String feedback = command.execute(recipeBook);
+            if (feedback == null) {
+                throw new MishMashException("The command did not return feedback.");
+            }
             output.println(feedback);
             LOGGER.fine(() -> "Completed " + command.getClass().getSimpleName());
         } catch (MishMashException e) {
@@ -229,20 +246,9 @@ public class MishMash {
     }
 
     /**
-     * Displays the banner and reads the user's name.
-     *
-     * @param scanner Scanner used to read user input.
-     * @throws NullPointerException If the scanner is null.
+     * Displays the banner and reads the user's name using this session's input and output.
      */
-    public static void greet(Scanner scanner) {
-        greet(scanner, System.out);
-    }
-
-    /**
-     * Displays the greeting on the supplied output without changing the global console.
-     */
-    private static void greet(Scanner scanner, PrintStream output) {
-        Objects.requireNonNull(scanner, "scanner");
+    private void greet() {
         output.println(WELCOME_BANNER);
         output.println("What is your name?");
         if (scanner.hasNextLine()) {

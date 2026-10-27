@@ -490,16 +490,36 @@ class MishMashTest {
     }
 
     @Test
-    void greet_nullScanner_rejectsBeforeDisplayingPrompt() {
+    void main_startupFailure_logsCauseOnceAndRestoresLogging() {
+        InputStream originalInput = System.in;
         PrintStream originalOutput = System.out;
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (PrintStream capturedOutput = new PrintStream(output, true, StandardCharsets.UTF_8)) {
-            System.setOut(capturedOutput);
-            NullPointerException exception = assertThrows(NullPointerException.class, () -> MishMash.greet(null));
-            assertEquals("scanner", exception.getMessage());
-            assertEquals(0, output.size());
+        Logger appLogger = Logger.getLogger("mishmash");
+        Level originalLevel = appLogger.getLevel();
+        boolean wereParentHandlersEnabled = appLogger.getUseParentHandlers();
+        List<Handler> originalHandlers = Arrays.asList(appLogger.getHandlers());
+        RecordingHandler recordingHandler = new RecordingHandler();
+        appLogger.addHandler(recordingHandler);
+        try {
+            System.setIn(new ByteArrayInputStream(new byte[0]));
+            // A missing output stream makes session construction fail before run() can log anything.
+            System.setOut(null);
+            NullPointerException error = assertThrows(NullPointerException.class, () -> MishMash.main(new String[0]));
+
+            assertEquals("output", error.getMessage());
+            List<LogRecord> failures = recordingHandler.records.stream()
+                    .filter(record -> record.getLevel() == Level.SEVERE).toList();
+            assertEquals(1, failures.size());
+            assertSame(error, failures.getFirst().getThrown());
+            assertTrue(failures.getFirst().getMessage().contains("startup"));
+            assertEquals(originalLevel, appLogger.getLevel());
+            assertEquals(wereParentHandlersEnabled, appLogger.getUseParentHandlers());
+            List<Handler> expectedHandlers = new ArrayList<>(originalHandlers);
+            expectedHandlers.add(recordingHandler);
+            assertEquals(expectedHandlers, Arrays.asList(appLogger.getHandlers()));
         } finally {
+            System.setIn(originalInput);
             System.setOut(originalOutput);
+            appLogger.removeHandler(recordingHandler);
         }
     }
 

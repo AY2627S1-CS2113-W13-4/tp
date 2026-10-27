@@ -18,6 +18,7 @@ import mishmash.model.ActiveMealPlan;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
+import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.parser.GeneratePlanParser;
@@ -95,6 +96,34 @@ class GeneratePlanCommandTest {
             assertEquals(originalRecipes, recipeBook.getRecipes());
             assertTrue(emptyBook.getRecipes().isEmpty());
         }
+    }
+
+    @Test
+    void execute_failureWithoutMessage_preservesCauseAndPreviousState() throws MishMashException {
+        command("d/1").execute(recipeBook);
+        new GenerateListCommand(activePlan).execute(recipeBook);
+        MealPlan previousPlan = activePlan.get().orElseThrow();
+        GeneratePlanRequest previousRequest = activePlan.getRequest().orElseThrow();
+        List<GroceryItem> previousGroceries = activePlan.getGroceryList().orElseThrow();
+        List<Recipe> previousRecipes = recipeBook.getRecipes();
+        IllegalArgumentException failure = new IllegalArgumentException();
+        MealPlanGenerator failingGenerator = new MealPlanGenerator(new Random(1)) {
+            @Override
+            public MealPlan generate(List<Recipe> recipes, int days, NutritionTargets targets) {
+                throw failure;
+            }
+        };
+        GeneratePlanCommand command = new GeneratePlanCommand(new GeneratePlanParser().parse("d/2"),
+                failingGenerator, activePlan);
+
+        MishMashException error = assertThrows(MishMashException.class, () -> command.execute(recipeBook));
+
+        assertEquals("Command could not be completed.", error.getExplanation());
+        assertSame(failure, error.getCause());
+        assertSame(previousPlan, activePlan.get().orElseThrow());
+        assertSame(previousRequest, activePlan.getRequest().orElseThrow());
+        assertSame(previousGroceries, activePlan.getGroceryList().orElseThrow());
+        assertEquals(previousRecipes, recipeBook.getRecipes());
     }
 
     @Test
