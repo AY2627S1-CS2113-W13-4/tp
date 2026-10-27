@@ -1,0 +1,29 @@
+@startuml
+title Parsing reset-plan without changing application data
+hide footbox
+skinparam backgroundColor white
+skinparam shadowing false
+
+participant MishMash
+participant Parser
+participant ResetPlanCommand as Reset
+
+MishMash -> Parser : parseCommand("reset-plan")
+activate Parser
+Parser -> Parser : split command word and arguments
+Parser -> Parser : parseNamedCommand("reset-plan", "")
+Parser -> Parser : parseResetPlan("")
+Parser -> Parser : require blank arguments
+create Reset
+Parser -> Reset : new ResetPlanCommand(activeMealPlan)
+note right of Reset
+  Keeps the shared plan-holder reference.
+  The latest plan is read only during execute().
+end note
+Parser --> MishMash : reset command
+deactivate Parser
+note over MishMash, Reset
+  No recipes, plan, settings, groceries,
+  or recorded meals change during parsing.
+end note
+@enduml

@@ -1,0 +1,49 @@
+@startuml
+title Resetting the current meal plan
+hide footbox
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam sequenceMessageAlign center
+
+actor User
+participant MishMash
+participant Parser
+participant ResetPlanCommand as Reset
+participant ActiveMealPlan as Active
+
+User -> MishMash : reset-plan
+MishMash -> Parser : parseCommand("reset-plan")
+activate Parser
+Parser -> Parser : validate no arguments
+create Reset
+Parser -> Reset : new ResetPlanCommand(activePlan)
+Parser --> MishMash : reset command
+deactivate Parser
+note right of Reset
+  Parsing keeps the shared holder;
+  it does not change any state.
+end note
+MishMash -> Reset : execute(recipeBook)
+activate Reset
+Reset -> Active : get() / getGroceryList()
+Active --> Reset : current presence of plan and groceries
+Reset -> Active : clear()
+note right of Active
+  Clears plan, generation request,
+  and grocery snapshot.
+end note
+Active --> Reset
+Reset -> Reset : assert cleared state; log previous presence
+alt plan or groceries were present
+  Reset --> MishMash : reset confirmation
+else no plan or groceries
+  Reset --> MishMash : no active plan to reset
+end
+deactivate Reset
+MishMash --> User : display result and next prompt
+note over Reset, Active
+  Recipes, dietary settings, and recorded meals
+  are owned elsewhere and remain unchanged.
+end note
+@enduml
