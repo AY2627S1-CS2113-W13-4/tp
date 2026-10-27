@@ -1,6 +1,7 @@
 package mishmash.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -191,6 +192,61 @@ class ResetPlanCommandTest {
         assertEquals("The meal plan could not be reset. Please try again.", error.getExplanation());
         assertEquals(Optional.of(ResetPlanCommand.USAGE), error.getUsage());
         assertSame(plan, broken.get().orElseThrow());
+    }
+
+    @Test
+    void execute_requestRemainsAfterMealsCleared_reportsRecoverableFailureAndPreservesRecipes() {
+        GeneratePlanRequest request = new GeneratePlanRequest(1, new NutritionTargets(300, 20, 40, 5));
+        ActiveMealPlan incomplete = new ActiveMealPlan() {
+            @Override
+            public Optional<GeneratePlanRequest> getRequest() {
+                // Simulates a stale request source after clear has removed the meals and groceries.
+                return Optional.of(request);
+            }
+        };
+        incomplete.setGenerated(plan, request, Optional.of(List.of(rice)));
+        book.add(recipe);
+
+        MishMashException error = assertThrows(MishMashException.class,
+                () -> new ResetPlanCommand(incomplete).execute(book));
+
+        assertEquals("The meal plan could not be reset. Please try again.", error.getExplanation());
+        assertEquals(Optional.of(ResetPlanCommand.USAGE), error.getUsage());
+        assertNull(error.getCause());
+        assertTrue(incomplete.get().isEmpty());
+        assertTrue(incomplete.getGroceryList().isEmpty());
+        assertSame(request, incomplete.getRequest().orElseThrow());
+        assertEquals(List.of(recipe), book.getRecipes());
+    }
+
+    @TestFactory
+    Stream<DynamicTest> execute_groceriesRemainAfterMealsCleared_rejectsEmptyAndNonEmptySnapshots() {
+        return Stream.of(List.<GroceryItem>of(), List.of(rice))
+                .map(groceries -> DynamicTest.dynamicTest(groceries.toString(), () -> {
+                    ActiveMealPlan incomplete = new ActiveMealPlan() {
+                        @Override
+                        public void clear() {
+                            super.clear();
+                            // Simulates incomplete clearing that leaves only the grocery snapshot behind.
+                            setGroceryList(groceries);
+                        }
+                    };
+                    GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+                    incomplete.setGenerated(plan, request, Optional.of(groceries));
+                    RecipeBook currentBook = new RecipeBook();
+                    currentBook.add(recipe);
+
+                    MishMashException error = assertThrows(MishMashException.class,
+                            () -> new ResetPlanCommand(incomplete).execute(currentBook));
+
+                    assertEquals("The meal plan could not be reset. Please try again.", error.getExplanation());
+                    assertEquals(Optional.of(ResetPlanCommand.USAGE), error.getUsage());
+                    assertNull(error.getCause());
+                    assertTrue(incomplete.get().isEmpty());
+                    assertTrue(incomplete.getRequest().isEmpty());
+                    assertEquals(Optional.of(groceries), incomplete.getGroceryList());
+                    assertEquals(List.of(recipe), currentBook.getRecipes());
+                }));
     }
 
     /**
