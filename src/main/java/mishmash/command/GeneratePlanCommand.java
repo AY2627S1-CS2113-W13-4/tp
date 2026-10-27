@@ -10,6 +10,7 @@ import mishmash.model.ActiveMealPlan;
 import mishmash.model.DietarySettings;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.MealPlan;
+import mishmash.model.Nutrient;
 import mishmash.model.NutritionTargets;
 import mishmash.model.RecipeBook;
 import mishmash.model.TargetSettings;
@@ -103,6 +104,7 @@ public class GeneratePlanCommand implements Command {
         GeneratePlanRequest effective = saved.hasAnyTarget()
                 ? new GeneratePlanRequest(request.days(), saved.overriddenBy(request.targets()))
                 : request;
+        boolean usesSavedTargets = usesSavedTarget(saved);
         //@@author
 
         MealPlan plan;
@@ -110,12 +112,39 @@ public class GeneratePlanCommand implements Command {
             plan = new DietaryPlanner(generator).generate(recipeBook.getRecipes(), effective, dietarySettings.get());
         } catch (IllegalArgumentException e) {
             // The generator reports user-fixable problems this way; show them like any other input error.
-            throw new MishMashException(e.getMessage(), e);
+            String message = e.getMessage();
+            //@@author neil0618
+            if (usesSavedTargets) {
+                message += System.lineSeparator() + "Daily targets applied: " + effective.targets().summarise()
+                        + " (including your saved targets). Change those with 'set-targets'.";
+            }
+            //@@author
+            throw new MishMashException(message, e);
         }
 
         // Store the effective request, so view-plan and set-diet repair use the targets actually applied.
         activePlan.setGenerated(plan, effective, Optional.empty());
-        return "Meal plan successfully generated for " + plan.getNumberOfDays() + " day(s)!"
-                + System.lineSeparator() + "Use 'view-plan' to inspect your planned meals.";
+        String confirmation = "Meal plan successfully generated for " + plan.getNumberOfDays() + " day(s)!";
+        //@@author neil0618
+        if (usesSavedTargets) {
+            confirmation += System.lineSeparator() + "Daily targets used: "
+                    + effective.targets().summarise() + ".";
+        }
+        //@@author
+        return confirmation + System.lineSeparator() + "Use 'view-plan' to inspect your planned meals.";
     }
+
+    //@@author neil0618
+    /**
+     * Returns whether a saved target fills a nutrient that the command itself left without a target.
+     */
+    private boolean usesSavedTarget(NutritionTargets saved) {
+        for (Nutrient nutrient : Nutrient.values()) {
+            if (saved.get(nutrient) != null && request.targets().get(nutrient) == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+    //@@author
 }
