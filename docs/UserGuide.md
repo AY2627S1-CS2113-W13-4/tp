@@ -8,6 +8,7 @@ This guide covers the current team version, including meal-plan viewing, grocery
 
 ## Quick Start
 
+<!-- @@author Rixte -->
 ### Set Up and Launch
 
 1. **Install Java 25.** Use Java 25 for this project.
@@ -41,6 +42,7 @@ This guide covers the current team version, including meal-plan viewing, grocery
 
 4. **Enter your name** when MishMash asks `What is your name?`, then press Enter. The first line you type is your name, rather than an application command.
 5. **Enter one command per line** and press Enter to run it. Enter `bye` to exit.
+<!-- @@author -->
 
 ### Try Your First Command
 
@@ -69,6 +71,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [Edit a recipe](#editing-a-recipe) | `edit-recipe INDEX p/55` | Use an index from the latest recipe list and supply at least one field. |
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |
+| [Reset my meal plan](#resetting-a-meal-plan) | `reset-plan` | Clears the current plan and groceries; keeps your other session data. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
@@ -98,6 +101,7 @@ To track what you actually eat, use this separate sequence at any time after add
 2. **Record the meal** with `record-meal 1`, replacing `1` with that number.
 3. **Review your intake** with `view-meals`, which shows each recorded meal's nutrition and the totals.
 
+<!-- @@author Rixte -->
 ## Reading Command Formats
 
 - Enter each command on **one line**. Long examples may wrap visually; do not insert a line break within a command.
@@ -117,6 +121,7 @@ To track what you actually eat, use this separate sequence at any time after add
 | `c/`, `C` | Carbohydrates, measured in grams. |
 | `f/`, `F` | Fats, measured in grams. |
 | `i/` | Ingredient name, quantity, and unit. |
+<!-- @@author -->
 
 ## Adding a Recipe
 
@@ -213,6 +218,7 @@ Food tags: poultry
 The "no recipes" and "between 1 and N" errors are followed by the list of all command formats. The other errors show only `Format: list-recipes [INDEX]`. Enter the corrected command at the next prompt; errors never change your recipes.
 <!-- @@author -->
 
+<!-- @@author Rixte -->
 ## Editing a Recipe
 
 Update a saved recipe's name, nutrition, ingredients, quantities, or food tags when you change how you prepare it.
@@ -269,6 +275,7 @@ For a smaller correction, `edit-recipe 1 p/60` changes only the protein value.
 | `edit-recipe 1 p/-5` | `Protein must be a non-negative integer.` Use a whole number such as `p/55`. |
 | `edit-recipe 1 i/Rice:0g` | `Ingredient quantity must be greater than zero.` Supply a positive quantity and the complete replacement ingredient list. |
 | A prefix is blank, unknown, or repeated | The error identifies the invalid field and shows edit usage. Supply a nonblank value and use each prefix once, except repeated `i/`. |
+<!-- @@author -->
 
 <!-- @@author neil0618 -->
 ## Deleting a Recipe
@@ -395,6 +402,45 @@ within 15%, try different targets or add recipes. If fewer than three eligible r
 or classify suitable recipes before retrying. Failed generation leaves the previous plan, targets, and
 grocery list intact.
 
+<!-- @@author Rixte -->
+## Resetting a Meal Plan
+
+Use `reset-plan` when you want to start planning again without re-entering recipes or losing your recorded meals.
+
+**Format:**
+
+```text
+reset-plan
+```
+
+This removes the current meal plan, the daily targets used to generate it, and its generated grocery list.
+Your recipes, dietary preferences (including avoided food categories and excluded ingredients), and recorded
+meals stay available. The reset takes effect immediately and cannot be undone.
+
+**Example:**
+
+```text
+generate-plan d/2 cal/1650
+generate-list
+reset-plan
+```
+
+The first two commands require enough suitable recipes. After the reset, MishMash displays:
+
+```text
+Meal plan reset. Recipes, dietary preferences, and recorded meals are unchanged.
+```
+
+`view-plan` and `check-shortfall` will ask you to generate a plan first. `view-list` will ask you to generate
+groceries first. You can still use `list-recipes`, `view-diet`, and `view-meals` to see the data you kept.
+To start again, run `generate-plan d/1`, then `generate-list`. Supply any desired daily targets again;
+targets from the removed plan are not reused.
+
+If there is no current plan, MishMash displays `No active meal plan to reset.` and lets you continue.
+Repeating the reset is safe. The command accepts no arguments: `reset-plan d/1` produces
+`reset-plan does not accept arguments.` followed by `Format: reset-plan`, and keeps the current plan unchanged.
+<!-- @@author -->
+
 ## Viewing a Meal Plan
 
 Displays the meals in your active plan, with nutrition for each meal and totals for each day. Viewing a plan does not generate new meals or change the plan.
@@ -497,6 +543,7 @@ There is no separate excess-checking command: use `view-plan` or `view-plan d/DA
 generating a plan with targets. Generating without targets produces daily totals without warnings.
 <!-- @@author -->
 
+<!-- @@author Rixte -->
 ## Checking Nutrition Shortfalls
 
 Use `check-shortfall` to see which days in your active meal plan fall below your supplied daily calorie, protein, carbohydrate, or fat targets, and by how much.
@@ -588,6 +635,7 @@ Supply the targets each time; the check does not save them as personal settings 
 | `check-shortfall cal/ 2000` | `Error: Missing value after cal/.` | Remove the space after the prefix: `check-shortfall cal/2000`. |
 
 Invalid input also displays the command format. Enter the corrected command at the next prompt; errors leave your existing data unchanged.
+<!-- @@author -->
 
 <!-- @@author oilybikechain -->
 ## Generating a Grocery List
