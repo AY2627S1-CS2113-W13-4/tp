@@ -1,6 +1,7 @@
 package mishmash.command;
 
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.RecipeBook;
@@ -12,6 +13,9 @@ import mishmash.model.RecipeBook;
 public class ResetPlanCommand implements Command {
     public static final String COMMAND_WORD = "reset-plan";
     public static final String USAGE = "Format: " + COMMAND_WORD;
+
+    /** Records state transitions without including recipe or meal contents. */
+    private static final Logger LOGGER = Logger.getLogger(ResetPlanCommand.class.getName());
 
     private final ActiveMealPlan activePlan;
 
@@ -39,6 +43,7 @@ public class ResetPlanCommand implements Command {
         activePlan.clear();
         assert activePlan.get().isEmpty() && activePlan.getRequest().isEmpty()
                 && activePlan.getGroceryList().isEmpty() : "Reset must clear all plan state.";
+        LOGGER.fine(() -> "Reset plan state; had plan: " + hadPlan + "; had groceries: " + hadGroceries);
         if (!hadPlan && !hadGroceries) {
             return "No active meal plan to reset.";
         }

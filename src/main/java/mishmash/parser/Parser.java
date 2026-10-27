@@ -84,7 +84,9 @@ public class Parser {
     public static final String LIST_RECIPE_USAGE = "Format: list-recipes [INDEX]";
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
+    //@@author Rixte
     public static final String RESET_PLAN_USAGE = ResetPlanCommand.USAGE;
+    //@@author
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
@@ -320,9 +322,11 @@ public class Parser {
         if (commandWord.equals(COMMAND_VIEW_PLAN)) {
             return parseViewPlan(arguments);
         }
+        //@@author Rixte
         if (commandWord.equals(ResetPlanCommand.COMMAND_WORD)) {
             return parseResetPlan(arguments);
         }
+        //@@author
         if (commandWord.equals(RecordMealCommand.COMMAND_WORD)) {
             return parseRecordMeal(arguments);
         }
@@ -360,9 +364,11 @@ public class Parser {
      */
     private Command parseResetPlan(String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
+            LOGGER.fine("reset-plan rejected: unexpected arguments");
             throw new MishMashException("reset-plan does not accept arguments."
                     + System.lineSeparator() + RESET_PLAN_USAGE);
         }
+        LOGGER.fine("Parsed reset-plan with no arguments");
         return new ResetPlanCommand(activeMealPlan);
     }
     //@@author
