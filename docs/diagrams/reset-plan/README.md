@@ -1,3 +1,4 @@
+<!-- @@author Rixte -->
 # Reset-plan UML diagrams
 
 These sources document [resetting a meal plan](../../DeveloperGuide.md#resetting-a-meal-plan).
@@ -20,3 +21,4 @@ java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/reset
 
 The output directory is relative to the source file. PlantUML is a documentation tool,
 not an application dependency.
+<!-- @@author -->

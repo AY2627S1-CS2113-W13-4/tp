@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !pragma layout smetana
 title Reset-plan responsibilities and retained session data
@@ -48,3 +49,4 @@ note bottom of ActiveMealPlan
   and its grocery snapshot together.
 end note
 @enduml
+'@@author

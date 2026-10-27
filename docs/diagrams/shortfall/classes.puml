@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !pragma layout smetana
 !include style.iuml
@@ -70,3 +71,4 @@ legend bottom
   Integer targets may be null. RecipeBook is an execution parameter, not a stored command field.
 endlegend
 @enduml
+'@@author

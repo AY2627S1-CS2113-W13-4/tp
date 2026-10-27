@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !pragma layout smetana
 !include ../shortfall/style.iuml
@@ -71,3 +72,4 @@ legend bottom
   The displayed index starts at 1; RecipeBook.replace uses a zero-based index.
 endlegend
 @enduml
+'@@author

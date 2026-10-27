@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 title Parsing reset-plan without changing application data
 hide footbox
@@ -27,3 +28,4 @@ note over MishMash, Reset
   or recorded meals change during parsing.
 end note
 @enduml
+'@@author

@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include style.iuml
 title Execution: read the current plan and compare each day
@@ -54,3 +55,4 @@ note over App, Plan
   No model data is changed. RecipeBook is not read by this command.
 end note
 @enduml
+'@@author

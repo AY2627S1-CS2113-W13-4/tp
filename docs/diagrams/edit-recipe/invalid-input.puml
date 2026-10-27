@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 !include ../shortfall/style.iuml
 
@@ -46,3 +47,4 @@ note over App, Parser
   The valid n/Changed field is not applied. Recipes, plans, and groceries remain unchanged.
 end note
 @enduml
+'@@author

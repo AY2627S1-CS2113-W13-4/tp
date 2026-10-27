@@ -1,3 +1,4 @@
+'@@author Rixte
 @startuml
 title Resetting the current meal plan
 hide footbox
@@ -47,3 +48,4 @@ note over Reset, Active
   are owned elsewhere and remain unchanged.
 end note
 @enduml
+'@@author
