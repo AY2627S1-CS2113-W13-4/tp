@@ -1,20 +1,26 @@
 package mishmash.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.DayPlan;
+import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
+import mishmash.model.NutritionTargets;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
+import mishmash.testutil.LogCapture;
 
 /**
  * Checks ingredient aggregation from planned meals and safe replacement of stored groceries.
@@ -23,6 +29,32 @@ class GenerateListCommandTest {
     private final ActiveMealPlan activePlan = new ActiveMealPlan();
     private final RecipeBook book = new RecipeBook();
     private final GenerateListCommand command = new GenerateListCommand(activePlan);
+
+    @Test
+    void execute_generationFailure_preservesAllStateAndDoesNotLogSuccess() {
+        GroceryItem rice = new GroceryItem("Rice", BigDecimal.ONE, "g");
+        Recipe invalid = new Recipe("Broken recipe", 100, 10, 20, 5, List.of(rice)) {
+            @Override
+            public List<GroceryItem> getIngredients() {
+                return Arrays.asList(rice, null);
+            }
+        };
+        book.add(invalid);
+        MealPlan plan = new MealPlan(List.of(new DayPlan(List.of(invalid))));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        activePlan.setGenerated(plan, request, Optional.of(List.of(rice)));
+        List<GroceryItem> groceries = activePlan.getGroceryList().orElseThrow();
+        List<Recipe> originalRecipes = book.getRecipes();
+        try (LogCapture logs = new LogCapture(GenerateListCommand.class)) {
+            assertThrows(NullPointerException.class, () -> command.execute(book));
+
+            assertSame(plan, activePlan.get().orElseThrow());
+            assertSame(request, activePlan.getRequest().orElseThrow());
+            assertSame(groceries, activePlan.getGroceryList().orElseThrow());
+            assertEquals(originalRecipes, book.getRecipes());
+            assertTrue(logs.getRecords().isEmpty());
+        }
+    }
 
     @Test
     void execute_noPlan_returnsPromptWithoutStoringGroceries() {

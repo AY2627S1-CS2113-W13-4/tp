@@ -35,7 +35,7 @@ class ResetPlanDiagnosticsTest {
     private final MealPlan plan = new MealPlan(List.of(new DayPlan(List.of(recipe))));
 
     @Test
-    void execute_resetAndRepeatedReset_logsPreviousStateWithoutRecipeContents() {
+    void execute_resetAndRepeatedReset_logsPreviousStateWithoutRecipeContents() throws MishMashException {
         ActiveMealPlan active = new ActiveMealPlan();
         active.set(plan);
         active.setGroceryList(List.of());
@@ -53,7 +53,7 @@ class ResetPlanDiagnosticsTest {
     }
 
     @Test
-    void execute_modelFailure_propagatesOriginalExceptionWithoutLoggingSuccess() {
+    void execute_modelFailure_retainsCauseInRecoverableErrorWithoutLoggingSuccess() {
         IllegalStateException failure = new IllegalStateException("Simulated model failure");
         ActiveMealPlan broken = new ActiveMealPlan() {
             @Override
@@ -64,10 +64,10 @@ class ResetPlanDiagnosticsTest {
         broken.set(plan);
 
         try (RecordingHandler handler = new RecordingHandler(ResetPlanCommand.class)) {
-            IllegalStateException error = assertThrows(IllegalStateException.class,
+            MishMashException error = assertThrows(MishMashException.class,
                     () -> new ResetPlanCommand(broken).execute(new RecipeBook()));
 
-            assertSame(failure, error);
+            assertSame(failure, error.getCause());
             assertSame(plan, broken.get().orElseThrow());
             assertTrue(handler.records.isEmpty());
         }
@@ -84,7 +84,7 @@ class ResetPlanDiagnosticsTest {
         broken.set(plan);
 
         try (RecordingHandler handler = new RecordingHandler(ResetPlanCommand.class)) {
-            assertThrows(AssertionError.class, () -> new ResetPlanCommand(broken).execute(new RecipeBook()));
+            assertThrows(MishMashException.class, () -> new ResetPlanCommand(broken).execute(new RecipeBook()));
 
             assertTrue(handler.records.isEmpty());
         }

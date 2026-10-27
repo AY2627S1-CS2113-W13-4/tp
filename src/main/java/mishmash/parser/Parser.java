@@ -308,8 +308,7 @@ public class Parser {
         }
         if (commandWord.equals("help")) {
             if (!arguments.isBlank()) {
-                throw new MishMashException("help does not accept arguments."
-                        + System.lineSeparator() + "Format: help");
+                throw new MishMashException("help does not accept arguments.", "Format: help", null);
             }
             return new HelpCommand();
         }
@@ -365,8 +364,7 @@ public class Parser {
     private Command parseResetPlan(String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
             LOGGER.fine("reset-plan rejected: unexpected arguments");
-            throw new MishMashException("reset-plan does not accept arguments."
-                    + System.lineSeparator() + RESET_PLAN_USAGE);
+            throw new MishMashException("reset-plan does not accept arguments.", RESET_PLAN_USAGE, null);
         }
         LOGGER.fine("Parsed reset-plan with no arguments");
         return new ResetPlanCommand(activeMealPlan);
@@ -385,7 +383,7 @@ public class Parser {
             DietaryPreferences preferences = new DietaryPreferencesParser().parse(arguments);
             return new SetDietCommand(preferences, dietarySettings, activeMealPlan, mealPlanGenerator);
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage() + System.lineSeparator() + DietaryPreferencesParser.USAGE, e);
+            throw new MishMashException(e.getMessage(), DietaryPreferencesParser.USAGE, e);
         }
     }
 
@@ -398,8 +396,8 @@ public class Parser {
      */
     private void requireNoDietArguments(String commandWord, String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
-            throw new MishMashException(commandWord + " does not accept arguments."
-                    + System.lineSeparator() + "Format: " + commandWord);
+            throw new MishMashException(commandWord + " does not accept arguments.",
+                    "Format: " + commandWord, null);
         }
     }
 
@@ -414,10 +412,11 @@ public class Parser {
     private Command parseCheckShortfall(String arguments) throws MishMashException {
         try {
             NutritionTargets targets = new CheckShortfallParser().parse(arguments);
+            LOGGER.fine("Parsed check-shortfall with explicit daily targets");
             return new CheckShortfallCommand(activeMealPlan, targets);
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + CHECK_SHORTFALL_USAGE, e);
+            LOGGER.fine("check-shortfall rejected: invalid daily targets");
+            throw new MishMashException(e.getMessage(), CHECK_SHORTFALL_USAGE, e);
         }
     }
     //@@author
@@ -446,9 +445,11 @@ public class Parser {
                     parseOptionalNutrition(fields, "c", "Carbs"),
                     parseOptionalNutrition(fields, "f", "Fats"), ingredients,
                     fields.containsKey("food") ? FoodInfo.parseField(fields.get("food")) : null);
+            LOGGER.fine(() -> "Parsed edit-recipe for index " + index);
             return new EditRecipeCommand(index, changes);
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage() + System.lineSeparator() + EDIT_RECIPE_USAGE, e);
+            LOGGER.fine("edit-recipe rejected: invalid index or recipe fields");
+            throw new MishMashException(e.getMessage(), EDIT_RECIPE_USAGE, e);
         }
     }
     //@@author
@@ -472,8 +473,7 @@ public class Parser {
         try {
             return parseAddRecipe(arguments);
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + ADD_RECIPE_USAGE, e);
+            throw new MishMashException(e.getMessage(), ADD_RECIPE_USAGE, e);
         }
     }
     //@@author
@@ -488,8 +488,7 @@ public class Parser {
     private Command parseGenerateList(String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
             LOGGER.warning("generate-list rejected: unexpected arguments");
-            throw new MishMashException("generate-list does not accept arguments."
-                    + System.lineSeparator() + GENERATE_LIST_USAGE);
+            throw new MishMashException("generate-list does not accept arguments.", GENERATE_LIST_USAGE, null);
         }
         LOGGER.fine("Parsed generate-list with no arguments");
         return new GenerateListCommand(activeMealPlan);
@@ -509,11 +508,7 @@ public class Parser {
             LOGGER.fine(() -> "Parsed generate-plan for " + request.days() + " days");
             return new GeneratePlanCommand(request, mealPlanGenerator, activeMealPlan, dietarySettings);
         } catch (IllegalArgumentException e) {
-            String message = e.getMessage();
-            if (!message.contains(GENERATE_PLAN_USAGE)) {
-                message += System.lineSeparator() + GENERATE_PLAN_USAGE;
-            }
-            throw new MishMashException(message, e);
+            throw new MishMashException(e.getMessage(), GENERATE_PLAN_USAGE, e);
         }
     }
 
@@ -531,8 +526,7 @@ public class Parser {
             LOGGER.fine(() -> "Parsed delete-recipe for index " + index);
             return command;
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + DELETE_RECIPE_USAGE, e);
+            throw new MishMashException(e.getMessage(), DELETE_RECIPE_USAGE, e);
         }
     }
 
@@ -551,8 +545,7 @@ public class Parser {
             LOGGER.fine(() -> "Parsed record-meal for index " + index);
             return command;
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + RECORD_MEAL_USAGE, e);
+            throw new MishMashException(e.getMessage(), RECORD_MEAL_USAGE, e);
         }
     }
 
@@ -566,8 +559,7 @@ public class Parser {
     private Command parseViewMeals(String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
             LOGGER.warning("view-meals rejected: unexpected arguments");
-            throw new MishMashException("view-meals does not accept arguments."
-                    + System.lineSeparator() + VIEW_MEALS_USAGE);
+            throw new MishMashException("view-meals does not accept arguments.", VIEW_MEALS_USAGE, null);
         }
         LOGGER.fine("Parsed view-meals with no arguments");
         return new ViewMealsCommand(mealLog);
@@ -592,8 +584,7 @@ public class Parser {
             LOGGER.fine(() -> "Parsed list-recipes for index " + index);
             return command;
         } catch (IllegalArgumentException e) {
-            throw new MishMashException(e.getMessage()
-                    + System.lineSeparator() + LIST_RECIPE_USAGE, e);
+            throw new MishMashException(e.getMessage(), LIST_RECIPE_USAGE, e);
         }
     }
 
@@ -635,8 +626,7 @@ public class Parser {
      */
     private Command parseViewList(String arguments) throws MishMashException {
         if (!arguments.isBlank()) {
-            throw new MishMashException("view-list does not accept arguments."
-                    + System.lineSeparator() + VIEW_LIST_USAGE);
+            throw new MishMashException("view-list does not accept arguments.", VIEW_LIST_USAGE, null);
         }
         LOGGER.fine("Parsed view-list with no arguments");
         return new ViewListCommand(groceryListSource);
@@ -657,8 +647,7 @@ public class Parser {
         }
         Matcher matcher = DAY_PATTERN.matcher(arguments.trim());
         if (!matcher.matches()) {
-            throw new MishMashException("Use one optional d/ argument with a positive integer."
-                    + System.lineSeparator() + VIEW_PLAN_USAGE);
+            throw new MishMashException("Use one optional d/ argument with a positive integer.", VIEW_PLAN_USAGE, null);
         }
         try {
             int dayNumber = Integer.parseInt(matcher.group(1));
@@ -667,7 +656,7 @@ public class Parser {
             return command;
         } catch (IllegalArgumentException e) {
             throw new MishMashException("Day number must be a positive integer from 1 to "
-                    + Integer.MAX_VALUE + "." + System.lineSeparator() + VIEW_PLAN_USAGE, e);
+                    + Integer.MAX_VALUE + ".", VIEW_PLAN_USAGE, e);
         }
     }
 

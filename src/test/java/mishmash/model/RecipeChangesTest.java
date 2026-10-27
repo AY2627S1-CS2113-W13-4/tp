@@ -109,5 +109,22 @@ class RecipeChangesTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new RecipeChanges(null, null, null, null, null, List.of(rice, zero), null));
     }
+
+    @Test
+    void constructor_nullIngredientList_identifiesInvalidDependency() {
+        NullPointerException error = assertThrows(NullPointerException.class,
+                () -> new RecipeChanges("New name", null, null, null, null, null, null));
+
+        assertEquals("ingredients", error.getMessage());
+    }
+
+    @Test
+    void constructor_nullIngredientEntry_identifiesInvalidElement() {
+        GroceryItem valid = new GroceryItem("Rice", BigDecimal.ONE, "g");
+        NullPointerException error = assertThrows(NullPointerException.class,
+                () -> new RecipeChanges(null, null, null, null, null, Arrays.asList(valid, null), null));
+
+        assertEquals("ingredient", error.getMessage());
+    }
 }
 //@@author

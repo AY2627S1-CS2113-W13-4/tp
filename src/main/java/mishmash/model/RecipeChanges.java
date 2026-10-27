@@ -25,7 +25,7 @@ public record RecipeChanges(String name, Integer calories, Integer protein, Inte
      * @throws NullPointerException If ingredients or any ingredient is null.
      */
     public RecipeChanges {
-        ingredients = List.copyOf(ingredients);
+        ingredients = copyIngredients(ingredients);
         if (name == null && calories == null && protein == null && carbs == null && fats == null
                 && ingredients.isEmpty() && foodInfo == null) {
             throw new IllegalArgumentException("Provide at least one recipe field to edit.");
@@ -47,7 +47,20 @@ public record RecipeChanges(String name, Integer calories, Integer protein, Inte
         }
     }
 
-    /** Rejects negative nutrition while allowing an omitted value. */
+    /**
+     * Returns an immutable ingredient copy with clear errors for a missing list or element.
+     */
+    private static List<GroceryItem> copyIngredients(List<GroceryItem> ingredients) {
+        Objects.requireNonNull(ingredients, "ingredients");
+        for (GroceryItem ingredient : ingredients) {
+            Objects.requireNonNull(ingredient, "ingredient");
+        }
+        return List.copyOf(ingredients);
+    }
+
+    /**
+     * Rejects negative nutrition while allowing an omitted value.
+     */
     private static void validateNutrition(Integer value) {
         if (value != null && value < 0) {
             throw new IllegalArgumentException("Nutrition values must not be negative.");

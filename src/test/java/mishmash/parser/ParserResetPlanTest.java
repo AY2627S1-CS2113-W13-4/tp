@@ -103,6 +103,8 @@ class ParserResetPlanTest {
 
         assertEquals("reset-plan does not accept arguments." + System.lineSeparator() + ResetPlanCommand.USAGE,
                 error.getMessage());
+        assertEquals("reset-plan does not accept arguments.", error.getExplanation());
+        assertEquals(Optional.of(ResetPlanCommand.USAGE), error.getUsage());
         assertSame(plan, active.get().orElseThrow());
         assertSame(request, active.getRequest().orElseThrow());
         assertSame(groceries, active.getGroceryList().orElseThrow());

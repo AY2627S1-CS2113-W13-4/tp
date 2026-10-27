@@ -3,6 +3,7 @@ package mishmash.command;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+import mishmash.exception.MishMashException;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.RecipeBook;
 
@@ -13,6 +14,8 @@ import mishmash.model.RecipeBook;
 public class ResetPlanCommand implements Command {
     public static final String COMMAND_WORD = "reset-plan";
     public static final String USAGE = "Format: " + COMMAND_WORD;
+
+    private static final String RESET_FAILURE_MESSAGE = "The meal plan could not be reset. Please try again.";
 
     /** Records state transitions without including recipe or meal contents. */
     private static final Logger LOGGER = Logger.getLogger(ResetPlanCommand.class.getName());
@@ -35,14 +38,22 @@ public class ResetPlanCommand implements Command {
      *
      * @param recipeBook The shared command context; resetting does not read or change recipes.
      * @return A reset confirmation, or a message when no plan or groceries were present.
+     * @throws MishMashException If clearing fails or leaves plan state behind, allowing the session to continue.
      */
     @Override
-    public String execute(RecipeBook recipeBook) {
+    public String execute(RecipeBook recipeBook) throws MishMashException {
         boolean hadPlan = activePlan.get().isPresent();
         boolean hadGroceries = activePlan.getGroceryList().isPresent();
-        activePlan.clear();
-        assert activePlan.get().isEmpty() && activePlan.getRequest().isEmpty()
-                && activePlan.getGroceryList().isEmpty() : "Reset must clear all plan state.";
+        try {
+            activePlan.clear();
+        } catch (RuntimeException e) {
+            // Keep failures inside this operation recoverable and retain the cause for diagnostics.
+            throw new MishMashException(RESET_FAILURE_MESSAGE, USAGE, e);
+        }
+        if (activePlan.get().isPresent() || activePlan.getRequest().isPresent()
+                || activePlan.getGroceryList().isPresent()) {
+            throw new MishMashException(RESET_FAILURE_MESSAGE, USAGE, null);
+        }
         LOGGER.fine(() -> "Reset plan state; had plan: " + hadPlan + "; had groceries: " + hadGroceries);
         if (!hadPlan && !hadGroceries) {
             return "No active meal plan to reset.";

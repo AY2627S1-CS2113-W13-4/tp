@@ -16,6 +16,7 @@ import mishmash.exception.MishMashException;
 import mishmash.logic.MealPlanGenerator;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.FoodInfo;
+import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealLog;
 import mishmash.model.MealPlan;
@@ -123,6 +124,7 @@ class ResetPlanIntegrationTest {
         parser.parseCommand("generate-plan d/1").execute(book);
         parser.parseCommand("generate-list").execute(book);
         MealPlan savedPlan = activePlan.get().orElseThrow();
+        GeneratePlanRequest savedRequest = activePlan.getRequest().orElseThrow();
         List<GroceryItem> savedGroceries = activePlan.getGroceryList().orElseThrow();
         List<Recipe> recipes = book.getRecipes();
         List<Recipe> meals = mealLog.getMeals();
@@ -130,6 +132,7 @@ class ResetPlanIntegrationTest {
         assertThrows(MishMashException.class, () -> parser.parseCommand("generate-plan d/2 cal/1").execute(book));
 
         assertSame(savedPlan, activePlan.get().orElseThrow());
+        assertSame(savedRequest, activePlan.getRequest().orElseThrow());
         assertSame(savedGroceries, activePlan.getGroceryList().orElseThrow());
         assertEquals(recipes, book.getRecipes());
         parser.parseCommand("reset-plan").execute(book);
@@ -223,6 +226,7 @@ class ResetPlanIntegrationTest {
         parser.parseCommand("generate-plan d/1").execute(book);
         parser.parseCommand("generate-list").execute(book);
         MealPlan plan = activePlan.get().orElseThrow();
+        GeneratePlanRequest request = activePlan.getRequest().orElseThrow();
         List<GroceryItem> groceries = activePlan.getGroceryList().orElseThrow();
         List<Recipe> recipes = book.getRecipes();
         String diet = parser.parseCommand("view-diet").execute(book);
@@ -231,6 +235,7 @@ class ResetPlanIntegrationTest {
             assertThrows(MishMashException.class, () -> parser.parseCommand("reset-plan " + arguments));
 
             assertSame(plan, activePlan.get().orElseThrow());
+            assertSame(request, activePlan.getRequest().orElseThrow());
             assertSame(groceries, activePlan.getGroceryList().orElseThrow());
             assertEquals(recipes, book.getRecipes());
             assertEquals(diet, parser.parseCommand("view-diet").execute(book));

@@ -1,14 +1,18 @@
 package mishmash;
 
+import static mishmash.testutil.CliAssertions.assertInOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -17,6 +21,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 import mishmash.command.ResetPlanCommand;
+import mishmash.exception.MishMashException;
+import mishmash.logic.MealPlanGenerator;
+import mishmash.model.ActiveMealPlan;
+import mishmash.model.GeneratePlanRequest;
+import mishmash.model.GroceryItem;
+import mishmash.model.MealLog;
+import mishmash.model.MealPlan;
+import mishmash.model.Recipe;
+import mishmash.model.RecipeBook;
+import mishmash.parser.Parser;
+import mishmash.testutil.LogCapture;
 
 //@@author Rixte
 /**
@@ -24,7 +39,7 @@ import mishmash.command.ResetPlanCommand;
  */
 class MishMashResetPlanTest {
     @Test
-    void main_resetGeneratedPlan_preservesOtherSessionDataAndAllowsRegeneration() {
+    void run_resetGeneratedPlan_preservesOtherSessionDataAndAllowsRegeneration() {
         String output = runCli(
                 "add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
@@ -46,10 +61,14 @@ class MishMashResetPlanTest {
         assertTrue(output.substring(regenerationPosition).contains("[ ] Rice: 300g"), output);
         assertEquals(0, countOccurrences(output, "Error: "));
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+        assertInOrder(output, "Meal plan successfully generated for 2 day(s)!", "[ ] Rice: 600g",
+                "Meal plan reset.", "No active meal plan. Use 'generate-plan' first.",
+                "No grocery list generated. Use 'generate-list' first.", "Meal 1: A", "vegetarian",
+                "1. A (500 kcal)", "Meal plan successfully generated for 1 day(s)!", "[ ] Rice: 300g", "Goodbye!");
     }
 
     @Test
-    void main_invalidReset_recoversWithoutClearingDataOrConsumingNextCommand() {
+    void run_invalidReset_recoversWithoutClearingDataOrConsumingNextCommand() {
         String output = runCli("reset-plan extra", "reset-plan", "reset-plan", "help", "bye");
 
         assertEquals(1, countOccurrences(output, "Error: reset-plan does not accept arguments."));
@@ -62,7 +81,7 @@ class MishMashResetPlanTest {
     }
 
     @Test
-    void main_invalidResetWithActivePlan_keepsMealsAndGroceriesUntilValidReset() {
+    void run_invalidResetWithActivePlan_keepsMealsAndGroceriesUntilValidReset() {
         String output = runCli(
                 "add-recipe n/A cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
@@ -81,10 +100,13 @@ class MishMashResetPlanTest {
         assertTrue(cleared.contains("No grocery list generated."), cleared);
         assertFalse(cleared.contains("[ ] Rice:"), cleared);
         assertEquals(1, countOccurrences(output, "Error: "));
+        assertInOrder(output, "Error: reset-plan does not accept arguments.", ResetPlanCommand.USAGE,
+                "Daily Totals: 1500 kcal", "[ ] Rice: 300g", "Meal plan reset.",
+                "No active meal plan.", "No grocery list generated.", "Goodbye!");
     }
 
     @TestFactory
-    Stream<DynamicTest> main_endOfInputAfterResetCommand_finishesWithoutRequestingAnotherAnswer() {
+    Stream<DynamicTest> run_endOfInputAfterResetCommand_finishesWithoutRequestingAnotherAnswer() {
         return Stream.of("reset-plan", "reset-plan extra").map(input -> DynamicTest.dynamicTest(input, () -> {
             String output = runCli(input);
 
@@ -97,22 +119,92 @@ class MishMashResetPlanTest {
         }));
     }
 
-    /**
-     * Runs the real entry point with test input and restores global streams even if execution fails.
-     */
+    @TestFactory
+    Stream<DynamicTest> run_resetFailure_preservesSessionDataAndAllowsRetry() {
+        return Stream.of("incomplete clear", "null-message failure", "detailed failure")
+                .map(scenario -> DynamicTest.dynamicTest(scenario, () -> verifyRecoverableReset(scenario)));
+    }
+
+    /** Checks state immediately after a failed reset, then retries with the same session dependencies. */
+    private void verifyRecoverableReset(String scenario) throws MishMashException {
+        ActiveMealPlan active = failsFirstReset(scenario);
+        MealLog meals = new MealLog();
+        RecipeBook book = new RecipeBook();
+        Parser parser = new Parser(meals, new MealPlanGenerator(new Random(1)), active);
+        for (String name : List.of("A", "B", "C")) {
+            parser.parseCommand("add-recipe n/" + name + " cal/500 p/20 c/50 f/10 i/Rice:100g food/none").execute(book);
+        }
+        parser.parseCommand("record-meal 1").execute(book);
+        parser.parseCommand("generate-plan d/1 cal/1500").execute(book);
+        parser.parseCommand("generate-list").execute(book);
+        parser.parseCommand("set-diet diet/vegetarian").execute(book);
+        MealPlan plan = active.get().orElseThrow();
+        GeneratePlanRequest request = active.getRequest().orElseThrow();
+        List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
+        List<Recipe> recipes = book.getRecipes();
+        List<Recipe> recordedMeals = meals.getMeals();
+
+        try (LogCapture logs = new LogCapture(MishMash.class)) {
+            String failed = runSession(parser, book, "reset-plan", "view-plan", "view-list", "view-meals",
+                    "view-diet", "list-recipes", "bye");
+
+            assertInOrder(failed, "Error: The meal plan could not be reset. Please try again.", ResetPlanCommand.USAGE,
+                    "Daily Totals: 1500 kcal", "[ ] Rice: 300g", "Meal 1: A", "vegetarian", "1. A (500 kcal)",
+                    "Goodbye!");
+            assertEquals(1, countOccurrences(failed, ResetPlanCommand.USAGE));
+            assertFalse(failed.contains("Private model details"), failed);
+            assertSame(plan, active.get().orElseThrow());
+            assertSame(request, active.getRequest().orElseThrow());
+            assertSame(groceries, active.getGroceryList().orElseThrow());
+            assertEquals(recipes, book.getRecipes());
+            assertEquals(recordedMeals, meals.getMeals());
+
+            String retried = runSession(parser, book, "reset-plan", "view-plan", "view-list", "bye");
+
+            assertInOrder(retried, "Meal plan reset.", "No active meal plan.",
+                    "No grocery list generated.", "Goodbye!");
+            assertTrue(active.get().isEmpty());
+            assertTrue(active.getRequest().isEmpty());
+            assertTrue(active.getGroceryList().isEmpty());
+            assertEquals(recipes, book.getRecipes());
+            assertEquals(recordedMeals, meals.getMeals());
+            assertEquals(0, logs.getRecords().stream().filter(record -> record.getLevel() == Level.SEVERE).count());
+        }
+    }
+
+    /** Simulates either a failed clear or an incomplete clear once, followed by a normal retry. */
+    private ActiveMealPlan failsFirstReset(String scenario) {
+        return new ActiveMealPlan() {
+            private boolean firstReset = true;
+
+            @Override
+            public void clear() {
+                if (!firstReset) {
+                    super.clear();
+                    return;
+                }
+                firstReset = false;
+                if (!scenario.equals("incomplete clear")) {
+                    throw new IllegalStateException(scenario.equals("null-message failure")
+                            ? null : "Private model details");
+                }
+            }
+        };
+    }
+
+    /** Runs a session with borrowed streams, leaving global console and logging settings untouched. */
     private String runCli(String... commands) {
+        return runSession(new Parser(), new RecipeBook(), commands);
+    }
+
+    /** Runs commands against supplied dependencies so tests can inspect retained session data directly. */
+    private String runSession(Parser parser, RecipeBook book, String... commands) {
         String input = "Tester" + System.lineSeparator() + String.join(System.lineSeparator(), commands)
                 + System.lineSeparator();
-        InputStream originalInput = System.in;
-        PrintStream originalOutput = System.out;
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (PrintStream output = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
-            System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
-            System.setOut(output);
-            MishMash.main(new String[0]);
-        } finally {
-            System.setIn(originalInput);
-            System.setOut(originalOutput);
+        try (Scanner scanner = new Scanner(input);
+                PrintStream output = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
+            new MishMash(scanner, output, parser, book).run();
         }
         return bytes.toString(StandardCharsets.UTF_8);
     }

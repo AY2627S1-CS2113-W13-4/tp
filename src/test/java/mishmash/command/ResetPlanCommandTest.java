@@ -15,6 +15,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
+import mishmash.exception.MishMashException;
 import mishmash.model.ActiveMealPlan;
 import mishmash.model.DayPlan;
 import mishmash.model.GeneratePlanRequest;
@@ -81,7 +82,7 @@ class ResetPlanCommandTest {
     }
 
     @Test
-    void execute_repeatedResets_safelyReportsMissingPlanAndPreservesRecipes() {
+    void execute_repeatedResets_safelyReportsMissingPlanAndPreservesRecipes() throws MishMashException {
         book.add(recipe);
         activePlan.set(plan);
         ResetPlanCommand reset = new ResetPlanCommand(activePlan);
@@ -96,7 +97,7 @@ class ResetPlanCommandTest {
     }
 
     @Test
-    void execute_groceriesWithoutPlan_clearsRemainingDerivedData() {
+    void execute_groceriesWithoutPlan_clearsRemainingDerivedData() throws MishMashException {
         activePlan.setGroceryList(List.of(rice));
 
         assertTrue(new ResetPlanCommand(activePlan).execute(book).startsWith("Meal plan reset."));
@@ -105,7 +106,7 @@ class ResetPlanCommandTest {
     }
 
     @Test
-    void execute_planReplacedAfterConstruction_resetsLatestPlanWithoutChangingOldSnapshots() {
+    void execute_planReplacedAfterConstruction_resetsLatestPlanWithoutChangingOldSnapshots() throws MishMashException {
         ResetPlanCommand reset = new ResetPlanCommand(activePlan);
         activePlan.set(plan);
         reset.execute(book);
@@ -160,7 +161,7 @@ class ResetPlanCommandTest {
     }
 
     @Test
-    void execute_twoPendingCommands_secondResetDoesNotResurrectPreviousState() {
+    void execute_twoPendingCommands_secondResetDoesNotResurrectPreviousState() throws MishMashException {
         ResetPlanCommand first = new ResetPlanCommand(activePlan);
         ResetPlanCommand second = new ResetPlanCommand(activePlan);
         activePlan.set(plan);
@@ -173,8 +174,9 @@ class ResetPlanCommandTest {
         assertTrue(activePlan.getRequest().isEmpty());
         assertTrue(activePlan.getGroceryList().isEmpty());
     }
+
     @Test
-    void execute_brokenClearImplementation_assertsRatherThanReportingFalseSuccess() {
+    void execute_brokenClearImplementation_reportsRecoverableFailure() {
         ActiveMealPlan broken = new ActiveMealPlan() {
             @Override
             public void clear() {
@@ -183,10 +185,11 @@ class ResetPlanCommandTest {
         };
         broken.set(plan);
 
-        AssertionError error = assertThrows(AssertionError.class,
+        MishMashException error = assertThrows(MishMashException.class,
                 () -> new ResetPlanCommand(broken).execute(book));
 
-        assertEquals("Reset must clear all plan state.", error.getMessage());
+        assertEquals("The meal plan could not be reset. Please try again.", error.getExplanation());
+        assertEquals(Optional.of(ResetPlanCommand.USAGE), error.getUsage());
         assertSame(plan, broken.get().orElseThrow());
     }
 
