@@ -34,15 +34,20 @@ note right of Active
   Clears plan, generation request,
   and grocery snapshot.
 end note
-Active --> Reset
-Reset -> Reset : assert cleared state; log previous presence
-alt plan or groceries were present
-  Reset --> MishMash : reset confirmation
-else no plan or groceries
-  Reset --> MishMash : no active plan to reset
+Active --> Reset : returns or throws RuntimeException
+alt clear throws or plan state remains
+  Reset --> MishMash : throws MishMashException (usage + optional cause)
+  MishMash --> User : reset error + usage + next prompt
+else clear succeeds
+  Reset -> Reset : verify cleared state; log previous presence
+  alt plan or groceries were present
+    Reset --> MishMash : reset confirmation
+  else no plan or groceries
+    Reset --> MishMash : no active plan to reset
+  end
+  MishMash --> User : display result and next prompt
 end
 deactivate Reset
-MishMash --> User : display result and next prompt
 note over Reset, Active
   Recipes, dietary settings, and recorded meals
   are owned elsewhere and remain unchanged.

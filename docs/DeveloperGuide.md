@@ -111,8 +111,11 @@ reset-specific usage, allowing the user to retry at the next prompt without losi
 
 At execution, the command checks whether a plan or groceries were present, then calls the existing
 `ActiveMealPlan.clear()`. That method clears the plan, original generation request, and groceries together.
-An internal assertion checks the clear postcondition before success is logged or reported. `FINE` logging
-records only whether plan and grocery state were present, without recipe names or contents.
+The command verifies the clear postcondition before success is logged or reported. A failed clear or
+remaining plan state produces a recoverable `MishMashException`, so the session can continue with its
+recipes, dietary settings, and recorded meals. This check runs whether Java assertions are enabled or
+disabled. The original cause is retained for diagnostics when clearing throws a runtime exception.
+`FINE` logging records only whether plan and grocery state were present, without recipe names or contents.
 
 ![Reset-plan parsing and execution.](images/reset-plan/execution.svg)
 
@@ -141,13 +144,14 @@ confirmation before clearing or replacing a plan using the existing `Command.con
 #### Tests and manual verification
 
 `ResetPlanCommandTest` covers plan/request/grocery clearing, repeated resets, legacy and empty plans,
-current-state lookup, null dependencies, and the clear invariant. `ResetPlanDiagnosticsTest` captures state
+current-state lookup, null dependencies, and recoverable failures. `ResetPlanDiagnosticsTest` captures state
 summaries with temporary logging settings and checks failure and retry diagnostics. `ParserResetPlanTest`
 covers whitespace, rejected arguments, case sensitivity, deferred execution, and help.
-`ResetPlanIntegrationTest` verifies preservation
-of recipes, dietary restrictions, recorded meals, and old immutable snapshots, followed by regeneration.
-`MishMashResetPlanTest` exercises the real console entry point, ordered recovery after invalid reset input,
-and end-of-input behaviour. The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
+`ResetPlanIntegrationTest` verifies preservation of recipes, dietary restrictions, recorded meals, and old
+immutable snapshots, followed by regeneration. `MishMashResetPlanTest` exercises supplied application
+sessions, ordered recovery after invalid input or failed reset, and end-of-input behaviour. Failed-reset
+cases include an exception with a null message and verify retained data before retrying successfully.
+The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
 recipe entries, repeated reset cycles, resets after failed generation, and isolation between parser sessions.
 
 For manual verification, add three suitable recipes, record a meal, set compatible dietary preferences,
