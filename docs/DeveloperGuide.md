@@ -1095,7 +1095,7 @@ renders without a PlantUML plugin. After changing a source, regenerate and inspe
 Recheck method names, message order, guards, and relationships after code changes.
 <!-- @@author -->
 
-<!-- @@author Rixte -->
+<!-- @@author peilingggg -->
 ### Viewing dietary preferences
 
 #### Purpose and implemented scope
