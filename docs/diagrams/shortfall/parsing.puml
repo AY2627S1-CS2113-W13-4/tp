@@ -1,54 +1,26 @@
+'@@author Rixte
 @startuml
-!include style.iuml
-title Successful parsing: check-shortfall cal/2000 p/100
-autonumber
-
-participant "MishMash" as App
-participant "parser: Parser" as Parser
-participant "targetParser:\nCheckShortfallParser" as TargetParser
-participant "targets:\nNutritionTargets" as Targets
-participant "check:\nCheckShortfallCommand" as Check
-
-App -> Parser : parseCommand(input)
-activate Parser
-note over Parser
-  parseNamedCommand dispatches to
-  parseCheckShortfall(arguments).
-end note
-create TargetParser
-Parser -> TargetParser : new CheckShortfallParser()
-Parser -> TargetParser : parse("cal/2000 p/100")
-activate TargetParser
-loop each supplied token (cal/2000, then p/100)
-  TargetParser -> TargetParser : readTarget(token, values)
-  activate TargetParser
-  note right of TargetParser
-    Accept a recognized, unique prefix.
-  end note
-  TargetParser -> TargetParser : parseTarget(value, prefix)
-  note right of TargetParser
-    Accept a positive integer value
-    and record it in the local map.
-  end note
-  TargetParser --> TargetParser : return
-  deactivate TargetParser
+!include readable.iuml
+title Parsing a shortfall check
+participant Parser
+participant "Target parser" as TargetsParser
+participant "Targets" as Targets
+participant "Check command" as Check
+create TargetsParser
+Parser -> TargetsParser : new CheckShortfallParser()
+Parser -> TargetsParser : parse(arguments)
+loop each supplied token
+ TargetsParser -> TargetsParser : readTarget(token, values)
+ TargetsParser -> TargetsParser : parseTarget(value, prefix)
 end
 create Targets
-TargetParser -> Targets : new NutritionTargets(\n2000, 100, null, null)
-TargetParser --> Parser : targets
-deactivate TargetParser
+TargetsParser -> Targets : new NutritionTargets(\n2000, 100, null, null)
+TargetsParser --> Parser : targets
 create Check
 Parser -> Check : new CheckShortfallCommand(\nactiveMealPlan, targets)
-activate Check
 Check -> Targets : hasAnyTarget()
 Targets --> Check : true
-Check --> Parser : constructed command
-deactivate Check
-Parser --> App : check as Command
-deactivate Parser
-note over Parser, Check
-  No plan is read while parsing.
-  The command retains the active-plan holder
-  and these explicit targets for execution.
-end note
+Check --> Parser : command
+
 @enduml
+'@@author

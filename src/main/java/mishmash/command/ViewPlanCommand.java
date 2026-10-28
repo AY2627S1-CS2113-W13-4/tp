@@ -11,6 +11,7 @@ import mishmash.model.RecipeBook;
 import mishmash.ui.MealPlanViewer;
 import mishmash.ui.MealPlanViewer.MealSummary;
 
+//@@author Rixte
 /**
  * Displays all days or one selected day from the current meal plan without generating meals.
  */
@@ -26,14 +27,17 @@ public class ViewPlanCommand implements Command {
      * Reads the current plan at execution time; an empty list means there is no active plan.
      */
     private final Supplier<List<List<MealSummary>>> mealPlanSource;
+    //@@author
 
     /** Reads daily targets belonging to the current plan at execution time. */
     private final Supplier<NutritionTargets> targetsSource;
 
+    //@@author Rixte
     /**
      * The selected one-based day number, or null when all days were requested.
      */
     private final Integer dayNumber;
+    //@@author
 
     /**
      * Creates a command to display every day of the active plan.
@@ -89,6 +93,7 @@ public class ViewPlanCommand implements Command {
      */
     @Override
     public String execute(RecipeBook recipeBook) throws MishMashException {
+        //@@author Rixte
         List<List<MealSummary>> mealsByDay = mealPlanSource.get();
         if (mealsByDay == null) {
             throw new IllegalStateException("Meal plan source returned null; use an empty list for no active plan.");
@@ -98,17 +103,19 @@ public class ViewPlanCommand implements Command {
             LOGGER.fine("view-plan requested with no active meal plan");
             return viewer.view(mealsByDay);
         }
+        //@@author
         if (dayNumber == null) {
             String result = viewer.view(mealsByDay, targetsSource.get());
             LOGGER.fine(() -> "view-plan displayed all " + mealsByDay.size() + " days");
             return result;
         }
+        //@@author Rixte
         if (dayNumber > mealsByDay.size()) {
             LOGGER.fine(() -> "view-plan rejected day " + dayNumber
                     + ": active plan contains " + mealsByDay.size() + " days");
-            throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + "."
-                    + System.lineSeparator() + USAGE);
+            throw new MishMashException("Day number must be between 1 and " + mealsByDay.size() + ".", USAGE, null);
         }
+        //@@author
         String result = viewer.view(mealsByDay, dayNumber, targetsSource.get());
         LOGGER.fine(() -> "view-plan displayed day " + dayNumber);
         return result;

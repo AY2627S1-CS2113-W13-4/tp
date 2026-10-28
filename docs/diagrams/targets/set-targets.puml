@@ -1,0 +1,47 @@
+@startuml
+!include ../shortfall/style.iuml
+title Setting targets: parse, then update the saved targets
+autonumber
+
+actor "User" as User
+participant "MishMash" as App
+participant "parser: Parser" as Parser
+participant "SetTargetsParser" as SParser
+participant "changes: TargetChanges" as Changes
+participant "set: SetTargetsCommand" as Set
+participant "settings: TargetSettings" as Settings
+
+User -> App : set-targets cal/2000 p/none
+App -> Parser : parseCommand(input)
+activate Parser
+Parser -> SParser : parse("cal/2000 p/none")
+activate SParser
+alt blank, unknown or repeated prefix, or invalid value
+  SParser --> Parser : throws IllegalArgumentException
+  Parser --> App : throws MishMashException (message ends with the set-targets format)
+  App -> User : display the error
+  note over App, Settings : Parsing stops before any command exists, so the saved targets are unchanged.
+else every token is valid
+  SParser -> Changes ** : new TargetChanges(cal=Optional.of(2000), p=Optional.empty())
+  SParser --> Parser : changes
+  deactivate SParser
+  Parser -> Set ** : new SetTargetsCommand(changes, settings)
+  Parser --> App : command
+  deactivate Parser
+  App -> Set : execute(recipeBook)
+  activate Set
+  Set -> Settings : get()
+  Settings --> Set : current targets
+  Set -> Changes : applyTo(current)
+  Changes --> Set : updated targets (calories replaced, protein removed, others kept)
+  Set -> Settings : set(updated)
+  Set --> App : "Daily targets saved: ..." or "All daily targets cleared."
+  deactivate Set
+  App -> User : display the result
+end
+
+note over Parser, Settings
+  Dispatch on the command word and logging are condensed. The recipe book passed to execute
+  is not used, and ActiveMealPlan is not involved, so an existing plan keeps its own targets.
+end note
+@enduml

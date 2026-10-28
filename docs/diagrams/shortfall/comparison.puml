@@ -1,0 +1,25 @@
+'@@author Rixte
+@startuml
+!include readable.iuml
+title Comparing one planned day
+participant CheckShortfallCommand as Check
+participant DayPlan as Day
+participant NutritionTargets as Targets
+Check -> Check : findShortfalls(day)
+Check -> Day : getTotalCalories()
+Day --> Check : plannedTotal: long
+Check -> Targets : getCalories()
+Targets --> Check : dailyTarget: Integer
+Check -> Check : addShortfall(..., plannedTotal, dailyTarget)
+alt target supplied and plannedTotal < dailyTarget
+ Check -> Check : append deficit line
+else target omitted or met
+ note over Check : No calorie shortfall is added.
+end
+note over Check, Targets
+ Repeat for protein, carbs, and fats.
+ No model data changes.
+end note
+
+@enduml
+'@@author

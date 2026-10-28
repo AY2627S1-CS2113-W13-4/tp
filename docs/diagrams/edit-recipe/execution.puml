@@ -1,55 +1,31 @@
+'@@author Rixte
 @startuml
-!include ../shortfall/style.iuml
-title Execution: validate the current position, then replace the recipe
-autonumber
-
-participant "MishMash" as App
-participant "edit: EditRecipeCommand" as Edit
-participant "changes: RecipeChanges" as Changes
-participant "book: RecipeBook" as Book
-participant "original: Recipe" as Original
-participant "edited: Recipe" as Edited
-participant "viewer: RecipeViewer" as Viewer
-
-note over Edit, Changes : Parsing has produced an edit for index 1 with p/55.
+!include ../shortfall/readable.iuml
+title Validating and applying an edit
+participant MishMash as App
+participant EditRecipeCommand as Edit
+participant RecipeBook as Book
+participant RecipeChanges as Changes
+participant RecipeViewer as Viewer
 App -> Edit : execute(book)
-activate Edit
 Edit -> Book : size()
 Book --> Edit : recipeCount
-alt book is empty or index exceeds recipeCount
-  Edit --> App : throws MishMashException
-  note over Edit, Book : No replacement occurs; the caller displays the error.
-else selected position exists
-  Edit -> Book : getRecipes()
-  Book --> Edit : current recipe snapshot
-  note over Edit, Book : Select original = snapshot.get(index - 1).
-  Edit -> Changes : applyTo(original)
-  activate Changes
-  Changes -> Original : getName()
-  Original --> Changes : current name
-  note over Changes, Original
-    Read the other omitted fields through their getters.
-    Use 55 for the supplied protein field.
-  end note
-  create Edited
-  Changes -> Edited : new Recipe(merged fields)
-  note right of Edited : Constructor validates the complete replacement recipe.
-  Changes --> Edit : edited
-  deactivate Changes
-  create Viewer
-  Edit -> Viewer : new RecipeViewer()
-  Edit -> Viewer : view(edited)
-  Viewer --> Edit : formatted recipe details
-  note over Edit, Viewer : Prepare the complete confirmation before modifying the book.
-  Edit -> Book : replace(index - 1, edited)
-  Book --> Edit : replacement complete
-  Edit --> App : confirmation with updated recipe
+alt empty book or index too large
+ Edit --> App : throws MishMashException
+else valid index
+ Edit -> Book : getRecipes()
+ Book --> Edit : recipe snapshot
+ Edit -> Changes : applyTo(snapshot.get(index - 1))
+ ref over Edit, Changes : Immutable replacement (separate diagram)
+ Changes --> Edit : edited recipe
+ create Viewer
+ Edit -> Viewer : new RecipeViewer()
+ Edit -> Viewer : view(edited)
+ Viewer --> Edit : recipe details
+ Edit -> Edit : prepare complete feedback
+ Edit -> Book : replace(index - 1, edited)
+ Edit --> App : feedback
 end
-deactivate Edit
 
-note over Edit, Book
-  Repeated size checks, most getters, logging, and formatting details are condensed.
-  The book keeps its size and order. The original Recipe object is never mutated.
-  Existing plans and groceries retain their original snapshots.
-end note
 @enduml
+'@@author

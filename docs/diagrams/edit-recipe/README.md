@@ -5,12 +5,13 @@ These sources document the implemented `edit-recipe` command in
 
 | Source | View |
 | --- | --- |
-| `classes.puml` | Selected classes, immutable edit data, and stored references |
+| `classes.puml` | Command responsibilities and stored versus temporary dependencies |
 | `parsing.puml` | Valid input, shared validation helpers, and command construction |
 | `execution.puml` | Current recipe lookup, invalid positions, and replacement after formatting |
+| `replacement.puml` | Immutable replacement construction, expanded separately |
 | `invalid-input.puml` | Rejected input, exception wrapping, and console recovery |
 
-All diagrams use the existing shared style in `../shortfall/style.iuml`. SVGs live under
+All diagrams use the existing shared style in `../shortfall/readable.iuml`. SVGs live under
 `docs/images/edit-recipe` so the guide displays without a PlantUML plugin.
 
 ## Regenerating
@@ -37,3 +38,8 @@ the command retains `RecipeChanges`, but receives `RecipeBook` only as an execut
 The recipe book's ordered list can contain repeated references, while normal recipe insertion
 and editing choose entries by displayed position. Recipe and changes ingredient lists are
 copied and read-only; a changes list may be empty to mean unchanged, while a recipe's may not.
+
+<!-- @@author Rixte -->
+Execution and immutable replacement construction use separate views for readable text at guide width.
+The DG describes field-level validation and snapshots alongside these focused diagrams.
+<!-- @@author -->

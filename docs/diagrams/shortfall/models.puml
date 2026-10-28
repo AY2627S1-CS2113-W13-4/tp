@@ -1,0 +1,29 @@
+'@@author Rixte
+@startuml
+!pragma layout smetana
+!include readable.iuml
+title Shortfall model references
+top to bottom direction
+skinparam ranksep 75
+skinparam nodesep 35
+hide empty members
+class ActiveMealPlan {
+ + get(): Optional<MealPlan>
+}
+class MealPlan {
+ + getDays(): List<DayPlan>
+ + getNumberOfDays(): int
+}
+class DayPlan {
+ + getTotalCalories(): long
+ + getTotalProtein(): long
+ + getTotalCarbs(): long
+ + getTotalFats(): long
+}
+class Recipe
+ActiveMealPlan --> "0..1\n-plan" MealPlan
+MealPlan --> "0..*\n-days\n{ordered, nonunique}" DayPlan
+DayPlan --> "0..*\n-meals\n{ordered, nonunique}" Recipe
+
+@enduml
+'@@author

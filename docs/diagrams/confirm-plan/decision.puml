@@ -1,0 +1,26 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+title Deciding whether to ask
+participant MishMash
+participant Parser
+participant "Plan-changing command" as Command
+participant ActiveMealPlan as Active
+MishMash -> Parser : parseCommand(input)
+Parser --> MishMash : validated command
+MishMash -> Command : confirmationPrompt(recipeBook)
+Command -> Active : read current state
+Active --> Command : plan state
+Command --> MishMash : Optional question
+note over Command, Active
+  Reads state without changing it.
+  Prompt conditions are listed in the guide.
+end note
+alt question present
+  ref over MishMash, Command : Accepted change or cancellation
+else no question
+  MishMash -> Command : execute(recipeBook)
+  Command --> MishMash : feedback or recoverable error
+end
+@enduml
+'@@author

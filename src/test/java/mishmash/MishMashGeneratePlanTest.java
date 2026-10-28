@@ -1,5 +1,6 @@
 package mishmash;
 
+import static mishmash.testutil.CliAssertions.assertInOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,7 +28,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/B cal/600 p/30 c/60 f/15 i/Rice:100g",
                 "add-recipe n/C cal/700 p/40 c/70 f/20 i/Rice:100g",
                 "generate-plan d/2 cal/1700 p/85 c/180 f/45",
-                "view-plan d/2", "generate-plan d/1", "view-plan", "bye") + System.lineSeparator());
+                "view-plan d/2", "generate-plan d/1", "yes", "view-plan", "bye") + System.lineSeparator());
 
         assertEquals(1, countOccurrences(output,
                 "Warning: Calories exceed target by 100 kcal (1800 kcal actual; 1700 kcal target)."), output);
@@ -37,6 +38,9 @@ class MishMashGeneratePlanTest {
         assertEquals(1, countOccurrences(output, "================ Day 2 ================"), output);
         assertEquals(1, countOccurrences(output, "================ Day 1 ================"), output);
         assertFalse(output.contains("Error:"), output);
+        assertInOrder(output, "Meal plan successfully generated for 2 day(s)!", "================ Day 2",
+                "Warning: Calories exceed target by 100 kcal", "Warning: Protein exceeds target by 5 g",
+                "Meal plan successfully generated for 1 day(s)!", "================ Day 1", "Goodbye!");
     }
 
     @Test
@@ -47,7 +51,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:0.2g",
                 "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:1kg",
                 "generate-plan d/2", "generate-list", "generate-list extra", "view-list",
-                "generate-plan d/1", "view-list", "generate-list", "view-list", "bye"));
+                "generate-plan d/1", "yes", "view-list", "generate-list", "view-list", "bye"));
 
         assertTrue(output.contains("No active meal plan. Use 'generate-plan' first."), output);
         assertTrue(output.contains("Grocery list generated. Use 'view-list' to view it."), output);
@@ -60,6 +64,11 @@ class MishMashGeneratePlanTest {
         assertTrue(output.contains("[ ] Rice: 0.3g"), output);
         assertTrue(output.contains("[ ] Rice: 1kg"), output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
+        assertInOrder(output, "No active meal plan.", "Meal plan successfully generated for 2 day(s)!",
+                "Grocery list generated.", "Error: generate-list does not accept arguments.",
+                "================ Grocery List", "Total items to purchase: 2",
+                "Meal plan successfully generated for 1 day(s)!", "No grocery list generated.",
+                "Grocery list generated.", "================ Grocery List", "Total items to purchase: 2", "Goodbye!");
     }
 
     @Test
@@ -87,7 +96,7 @@ class MishMashGeneratePlanTest {
                 "add-recipe n/Salad cal/550 p/42 c/20 f/32 i/Lettuce:100g",
                 "generate-plan d/2 cal/1650 p/127 c/150 f/55",
                 "view-plan d/2",
-                "generate-plan d/3 cal/100",
+                "generate-plan d/3 cal/100", "yes",
                 "view-plan d/3",
                 "bye") + System.lineSeparator());
 
@@ -101,6 +110,11 @@ class MishMashGeneratePlanTest {
         assertTrue(output.contains("Error: Could not find 3 recipes that meet your daily targets"), output);
         // The failed generation must keep the earlier 2-day plan, so day 3 is still out of range.
         assertTrue(output.contains("Error: Day number must be between 1 and 2."), output);
+        assertInOrder(output, "No active meal plan.", "Error: Your recipe book is empty.",
+                "New recipe added!", "New recipe added!", "New recipe added!",
+                "Meal plan successfully generated for 2 day(s)!", "================ Day 2",
+                "Daily Totals: 1650 kcal", "Error: Could not find 3 recipes that meet your daily targets",
+                "Error: Day number must be between 1 and 2.", "Goodbye!");
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }
 

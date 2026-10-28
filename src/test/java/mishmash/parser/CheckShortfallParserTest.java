@@ -13,6 +13,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import mishmash.model.NutritionTargets;
 
+//@@author Rixte
 /**
  * Exercises each target prefix, numerical boundaries, and malformed command arguments.
  */
@@ -211,3 +212,4 @@ class CheckShortfallParserTest {
         assertEquals(100, next.getProtein());
     }
 }
+//@@author

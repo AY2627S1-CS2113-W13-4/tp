@@ -1,5 +1,6 @@
 package mishmash.model;
 
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -87,6 +88,66 @@ public class NutritionTargets {
         }
         return actual - target;
     }
+
+    //@@author neil0618
+    /**
+     * Returns the target for one nutrient, or null if none was set.
+     *
+     * @param nutrient The nutrient to look up.
+     * @return The daily target in kcal or grams, or null.
+     * @throws NullPointerException If the nutrient is null.
+     */
+    public Integer get(Nutrient nutrient) {
+        return switch (Objects.requireNonNull(nutrient, "nutrient")) {
+            case CALORIES -> calories;
+            case PROTEIN -> protein;
+            case CARBS -> carbs;
+            case FATS -> fats;
+        };
+    }
+
+    /**
+     * Combines these targets with explicit ones, where an explicit target wins for the same nutrient.
+     *
+     * <p>{@code generate-plan} uses this with the saved targets as the base: a target typed in the
+     * command replaces the saved one, and a nutrient the command leaves out keeps the saved target.</p>
+     *
+     * @param explicit The targets that take priority; a null target in it means "keep this object's".
+     * @return New targets; neither this object nor the argument is modified.
+     * @throws NullPointerException If the explicit targets are null.
+     */
+    public NutritionTargets overriddenBy(NutritionTargets explicit) {
+        Objects.requireNonNull(explicit, "explicit");
+        return new NutritionTargets(
+                explicit.calories != null ? explicit.calories : calories,
+                explicit.protein != null ? explicit.protein : protein,
+                explicit.carbs != null ? explicit.carbs : carbs,
+                explicit.fats != null ? explicit.fats : fats);
+    }
+
+    /**
+     * Lists the targets that are set on one line, e.g. {@code "2000 kcal, 150 g protein"}.
+     *
+     * @return The set targets in the order calories, protein, carbs, fats, or {@code "none"} if nothing is set.
+     */
+    public String summarise() {
+        StringBuilder summary = new StringBuilder();
+        for (Nutrient nutrient : Nutrient.values()) {
+            Integer target = get(nutrient);
+            if (target == null) {
+                continue;
+            }
+            if (summary.length() > 0) {
+                summary.append(", ");
+            }
+            summary.append(target).append(' ').append(nutrient.getUnit());
+            if (nutrient != Nutrient.CALORIES) {
+                summary.append(' ').append(nutrient.getLabel().toLowerCase(Locale.ROOT));
+            }
+        }
+        return summary.length() == 0 ? "none" : summary.toString();
+    }
+    //@@author
 
     /**
      * Returns the daily calorie target in kcal, or null if none was set.

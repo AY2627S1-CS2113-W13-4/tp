@@ -6,12 +6,14 @@ These sources document the implemented `check-shortfall` enhancement in
 | Source | View |
 | --- | --- |
 | `architecture.puml` | Feature-level architecture and dependencies |
-| `classes.puml` | Selected classes, references, and multiplicities |
+| `classes.puml` | Command dependencies and retained references |
+| `models.puml` | Plan, day, and recipe associations and multiplicities |
 | `parsing.puml` | Successful command parsing and object creation |
-| `execution.puml` | Current-plan lookup, daily comparisons, and missing-plan branches |
+| `execution.puml` | Current-plan lookup, traversal, and missing-plan branches |
+| `comparison.puml` | One day's nutrient comparison, expanded separately |
 | `invalid-input.puml` | Validation failure, exception wrapping, and CLI recovery |
 
-`style.iuml` contains shared visual settings. Generated SVGs are stored under
+`readable.iuml` contains shared visual settings. Generated SVGs are stored under
 `docs/images/shortfall` and embedded directly in the guide. They are checked in so the
 guide renders on GitHub and a Markdown website without a PlantUML plugin or remote server.
 
@@ -26,7 +28,7 @@ From the repository root, set `PLANTUML_JAR` to the local renderer path, then ru
 ```powershell
 java -version
 java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/shortfall/*.puml"
-java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/shortfall "docs/diagrams/shortfall/*.puml"
+java "-Djava.awt.headless=true" -jar $env:PLANTUML_JAR -tsvg -o ../../images/shortfall "docs/diagrams/shortfall/*.puml"
 ```
 
 The output directory is relative to each source file. Architecture and class diagrams
@@ -45,3 +47,8 @@ the remaining stored references. No reference is shown in both forms. Ordered, n
 ends represent the model's lists; normal generation
 applies stricter day and meal-count rules. Static constants and unrelated members are
 omitted rather than represented as instance members.
+
+<!-- @@author Rixte -->
+Readability: separate command/model views and traversal/comparison sequences keep each image narrow.
+The shared style uses 16-point text; explanatory detail is kept beside the diagrams in the DG.
+<!-- @@author -->

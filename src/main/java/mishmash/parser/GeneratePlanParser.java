@@ -37,7 +37,7 @@ public class GeneratePlanParser {
         Map<String, String> values = splitIntoValues(args);
 
         if (!values.containsKey(PREFIX_DAYS)) {
-            throw new IllegalArgumentException("Missing number of days." + usageHint());
+            throw new IllegalArgumentException("Missing number of days.");
         }
         int days = parseDays(values.get(PREFIX_DAYS));
         NutritionTargets targets = new NutritionTargets(
@@ -59,14 +59,14 @@ public class GeneratePlanParser {
         for (String token : args.trim().split("\\s+")) {
             String prefix = findPrefix(token);
             if (prefix == null) {
-                throw new IllegalArgumentException("Unrecognised parameter: " + token + usageHint());
+                throw new IllegalArgumentException("Unrecognised parameter: " + token);
             }
             if (values.containsKey(prefix)) {
-                throw new IllegalArgumentException("Parameter " + prefix + " was given more than once." + usageHint());
+                throw new IllegalArgumentException("Parameter " + prefix + " was given more than once.");
             }
             String value = token.substring(prefix.length());
             if (value.isEmpty()) {
-                throw new IllegalArgumentException("Missing value after " + prefix + usageHint());
+                throw new IllegalArgumentException("Missing value after " + prefix);
             }
             values.put(prefix, value);
         }
@@ -86,13 +86,6 @@ public class GeneratePlanParser {
     }
 
     /**
-     * Returns the line appended to syntax errors to remind the user of the correct format.
-     */
-    private static String usageHint() {
-        return System.lineSeparator() + USAGE;
-    }
-
-    /**
      * Parses the requested number of days and checks it against the generator's supported range.
      *
      * @param value The value supplied after d/.
@@ -106,7 +99,7 @@ public class GeneratePlanParser {
         try {
             days = Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(error);
+            throw new IllegalArgumentException(error, e);
         }
         if (days < MealPlanGenerator.MIN_DAYS || days > MealPlanGenerator.MAX_DAYS) {
             throw new IllegalArgumentException(error);
@@ -126,7 +119,7 @@ public class GeneratePlanParser {
         try {
             target = Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(error);
+            throw new IllegalArgumentException(error, e);
         }
         if (target <= 0) {
             throw new IllegalArgumentException(error);
