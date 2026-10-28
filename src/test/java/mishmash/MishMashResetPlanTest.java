@@ -45,7 +45,7 @@ class MishMashResetPlanTest {
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "set-diet diet/vegetarian", "record-meal 1", "generate-plan d/2 cal/1500", "generate-list",
-                "view-list", "reset-plan", "view-plan", "view-list", "view-meals", "view-diet", "list-recipes",
+                "view-list", "reset-plan", "yes", "view-plan", "view-list", "view-meals", "view-diet", "list-recipes",
                 "generate-plan d/1", "generate-list", "view-list", "bye");
         int resetPosition = output.indexOf("Meal plan reset.");
         int regenerationPosition = output.indexOf("Meal plan successfully generated for 1 day(s)!", resetPosition);
@@ -87,7 +87,7 @@ class MishMashResetPlanTest {
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "generate-plan d/1", "generate-list", "reset-plan d/1", "view-plan", "view-list",
-                "reset-plan", "view-plan", "view-list", "bye");
+                "reset-plan", "yes", "view-plan", "view-list", "bye");
         int failure = output.indexOf("Error: reset-plan does not accept arguments.");
         int reset = output.indexOf("Meal plan reset.", failure);
 
@@ -132,7 +132,7 @@ class MishMashResetPlanTest {
                 "add-recipe n/B cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "add-recipe n/C cal/500 p/20 c/50 f/10 i/Rice:100g food/none",
                 "set-targets cal/1500 p/60", "generate-plan d/1 cal/1450", "generate-list",
-                "reset-plan extra", "view-targets", "reset-plan", "view-plan", "view-list", "view-targets",
+                "reset-plan extra", "view-targets", "reset-plan", "yes", "view-plan", "view-list", "view-targets",
                 "generate-plan d/2", "generate-list", "view-list", "bye");
 
         assertInOrder(output, "Daily targets used: 1450 kcal, 60 g protein.",
@@ -166,7 +166,7 @@ class MishMashResetPlanTest {
         List<Recipe> recordedMeals = meals.getMeals();
 
         try (LogCapture logs = new LogCapture(MishMash.class)) {
-            String failed = runSession(parser, book, "reset-plan", "view-plan", "view-list", "view-meals",
+            String failed = runSession(parser, book, "reset-plan", "yes", "view-plan", "view-list", "view-meals",
                     "view-diet", "view-targets", "list-recipes", "bye");
 
             assertInOrder(failed, "Error: The meal plan could not be reset. Please try again.", ResetPlanCommand.USAGE,
@@ -181,7 +181,7 @@ class MishMashResetPlanTest {
             assertEquals(recordedMeals, meals.getMeals());
             assertEquals(savedTargets, parser.parseCommand("view-targets").execute(book));
 
-            String retried = runSession(parser, book, "reset-plan", "view-plan", "view-list", "bye");
+            String retried = runSession(parser, book, "reset-plan", "yes", "view-plan", "view-list", "bye");
 
             assertInOrder(retried, "Meal plan reset.", "No active meal plan.",
                     "No grocery list generated.", "Goodbye!");

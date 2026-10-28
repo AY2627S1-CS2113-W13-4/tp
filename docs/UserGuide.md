@@ -517,6 +517,13 @@ No daily targets saved. Use 'set-targets' to set them.
 
 ## Generating a Meal Plan
 
+<!-- @@author Rixte -->
+If a plan already exists, MishMash asks `Replace the current meal plan and clear its groceries? (y/n)`.
+Answer `y` or `yes` to generate its replacement. Any other answer cancels and keeps the plan, its targets,
+and groceries. If generation fails after you agree, the old plan and groceries remain available.
+See [Confirming Plan Changes](#confirming-plan-changes).
+<!-- @@author -->
+
 Builds a plan containing three distinct recipes per day, using recipes from your recipe book.
 Recipes may appear again on different days. Current dietary preferences apply to recipe selection.
 
@@ -576,6 +583,41 @@ then change or remove a target with `set-targets`. There is no way to ignore a s
 remove it with `none` first.
 
 <!-- @@author Rixte -->
+## Confirming Plan Changes
+
+MishMash asks before these commands can remove meals you already planned:
+
+| Command | When it asks | What agreement permits |
+| --- | --- | --- |
+| `reset-plan` | A plan or generated groceries exist | Clear the plan, its targets, and groceries. |
+| `generate-plan d/DAYS ...` | A plan already exists | Replace it and clear its groceries after successful generation. |
+| `set-diet ...` | The current plan conflicts with the new preferences | Replace conflicting days and refresh groceries, or clear the plan and groceries if repair fails. |
+
+Only `y` or `yes` confirms, ignoring letter case and surrounding spaces. Any other answer, a blank line,
+or the end of input cancels with `Cancelled. Nothing was changed.` Cancellation preserves recipes,
+saved targets, dietary preferences, recorded meals, the plan, and groceries. Enter your next command
+after the cancellation message. A command typed at the confirmation question counts as the answer;
+it will not run, so type it again at the next command prompt.
+
+The first plan, a reset with nothing to clear, and dietary changes compatible with the existing meals
+need no confirmation. Invalid command syntax is rejected before a question appears. Agreement permits
+an attempt; it does not guarantee generation will find suitable meals.
+
+**Cancellation example, with an existing plan:**
+
+```text
+generate-plan d/1
+Replace the current meal plan and clear its groceries? (y/n)
+n
+Cancelled. Nothing was changed.
+view-plan
+```
+
+The original plan remains available. There is no undo after an agreed change. Closing the application
+still ends the session and discards its in-memory data.
+<!-- @@author -->
+
+<!-- @@author Rixte -->
 ## Resetting a Meal Plan
 
 Use `reset-plan` when you want to start planning again without re-entering recipes or losing your recorded meals.
@@ -588,8 +630,8 @@ reset-plan
 
 This removes the current meal plan, the targets attached to that plan, and its generated grocery list.
 Your recipes, dietary preferences (including avoided food categories and excluded ingredients), saved
-daily targets from `set-targets`, and recorded meals stay available. The reset takes effect immediately
-and cannot be undone.
+daily targets from `set-targets`, and recorded meals stay available. MishMash asks before clearing an
+existing plan or groceries. Answer `y` or `yes` to proceed; a confirmed reset cannot be undone.
 
 **Example:**
 
@@ -597,6 +639,8 @@ and cannot be undone.
 generate-plan d/2 cal/1650
 generate-list
 reset-plan
+Reset the current meal plan and clear its groceries? (y/n)
+yes
 ```
 
 The first two commands require enough suitable recipes. After the reset, MishMash displays:
@@ -611,7 +655,7 @@ To start again, run `generate-plan d/1`, then `generate-list`. Your saved daily 
 nutrients you leave out of the generation command. Targets supplied only for the removed plan are not
 reused; supply those again if needed. Use `view-targets` to check your saved targets.
 
-If there is no current plan, MishMash displays `No active meal plan to reset.` and lets you continue.
+If there is no current plan or groceries, no confirmation is needed. MishMash displays `No active meal plan to reset.` and lets you continue.
 Repeating the reset is safe. The command accepts no arguments: `reset-plan d/1` produces
 `reset-plan does not accept arguments.` followed by `Format: reset-plan`, and keeps the current plan unchanged.
 <!-- @@author -->
