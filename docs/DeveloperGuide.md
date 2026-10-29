@@ -364,12 +364,12 @@ Adding a recipe leaves existing recipes, meal plans, groceries, and recorded mea
 | `RecipeViewer` | Format recipe details consistently with listing and editing. |
 | `MishMash` | Parse and execute the command, print its result or error, and continue the input loop. |
 
-![Class diagram of the stored recipe references](images/add-recipe/classes.svg)
+![Class diagram of the stored recipe references](images/peilingggg/add-recipe/classes.svg)
 
 *Figure 1. Selected stored references. Open arrowheads show navigability, with target
 multiplicities and private role names. Members, temporary dependencies, and `Command`
 realization are omitted; `AddRecipeCommand` implements `Command`.*
-[PlantUML source](diagrams/add-recipe/classes.puml)
+[PlantUML source](diagrams/peilingggg/add-recipe/classes.puml)
 
 The command stores one recipe; the book and viewer are supplied or created during execution.
 The book and ingredient lists preserve order and allow repeated entries. `Recipe` copies
@@ -381,12 +381,12 @@ the ingredient list with `List.copyOf`, protecting its structure without deep-co
 For example, `add-recipe n/Rice cal/200 p/4 c/45 f/1 i/Rice:150g food/none` creates one
 recipe containing a 150 g ingredient and an explicit empty food-category declaration.
 
-![Sequence diagram of validating and creating an addition command](images/add-recipe/parsing.svg)
+![Sequence diagram of validating and creating an addition command](images/peilingggg/add-recipe/parsing.svg)
 
 *Figure 2. Successful parsing. Dispatch helpers, ingredient creation, field validation,
 and library operations are condensed in the note. Only the recipe and command constructors
 are expanded. Parameters abbreviated with `...` are described below; parsing never updates the book.*
-[PlantUML source](diagrams/add-recipe/parsing.puml)
+[PlantUML source](diagrams/peilingggg/add-recipe/parsing.puml)
 
 1. `collectRecipeArguments` identifies prefixed fields, including unsupported prefixes,
    so an unknown field cannot silently become part of a name. `readArgument` stores
@@ -405,12 +405,12 @@ are expanded. Parameters abbreviated with `...` are described below; parsing nev
 The inherited `Command.confirmationPrompt` returns an empty `Optional`, so addition does
 not ask for confirmation. Figure 3 starts when `MishMash` calls `execute(recipeBook)`.
 
-![Sequence diagram of formatting and storing a recipe](images/add-recipe/execution.svg)
+![Sequence diagram of formatting and storing a recipe](images/peilingggg/add-recipe/execution.svg)
 
 *Figure 3. Successful execution. Calls have filled arrowheads and returns are dashed.
 Constructor activations start below the newly created object boxes. Formatting internals,
 logging, the confirmation check, and application printing are omitted.*
-[PlantUML source](diagrams/add-recipe/execution.puml)
+[PlantUML source](diagrams/peilingggg/add-recipe/execution.puml)
 
 1. `AddRecipeCommand.execute` rejects a null book, creates `RecipeViewer`, and prepares
    the full confirmation before inserting anything. A formatting failure therefore cannot
@@ -474,7 +474,7 @@ then generate its grocery list.
 
 Run `./gradlew test checkstyleMain checkstyleTest` with Java 25 (Windows:
 `.\gradlew.bat test checkstyleMain checkstyleTest`). Sources and SVG maintenance instructions
-are in [diagrams/add-recipe](diagrams/add-recipe/README.md).
+are in [diagrams/add-recipe](diagrams/peilingggg/add-recipe/README.md).
 
 <!-- @@author -->
 

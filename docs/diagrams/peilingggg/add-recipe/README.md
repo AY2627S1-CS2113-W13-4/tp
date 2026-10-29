@@ -1,6 +1,6 @@
 # Add-recipe UML diagrams
 
-These sources support [Adding a recipe](../../DeveloperGuide.md#adding-a-recipe).
+These sources support [Adding a recipe](../../../DeveloperGuide.md#adding-a-recipe).
 The feature uses one compact structural view and two focused sequence diagrams.
 
 | Source | Figure | Scope |
