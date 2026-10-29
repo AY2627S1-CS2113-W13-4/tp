@@ -1,55 +1,22 @@
 @startuml
 !pragma layout smetana
-title Dietary restrictions: selected class relationships
 top to bottom direction
-skinparam nodesep 90
-skinparam ranksep 85
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
+skinparam nodesep 35
+skinparam ranksep 45
+hide circle
 hide empty members
-interface Command {
-  + execute(recipeBook: RecipeBook): String
-}
-class SetDietCommand {
-  + execute(recipeBook: RecipeBook): String
-}
-class DietaryPlanner {
-  + generate(recipes, request, preferences): MealPlan
-  + repair(recipes, currentPlan, originalRequest, preferences): MealPlan
-  + isCompatible(plan, preferences): boolean
-}
-class DietarySettings {
-  + get(): DietaryPreferences
-  + set(preferences: DietaryPreferences): void
-}
-class DietaryPreferences <<record>> {
-  + isRestricted(): boolean
-  + isAllowed(recipe: Recipe): boolean
-  + describe(): String
-}
-class ActiveMealPlan {
-  + get(): Optional<MealPlan>
-  + getRequest(): Optional<GeneratePlanRequest>
-  + setGenerated(plan, request, groceries): void
-  + clear(): void
-}
+class SetDietCommand
+class DietaryPlanner
+class DietarySettings
+class ActiveMealPlan
 class MealPlanGenerator
-class RecipeBook
-enum Diet
-enum FoodTag
-SetDietCommand ..|> Command
-SetDietCommand --> "1\n-preferences" DietaryPreferences
-SetDietCommand --> "1\n-settings" DietarySettings
-SetDietCommand --> "1\n-activePlan" ActiveMealPlan
-SetDietCommand --> "1\n-planner" DietaryPlanner
-SetDietCommand ..> RecipeBook : execute parameter
-DietarySettings --> "1\n-preferences" DietaryPreferences
-DietaryPlanner --> "1\n-generator" MealPlanGenerator
-DietaryPreferences --> "1\n-diet" Diet
-DietaryPreferences --> "0..*\n-avoidedTags" FoodTag
-legend bottom
-  Selected references only; reverse multiplicities are unspecified.
-  Parameter types are abbreviated. Plain associations permit shared objects.
-  Record accessors, excluded ingredient strings, grocery snapshots, recipe metadata,
-  parser wiring, and the plan's internal model relationships are omitted for readability.
-endlegend
+SetDietCommand --> "1" DietaryPlanner : -planner
+SetDietCommand --> "1" DietarySettings : -settings
+SetDietCommand --> "1" ActiveMealPlan : -activePlan
+DietaryPlanner --> "1" MealPlanGenerator : -generator
 @enduml
-

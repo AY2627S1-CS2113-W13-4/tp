@@ -1,20 +1,22 @@
 # Dietary restriction UML diagrams
 
 These sources support [Applying dietary restrictions](../../DeveloperGuide.md#applying-dietary-restrictions).
+The separate [Viewing dietary preferences](../../DeveloperGuide.md#viewing-dietary-preferences)
+section continues to use its existing `viewing.puml` and `viewing.svg` unchanged.
 
-| Source | View |
-| --- | --- |
-| `architecture.puml` | Feature-level dependencies |
-| `classes.puml` | Selected classes and stored references |
-| `parsing.puml` | Valid profile parsing and command creation |
-| `execution.puml` | Successful partial repair and grocery rebuilding |
-| `viewing.puml` | Execution-time profile viewing without mutation |
-| `invalid-input.puml` | Unsupported diet, error wrapping, and recovery |
+| Source | Embedded figure | Scope |
+| --- | --- | --- |
+| `classes.puml` | Figure 6 | Selected stored references used by the update command. |
+| `repair.puml` | Figure 7 | Construct replacements without changing the active plan. |
+| `execution.puml` | Figure 8 | Rebuild existing groceries and publish the repaired state. |
+| `viewing.puml` | Figure 11 | Existing read-only view command. |
 
-The diagrams follow the existing add-recipe sources, without `!include style.iuml`.
-Class and architecture diagrams use Smetana. They do not require Graphviz.
+The update section uses one structural view and two focused sequence excerpts. Parsing,
+confirmation, and errors are explained in prose and tables. The former architecture,
+parsing, and invalid-input diagrams are retired because they repeated those explanations.
+Figure numbers outside this section are left unchanged.
 
-## Regenerating
+## Editing and regenerating
 
 Use Java 25 and a local [PlantUML JAR](https://plantuml.com/download).
 From the repository root in PowerShell:
@@ -24,16 +26,18 @@ java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/dietary/*.puml"
 java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/dietary "docs/diagrams/dietary/*.puml"
 ```
 
-Output paths are relative to the source directory. The expected images are
-`architecture.svg`, `classes.svg`, `parsing.svg`, `execution.svg`, `viewing.svg`, and `invalid-input.svg`
-under `docs/images/dietary`.
+Output paths are relative to the source directory. Commit both source and corresponding SVG.
+The committed update SVGs use explicit layouts for predictable reading size; PlantUML
+regeneration may arrange the same interactions differently. Inspect the result at the
+guide's normal reading width and adjust spacing or line breaks before replacing an SVG.
 
-Inspect all rendered diagrams, then replace the corresponding PlantUML source link in the Developer Guide
-with a Markdown image pointing to `images/dietary/NAME.svg`. No SVG files are included in this update.
-Commit the inspected SVGs and guide links together.
+Keep the update diagrams within approximately 700 pixels of width with text at least 16 pixels
+after scaling. Omit irrelevant calls and use `...` for abbreviated arguments. Solid arrows
+are calls, dashed arrows are returns, and a new object's lifeline starts at its constructor.
+Class references use navigable associations and target multiplicities; the class view
+uses `hide circle` to suppress PlantUML's C/I symbols. Do not add those symbols to SVGs.
 
-The sequences deliberately condense constructor internals and library calls. The execution
-sequence covers successful repair with existing groceries; other branches are explained in
-the guide. Check every depicted method, guard, relationship, and message order against code
-before publishing. Syntax validation alone cannot establish implementation accuracy.
-
+Check calls, order, guards, and stored references against the implementation. The repair
+and publication sequences are consecutive excerpts of a successful confirmed update with
+existing groceries. Compatibility checks, Optional operations, and formatting are condensed.
+Other execution branches remain in the guide's outcome table.
