@@ -1,6 +1,6 @@
 @startuml
 !pragma layout smetana
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 
 title Recipe deletion: selected classes and relationships
 top to bottom direction

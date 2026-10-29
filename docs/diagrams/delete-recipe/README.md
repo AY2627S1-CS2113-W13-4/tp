@@ -9,7 +9,7 @@ These sources document the implemented `delete-recipe` command in
 | `execution.puml` | The question, the user's answer, and the deletion or cancellation |
 | `flow.puml` | Activity diagram showing where each outcome is decided |
 
-All diagrams use the shared style in `../shortfall/style.iuml`; `flow.puml` adds a few
+All diagrams use the shared style in `../rixte/shortfall/style.iuml`; `flow.puml` adds a few
 activity-diagram settings of its own. SVGs live under `docs/images/delete-recipe` so the guide
 displays without a PlantUML plugin.
 

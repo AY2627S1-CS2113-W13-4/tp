@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title view-plan: execution-time targets and exact daily excesses
 autonumber
 participant "<u>MishMash</u>" as App

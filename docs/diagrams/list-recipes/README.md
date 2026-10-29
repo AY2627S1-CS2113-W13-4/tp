@@ -8,7 +8,7 @@ These sources document the implemented `list-recipes` command in
 | `classes.puml` | Selected classes, the nullable index, and stored references |
 | `execution.puml` | Parsing and execution of `list-recipes 2`, including the error path |
 
-Both diagrams use the shared style in `../shortfall/style.iuml`. SVGs live under
+Both diagrams use the shared style in `../rixte/shortfall/style.iuml`. SVGs live under
 `docs/images/list-recipes` so the guide displays without a PlantUML plugin.
 
 ## Regenerating
