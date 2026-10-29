@@ -1,0 +1,33 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Viewing one day from the latest plan
+participant ":MishMash" as App
+participant ":ViewPlanCommand" as View
+participant "mealPlanSource:\nSupplier" as Meals
+participant "targetsSource:\nSupplier" as Targets
+participant ":MealPlanViewer" as Viewer
+App -> View : execute(book)
+activate View
+View -> Meals : get()
+activate Meals
+Meals --> View : mealsByDay
+deactivate Meals
+note right of View
+  Nonempty plan; check the
+  selected day against its size.
+end note
+View -> Targets : get()
+activate Targets
+Targets --> View : plan targets
+deactivate Targets
+View -> Viewer : view(mealsByDay,\ndayNumber, targets)
+activate Viewer
+Viewer --> View : formatted day
+deactivate Viewer
+View --> App : feedback
+deactivate View
+
+@enduml
+'@@author

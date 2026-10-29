@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title Setting targets: parse, then update the saved targets
 autonumber
 

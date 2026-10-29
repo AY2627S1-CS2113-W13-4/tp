@@ -1,0 +1,21 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+!pragma layout smetana
+title Recipe edit references
+top to bottom direction
+hide empty members
+class EditRecipeCommand {
+  - index: int
+}
+class RecipeChanges <<record>>
+class RecipeBook
+class Recipe
+EditRecipeCommand --> "1\n-changes" RecipeChanges
+EditRecipeCommand ..> RecipeBook : execution parameter
+RecipeChanges ..> Recipe : creates replacement
+RecipeBook --> "0..*\n-recipes" Recipe
+
+@enduml
+'@@author

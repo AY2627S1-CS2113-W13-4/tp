@@ -10,7 +10,7 @@ These sources document the implemented `set-targets` and `view-targets` commands
 | `set-targets.puml` | Parsing `set-targets` and updating the saved targets |
 | `generate-plan.puml` | How `generate-plan` merges typed and saved targets |
 
-All diagrams use the shared style in `../shortfall/style.iuml`. SVGs live under
+All diagrams use the shared style in `../rixte/shortfall/style.iuml`. SVGs live under
 `docs/images/targets` so the guide displays without a PlantUML plugin.
 
 ## Regenerating

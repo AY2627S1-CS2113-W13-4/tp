@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title Combined daily totals: one read-only calculation
 autonumber
 participant "caller" as Caller

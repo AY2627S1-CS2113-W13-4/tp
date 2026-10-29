@@ -1,0 +1,41 @@
+'@@author Rixte
+@startuml
+!include readable.iuml
+
+title Checking each planned day
+participant ":MishMash" as App
+participant ":CheckShortfallCommand" as Check
+participant ":ActiveMealPlan" as Active
+participant ":MealPlan" as Plan
+participant "day:DayPlan" as Day
+App -> Check : execute(book)
+activate Check
+Check -> Active : get()
+activate Active
+Active --> Check : optional plan
+deactivate Active
+note over Active, Plan : Continue only when the plan has days.
+loop each day in order
+  Check -> Plan : getDays()
+  activate Plan
+  Plan --> Check : days
+  deactivate Plan
+  Check -> Check : findShortfalls(day)
+  activate Check
+  Check -> Day : getTotalCalories()
+  activate Day
+  Day --> Check : total: long
+  deactivate Day
+  note over Active, Day
+    Read targets.getCalories(); call addShortfall(...).
+    When total < supplied target, append target - total.
+    Repeat for protein, carbs, and fats.
+  end note
+  Check --> Check : deficit lines
+  deactivate Check
+end
+Check --> App : per-day report
+deactivate Check
+
+@enduml
+'@@author

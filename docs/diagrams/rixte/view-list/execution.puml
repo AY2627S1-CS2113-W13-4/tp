@@ -1,0 +1,28 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Viewing the generated grocery snapshot
+participant ":MishMash" as App
+participant ":ViewListCommand" as View
+participant "groceryListSource:\nSupplier" as Source
+participant ":GroceryListViewer" as Viewer
+App -> View : execute(book)
+activate View
+View -> Source : get()
+activate Source
+Source --> View : optional groceries
+deactivate Source
+alt groceries absent
+  note right of View : Prepare generate-list-first guidance.
+else groceries present (including an empty list)
+  View -> Viewer : view(items)
+  activate Viewer
+  Viewer --> View : formatted list and count
+  deactivate Viewer
+end
+View --> App : feedback
+deactivate View
+
+@enduml
+'@@author
