@@ -1,7 +1,7 @@
 # Dietary restriction UML diagrams
 
-These sources support [Applying dietary restrictions](../../DeveloperGuide.md#applying-dietary-restrictions).
-The separate [Viewing dietary preferences](../../DeveloperGuide.md#viewing-dietary-preferences)
+These sources support [Applying dietary restrictions](../../../DeveloperGuide.md#applying-dietary-restrictions).
+The separate [Viewing dietary preferences](../../../DeveloperGuide.md#viewing-dietary-preferences)
 section uses `viewing.puml` and `viewing.svg` for its parsing and execution sequence.
 
 | Source | Embedded figure | Scope |

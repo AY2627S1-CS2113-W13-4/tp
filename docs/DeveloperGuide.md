@@ -934,6 +934,7 @@ teammates' viewing, generation, formatting, and dietary components are shown as 
 
 <!-- @@author peilingggg -->
 ### Applying dietary restrictions
+*Section author: peilingggg*
 
 `set-diet` replaces the session's dietary profile and applies it to future meal generation.
 If an existing plan conflicts, the command can replace its conflicting days and refresh
@@ -961,12 +962,12 @@ in memory for the current session.
 | `ActiveMealPlan` | Hold the current plan, original generation request, and optional grocery snapshot. |
 | `GroceryListGenerator` | Rebuild existing groceries from the repaired plan. |
 
-![Class diagram of the dietary update collaborators](images/dietary/classes.svg)
+![Class diagram of the dietary update collaborators](images/peilingggg/dietary/classes.svg)
 
 *Figure 6. Stored references used to apply a dietary update. Each arrow points to one
 retained object; unrelated members and references are omitted. `SetDietCommand` also
 implements `Command` and stores the proposed `DietaryPreferences`.*
-[PlantUML source](diagrams/dietary/classes.puml)
+[PlantUML source](diagrams/peilingggg/dietary/classes.puml)
 
 The shared holders expose current session data. `DietaryPreferences` copies its exclusion
 sets and normalizes ingredient names by trimming, lowercasing with `Locale.ROOT`, and
@@ -1008,12 +1009,12 @@ requires agreement. Declining skips execution and preserves all state.
 Figures 7 and 8 split one confirmed `SetDietCommand.execute` into planning and publication.
 This example has conflicting days, a retained generation request, and existing groceries.
 
-![Sequence diagram of repairing incompatible days](images/dietary/repair.svg)
+![Sequence diagram of repairing incompatible days](images/peilingggg/dietary/repair.svg)
 
 *Figure 7. Building a replacement plan. Parameters are abbreviated with `...`;
 compatibility checks, filtering, and day assembly are summarized in notes. The original
 plan is unchanged during this sequence. Figure 8 continues the same execution.*
-[PlantUML source](diagrams/dietary/repair.puml)
+[PlantUML source](diagrams/peilingggg/dietary/repair.puml)
 
 1. The command reads the active plan and its original `GeneratePlanRequest`, then calls
    `DietaryPlanner.repair` with the current recipe pool and proposed preferences.
@@ -1032,12 +1033,12 @@ bounded candidate search. Three eligible recipes alone do not guarantee a feasib
 
 #### Updating groceries and saving the result
 
-![Sequence diagram of publishing a repaired plan and groceries](images/dietary/execution.svg)
+![Sequence diagram of publishing a repaired plan and groceries](images/peilingggg/dietary/execution.svg)
 
 *Figure 8. Continuing Figure 7 when groceries already exist. The grocery generator is
 created at its constructor message. Optional handling, validation, and formatting are
 omitted and arguments abbreviated with `...`; dashed arrows show returns.*
-[PlantUML source](diagrams/dietary/execution.puml)
+[PlantUML source](diagrams/peilingggg/dietary/execution.puml)
 
 1. If groceries already exist, `GroceryListGenerator.generateForPlan` rebuilds them from
    every meal occurrence in the updated plan. Otherwise groceries remain absent, and
@@ -1098,12 +1099,12 @@ undeclared allergens, cross-contact, or certification, and does not persist pref
 
 Run `./gradlew test checkstyleMain checkstyleTest` with Java 25 (Windows:
 `.\gradlew.bat test checkstyleMain checkstyleTest`). Editable sources and SVG maintenance
-instructions are in [diagrams/dietary](diagrams/dietary/README.md).
+instructions are in [diagrams/dietary](diagrams/peilingggg/dietary/README.md).
 <!-- @@author -->
 
 <!-- @@author peilingggg -->
 ### Viewing dietary preferences
-
+*Section author: peilingggg*
 #### Purpose and implemented scope
 
 `view-diet` displays `DietarySettings.get().describe()` and accepts no arguments.
@@ -1118,10 +1119,10 @@ change the recipe book, active plan, original generation request, or grocery sna
 `DietaryPreferences.describe()` prints the named diet and sorted explicit category and
 ingredient exclusions on three lines, using `none` for empty lists.
 
-Figure 11 ([source](diagrams/dietary/viewing.puml)) shows parsing and execution-time
+Figure 11 ([source](diagrams/peilingggg/dietary/viewing.puml)) shows parsing and execution-time
 profile lookup without changing session data.
 
-![Figure 11. Sequence for viewing current dietary preferences.](images/dietary/viewing.svg)
+![Figure 11. Sequence for viewing current dietary preferences.](images/peilingggg/dietary/viewing.svg)
 
 *Figure 11: The lambda captures the shared settings holder and reads its current profile during
 execution. Parsing helpers and formatting internals are condensed; no session data is changed.*
@@ -1133,6 +1134,7 @@ No command executes and all state is preserved. `ViewDietCommandTest` covers unr
 populated profiles, execution-time reads, and argument rejection without profile changes. Parser tests cover
 argument rejection. Run the existing Java 25 test suite when changing this behavior.
 <!-- @@author -->
+
 <!-- @@author Rixte -->
 ### Checking nutrition shortfalls
 
