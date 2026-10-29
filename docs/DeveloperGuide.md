@@ -1409,6 +1409,19 @@ preserves the previous plan and groceries. Dietary repair saves the new preferen
 when repair fails and clears the incompatible plan; its question explains that outcome.
 Cancelling preserves the old preferences, plan, and groceries.
 
+#### Reset activity
+
+![Activity diagram of reset confirmation, cancellation, and clearing](images/rixte/confirm-plan/reset-activity.svg)
+
+*This activity diagram starts after `reset-plan` arguments have been validated. Diamond
+decision nodes and mutually exclusive guards show when confirmation is needed and when
+execution is skipped. Answers are trimmed and compared without regard to case; EOF
+follows the rejection branch. Cancellation preserves all session data. The execution
+path assumes `clear()` and its postcondition checks succeed; recoverable failures are
+described in the reset section instead of repeating them here. Recipes, preferences,
+saved targets, and recorded meals are not modified.*
+[PlantUML source](diagrams/rixte/confirm-plan/reset-activity.puml)
+
 #### Design choice and verification
 
 The existing confirmation hook keeps console input in `MishMash` and commands independently
@@ -1474,6 +1487,27 @@ promise rollback of planning state, but the command never changes unrelated sess
 Reusing `ActiveMealPlan.clear()` keeps clearing in one place. Replacing the holder would
 leave the parser and existing commands referring to the old object. Clearing individual
 fields in the command would expose model internals and risk leaving stale groceries or targets.
+
+#### Plan-status lifecycle
+
+![State-machine diagram of active plans and generated grocery snapshots](images/rixte/reset-plan/lifecycle.svg)
+
+*This state-machine diagram shows the ordinary command-line lifecycle of the shared
+`ActiveMealPlan` holder. A generated grocery list can be empty; its presence distinguishes
+the bottom state from a plan whose groceries have not been generated.*
+[PlantUML source](diagrams/rixte/reset-plan/lifecycle.puml)
+
+Successful replacement generation discards groceries, so a plan with groceries returns
+to the plan-only state. A successful confirmed reset clears all planning state. A
+confirmed dietary update that cannot repair a conflicting plan also clears planning
+state, while retaining the newly saved dietary preferences.
+
+The diagram omits transitions that keep the same status: viewing, invalid input,
+cancellation, failed generation, regenerating an existing grocery list, compatible
+dietary updates, and successful dietary repair. Repair preserves whether groceries
+existed and rebuilds them when present. Replacing a plan without groceries likewise
+keeps plan-only status. It omits legacy or injected holders with inconsistent state;
+the reset command's defensive checks are described in the boundaries table above.
 
 `ResetPlanCommandTest`, `ParserResetPlanTest`, and `ResetPlanDiagnosticsTest` cover
 validation, repeated resets, current-state lookup, and recoverable failures.

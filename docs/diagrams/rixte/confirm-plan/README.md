@@ -6,6 +6,7 @@ These focused views support [the Developer Guide](../../../DeveloperGuide.md#con
 | Source | Scope |
 | --- | --- |
 | `execution.puml` | Shared acceptance, cancellation, and no-question flow. |
+| `reset-activity.puml` | Guarded activity flow for agreement or cancellation after argument validation; successful clearing is shown. |
 
 Other validation and failure paths are covered by the guide's text and tables.
 The SVGs are stored under `docs/images/rixte/confirm-plan`.

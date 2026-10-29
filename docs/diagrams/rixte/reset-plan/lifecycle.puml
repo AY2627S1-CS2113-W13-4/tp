@@ -1,0 +1,35 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Active meal-plan lifecycle
+hide empty description
+skinparam stateBackgroundColor #F5F8FC
+skinparam stateBorderColor #475569
+skinparam defaultFontSize 16
+
+state "No active plan" as None
+state "Plan without generated groceries" as Plan
+state "Plan with generated groceries" as Groceries
+
+[*] --> None
+None --> Plan : generate-plan [succeeds]
+Plan --> Groceries : generate-list [succeeds]
+Groceries --> Plan : generate-plan [confirmed and succeeds]
+Plan --> None : planning state cleared
+Groceries --> None : planning state cleared
+
+note right of None
+  Planning state is cleared by a successful
+  confirmed reset, or a confirmed dietary
+  update whose repair fails.
+end note
+
+note bottom of Groceries
+  A generated list may be empty.
+  Successful dietary repair preserves this
+  status and rebuilds the grocery snapshot.
+end note
+
+@enduml
+'@@author

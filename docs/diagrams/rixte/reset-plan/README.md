@@ -6,6 +6,7 @@ These focused views support [the Developer Guide](../../../DeveloperGuide.md#res
 | Source | Scope |
 | --- | --- |
 | `execution.puml` | Clear plan-specific state after agreement and verify absence. |
+| `lifecycle.puml` | Stable states for absent plans, plans without groceries, and plans with generated groceries. |
 
 Other validation and failure paths are covered by the guide's text and tables.
 The SVGs are stored under `docs/images/rixte/reset-plan`.
