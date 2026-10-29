@@ -6,10 +6,11 @@ These sources document the implemented `delete-recipe` command in
 | Source | View |
 | --- | --- |
 | `classes.puml` | Selected classes, including the confirmation hook on `Command` |
-| `execution.puml` | The question, the user's answer, and the deletion or cancellation |
+| `execution.puml` | A valid index, confirmed question, and successful deletion |
+| `invalid-index.puml` | `confirmationPrompt` ending when an invalid index throws |
 | `flow.puml` | Activity diagram showing where each outcome is decided |
 
-All diagrams use the shared style in `../shortfall/style.iuml`; `flow.puml` adds a few
+All diagrams use the shared style in `../rixte/shortfall/style.iuml`; `flow.puml` adds a few
 activity-diagram settings of its own. SVGs live under `docs/images/delete-recipe` so the guide
 displays without a PlantUML plugin.
 
@@ -31,5 +32,5 @@ not an application dependency.
 
 Keep sources and rendered SVGs together when updating the design. Check depicted methods, message
 order, and decision branches against the implementation, then inspect every rendered image. The
-sequence diagram condenses command parsing and logging. The class diagram shows `RecipeBook` as
+sequence diagrams condense command parsing and logging. The class diagram shows `RecipeBook` as
 passed to the command, not stored by it, and shows that `MishMash`, not the command, reads the answer.

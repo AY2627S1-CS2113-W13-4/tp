@@ -1,0 +1,20 @@
+'@@author Rixte
+@startuml
+!include readable.iuml
+
+!pragma layout smetana
+title Shortfall state and targets
+top to bottom direction
+hide empty members
+class CheckShortfallCommand
+class ActiveMealPlan
+class NutritionTargets
+class MealPlan
+class DayPlan
+CheckShortfallCommand --> "1\n-activePlan" ActiveMealPlan
+CheckShortfallCommand --> "1\n-targets" NutritionTargets
+ActiveMealPlan --> "0..1\n-plan" MealPlan
+MealPlan --> "0..*\n-days" DayPlan
+
+@enduml
+'@@author

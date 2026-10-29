@@ -1,0 +1,37 @@
+@startuml
+!pragma layout smetana
+!include ../rixte/shortfall/style.iuml
+hide circle
+
+title Grocery source and snapshot model
+top to bottom direction
+skinparam nodesep 35
+skinparam ranksep 55
+hide empty members
+
+class ActiveMealPlan
+class MealPlan {
+  + getDays(): List<DayPlan>
+}
+class DayPlan {
+  + getMeals(): List<Recipe>
+}
+class Recipe {
+  + getIngredients(): List<GroceryItem>
+}
+class GroceryItem {
+  - name: String
+  - quantity: BigDecimal
+  - unit: String
+}
+
+ActiveMealPlan --> "0..1" MealPlan : -plan
+ActiveMealPlan --> "0..*" GroceryItem : -groceryList\n{ordered, nonunique}
+MealPlan --> "0..*" DayPlan : -days\n{ordered, nonunique}
+DayPlan --> "0..*" Recipe : -meals\n{ordered, nonunique}
+Recipe --> "1..*" GroceryItem : -ingredients\n{ordered, nonunique}
+
+legend bottom
+  Only feature-relevant members are shown.
+endlegend
+@enduml

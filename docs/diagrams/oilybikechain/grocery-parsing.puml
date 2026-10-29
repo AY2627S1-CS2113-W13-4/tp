@@ -1,0 +1,23 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title generate-list: parse a command without reading plan state
+autonumber
+
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "command:GenerateListCommand" as Command
+
+App -> Parser : parseCommand("generate-list")
+activate Parser
+Parser -> Parser : parseGenerateList("")
+activate Parser
+create Command
+Parser -> Command : new GenerateListCommand(activeMealPlan)
+activate Command
+Command --> Parser : command
+deactivate Command
+Parser --> Parser : command
+deactivate Parser
+Parser --> App : command
+deactivate Parser
+@enduml

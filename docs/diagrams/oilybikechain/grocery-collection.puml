@@ -1,0 +1,32 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title generate-list: collect every ingredient occurrence
+autonumber
+
+participant "command:GenerateListCommand" as Command
+participant "activePlan:ActiveMealPlan" as Active
+participant "plan:MealPlan" as Plan
+participant "day:DayPlan" as Day
+participant "meal:Recipe" as Meal
+
+Command -> Active : get()
+activate Active
+Active --> Command : Optional.of(plan)
+deactivate Active
+Command -> Plan : getDays()
+activate Plan
+Plan --> Command : days
+deactivate Plan
+loop each day
+  Command -> Day : getMeals()
+  activate Day
+  Day --> Command : meals
+  deactivate Day
+  loop each meal occurrence
+    Command -> Meal : getIngredients()
+    activate Meal
+    Meal --> Command : ingredients
+    deactivate Meal
+  end
+end
+@enduml

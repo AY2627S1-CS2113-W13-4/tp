@@ -1,0 +1,35 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Resetting plan state after confirmation
+participant ":MishMash" as App
+participant ":ResetPlanCommand" as Reset
+participant ":ActiveMealPlan" as Active
+App -> Reset : execute(book)
+activate Reset
+Reset -> Active : get()
+activate Active
+Active --> Reset : optional plan
+deactivate Active
+Reset -> Active : getGroceryList()
+activate Active
+Active --> Reset : optional groceries
+deactivate Active
+Reset -> Active : clear()
+activate Active
+note right of Active
+  Remove plan, generation
+  request, and groceries.
+end note
+Active --> Reset : return
+deactivate Active
+note right of Reset
+  Verify all three are absent
+  before returning success.
+end note
+Reset --> App : reset or no-plan feedback
+deactivate Reset
+
+@enduml
+'@@author

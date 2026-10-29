@@ -1,62 +1,24 @@
 @startuml
-!include ../shortfall/style.iuml
-title Invalid generate-plan arguments: preserve the cause and recover
+!include ../rixte/shortfall/style.iuml
+title Recover after a rejected command
 autonumber
-actor User
-participant "<u>MishMash</u>" as App
-participant "parser: Parser" as Parser
-participant "planParser: GeneratePlanParser" as PlanParser
-participant "logger: Logger" as Logger
 
-User -> App : generate-plan d/0
+actor User
+participant "mishMash:MishMash" as App
+participant "logger:Logger" as Logger
+
+App -> Logger : log(FINE, "Command rejected", exception)
+activate Logger
+Logger --> App : void
+deactivate Logger
+App -> App : displayError(exception)
 activate App
-App -> App : executeCommand(input, scanner, book)
-activate App
-App -> Parser : parseCommand(input)
-activate Parser
-note right of Parser : Named-command dispatch is condensed.
-Parser -> Parser : parseGeneratePlan("d/0")
-activate Parser
-create PlanParser
-Parser -> PlanParser : new GeneratePlanParser()
-Parser -> PlanParser : parse("d/0")
-activate PlanParser
-PlanParser -> PlanParser : splitIntoValues(args)
-activate PlanParser
-PlanParser --> PlanParser : values containing d/0
-deactivate PlanParser
-PlanParser -> PlanParser : parseDays("0")
-activate PlanParser
-create participant "cause: IllegalArgumentException" as Cause
-PlanParser -> Cause : new IllegalArgumentException(error)
-PlanParser --> Parser : throws cause
-deactivate PlanParser
-deactivate PlanParser
-note right of Parser
-  Catch IllegalArgumentException.
-  Append GENERATE_PLAN_USAGE if not already present.
-end note
-create participant "error: MishMashException" as Error
-Parser -> Error : new MishMashException(message, cause)
-Parser --> Parser : propagates error
-deactivate Parser
-Parser --> App : throws error
-deactivate Parser
-App -> Logger : log(FINE, "Command rejected", error)
-App -> App : displayError(error)
-note right of App : Print "Error: " + message, including generate-plan usage.\nThe cause is retained for logs, not printed as a console stack trace.
-App --> App : executeCommand returns
+App -> User : display message and generate-plan usage
+App --> App : void
 deactivate App
 App -> App : displayCommandPrompt()
-App --> User : divider and next-command prompt
+activate App
+App -> User : display next-command prompt
+App --> App : void
 deactivate App
-
-note over App, Error
-  No GeneratePlanCommand is constructed or executed; recipes, plan, targets, and groceries remain unchanged.
-  This sequence depicts the parser cause-preservation contribution, not ownership of the original command.
-  Static helpers splitIntoValues and parseDays are shown on the planParser lifeline to keep the view compact.
-  Valid requests can reach the existing generator, whose added assertions check day count and recipe prerequisites.
-  Its FINE diagnostics report request sizes, target presence, and matching-candidate counts; those paths are not run here.
-  GeneratePlanCommand also wraps generation failures with their cause. Related list/delete validation uses the same pattern.
-end note
 @enduml

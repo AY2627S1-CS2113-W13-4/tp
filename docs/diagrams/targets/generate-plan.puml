@@ -1,43 +1,26 @@
 @startuml
-!include ../shortfall/style.iuml
-title generate-plan: combining typed and saved targets
+!include ../rixte/shortfall/style.iuml
+title generate-plan: merge saved and typed targets
 autonumber
 
-participant "MishMash" as App
-participant "generate: GeneratePlanCommand" as Gen
-participant "settings: TargetSettings" as Settings
-participant "saved: NutritionTargets" as Saved
-participant "planner: DietaryPlanner" as Planner
-participant "activePlan: ActiveMealPlan" as Active
+participant "mishMash:MishMash" as App
+participant "command:GeneratePlanCommand" as Command
+participant "settings:TargetSettings" as Settings
+participant "savedTargets:NutritionTargets" as Saved
 
-note over App, Gen : Parsing produced request = (days, typed targets); nutrients the user left out are null.
-App -> Gen : execute(recipeBook)
-activate Gen
-Gen -> Settings : get()
-Settings --> Gen : saved
-alt nothing is saved
-  note over Gen : effective = request, exactly as typed
-else something is saved
-  Gen -> Saved : overriddenBy(request.targets())
-  Saved --> Gen : merged targets (a typed value wins; a gap keeps the saved value)
-  note over Gen : effective = new GeneratePlanRequest(days, merged targets)
-end
-Gen -> Planner : generate(recipes, effective, dietary preferences)
-activate Planner
-alt no acceptable plan
-  Planner --> Gen : throws IllegalArgumentException
-  Gen --> App : throws MishMashException (the generator's message)
-  note over Gen, Active : The previous active plan is left unchanged.
-else plan found
-  Planner --> Gen : plan
-  deactivate Planner
-  Gen -> Active : setGenerated(plan, effective, Optional.empty())
-  Gen --> App : confirmation
-end
-deactivate Gen
-
-note over Gen, Active
-  The stored request holds the targets that were applied, so view-plan warnings and the repair done by
-  set-diet use them instead of only the typed ones. TargetSettings is never modified here.
-end note
+App -> Command : execute(recipeBook)
+activate Command
+Command -> Settings : get()
+activate Settings
+Settings --> Command : savedTargets
+deactivate Settings
+Command -> Saved : overriddenBy(request.targets())
+activate Saved
+Saved --> Command : merged targets
+deactivate Saved
+ref over Command
+  Generate and publish the plan
+end ref
+Command --> App : generation confirmation
+deactivate Command
 @enduml

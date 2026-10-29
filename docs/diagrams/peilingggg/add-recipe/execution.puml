@@ -1,0 +1,29 @@
+@startuml
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
+hide footbox
+participant "add:\nAddRecipeCommand" as A
+participant "viewer:\nRecipeViewer" as V
+participant "recipeBook:\nRecipeBook" as B
+[-> A : execute(recipeBook)
+activate A
+create V
+A -> V : new RecipeViewer()
+activate V
+V --> A
+deactivate V
+A -> V : view(recipe)
+activate V
+V --> A : formatted details
+deactivate V
+note right of A : Prepend "New recipe added!".
+A -> B : add(recipe)
+activate B
+B --> A
+deactivate B
+A -->[ : result
+deactivate A
+@enduml

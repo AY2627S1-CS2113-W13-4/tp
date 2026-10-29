@@ -1,0 +1,58 @@
+@startuml
+!pragma layout smetana
+!include ../rixte/shortfall/style.iuml
+hide circle
+
+title Target-aware plan viewing
+top to bottom direction
+skinparam nodesep 35
+skinparam ranksep 55
+hide empty members
+
+class ViewPlanCommand {
+  - dayNumber: Integer [0..1]
+  + execute(recipeBook: RecipeBook): String
+}
+interface "Supplier<List<List<MealSummary>>>" as MealsSource <<interface>> {
+  + get(): List<List<MealSummary>>
+}
+interface "Supplier<NutritionTargets>" as TargetsSource <<interface>> {
+  + get(): NutritionTargets
+}
+class ActiveMealPlan {
+  + get(): Optional<MealPlan>
+  + getRequest(): Optional<GeneratePlanRequest>
+}
+class GeneratePlanRequest <<record>> {
+  + targets(): NutritionTargets
+}
+class NutritionTargets {
+  + calculateExcesses(totals: NutritionTotals): NutritionTotals
+}
+class NutritionTotals <<record>> {
+  - calories: long
+  - protein: long
+  - carbs: long
+  - fats: long
+}
+class MealPlanViewer {
+  + view(mealsByDay: List<List<MealSummary>>, targets: NutritionTargets): String
+  + view(mealsByDay: List<List<MealSummary>>, dayNumber: int,
+      targets: NutritionTargets): String
+}
+
+ViewPlanCommand --> "1" MealsSource : -mealPlanSource
+ViewPlanCommand --> "1" TargetsSource : -targetsSource
+ViewPlanCommand ..> MealPlanViewer : creates and calls
+MealsSource ..> ActiveMealPlan : default lambda reads get()
+TargetsSource ..> ActiveMealPlan : default lambda reads getRequest()
+ActiveMealPlan --> "0..1" GeneratePlanRequest : -request
+GeneratePlanRequest --> "1" NutritionTargets : -targets
+MealPlanViewer ..> NutritionTotals : creates daily totals
+MealPlanViewer ..> NutritionTargets : calculates excesses
+NutritionTargets ..> NutritionTotals : reads and creates
+
+legend bottom
+  Only feature-relevant members are shown.
+endlegend
+@enduml

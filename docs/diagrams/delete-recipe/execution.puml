@@ -1,45 +1,60 @@
 @startuml
-!include ../shortfall/style.iuml
-title Execution: confirm with the user, then delete
+!include ../rixte/shortfall/style.iuml
+title delete-recipe 2: confirm and delete
 autonumber
 
-actor "User" as User
-participant "MishMash" as App
-participant "delete: DeleteRecipeCommand" as Delete
-participant "book: RecipeBook" as Book
+actor User
+participant "mishMash:MishMash" as App
+participant "deleteCommand:DeleteRecipeCommand" as Delete
+participant "recipeBook:RecipeBook" as Book
 
-note over App, Delete : Parsing has produced a delete command for index 2; dispatch and index validation are condensed.
-App -> Delete : confirmationPrompt(book)
+App -> Delete : confirmationPrompt(recipeBook)
+activate Delete
+Delete -> Delete : findTarget(recipeBook)
 activate Delete
 Delete -> Book : size()
+activate Book
 Book --> Delete : recipeCount
-alt book is empty, or index exceeds recipeCount
-  Delete --> App : throws MishMashException
-  note over App, Delete : No question is asked and nothing is deleted. The caller displays the error.
-else the recipe at index exists
-  Delete -> Book : getRecipes()
-  Book --> Delete : recipes (read-only copy)
-  Delete --> App : Optional of "Are you sure you want to delete recipe 2: name? (y/n)"
-  deactivate Delete
-  App -> User : display the question
-  User --> App : next input line
-  alt answer is "y" or "yes", in any letter case
-    App -> Delete : execute(book)
-    activate Delete
-    note over Delete, Book : findTarget repeats the size and index checks, because execute can also be called without a prompt.
-    Delete -> Book : remove(index - 1)
-    Book --> Delete : deleted recipe
-    Delete --> App : "Recipe deleted!", the name, and "Recipes remaining: n"
-    deactivate Delete
-    App -> User : display the result
-  else any other answer, or no more input
-    App -> User : display "Cancelled. Nothing was changed."
-    note over App, Book : execute is never called, so the book is unchanged.
-  end
-end
+deactivate Book
+Delete -> Book : getRecipes()
+activate Book
+Book --> Delete : recipes
+deactivate Book
+Delete --> Delete : target recipe
+deactivate Delete
+Delete --> App : Optional.of(question)
+deactivate Delete
 
-note over Delete, Book
-  Logging and getter details are condensed. ActiveMealPlan is not involved, so an existing
-  plan and its grocery list keep their original recipes.
-end note
+App -> App : userConfirms(question)
+activate App
+App -> User : display question
+User -> App : "y"
+App --> App : true
+deactivate App
+
+App -> Delete : execute(recipeBook)
+activate Delete
+Delete -> Delete : findTarget(recipeBook)
+activate Delete
+Delete -> Book : size()
+activate Book
+Book --> Delete : recipeCount
+deactivate Book
+Delete -> Book : getRecipes()
+activate Book
+Book --> Delete : recipes
+deactivate Book
+Delete --> Delete : target recipe
+deactivate Delete
+Delete -> Book : remove(index - 1)
+activate Book
+Book --> Delete : deleted recipe
+deactivate Book
+Delete -> Book : size()
+activate Book
+Book --> Delete : recipes remaining
+deactivate Book
+Delete --> App : deletion confirmation
+deactivate Delete
+App -> User : display result
 @enduml

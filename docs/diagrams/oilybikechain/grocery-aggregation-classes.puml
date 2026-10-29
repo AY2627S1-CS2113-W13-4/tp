@@ -1,0 +1,31 @@
+@startuml
+!pragma layout smetana
+!include ../rixte/shortfall/style.iuml
+hide circle
+
+title Grocery aggregation values
+top to bottom direction
+skinparam nodesep 35
+skinparam ranksep 55
+hide empty members
+
+class GroceryListGenerator {
+  + generate(ingredients: List<GroceryItem>): List<GroceryItem>
+}
+class "GroceryListGenerator.ItemKey" as ItemKey <<record>> {
+  - name: String
+  - unit: String
+}
+class GroceryItem {
+  - name: String
+  - quantity: BigDecimal
+  - unit: String
+}
+
+GroceryListGenerator ..> ItemKey : creates temporary keys
+GroceryListGenerator ..> GroceryItem : reads and creates
+
+legend bottom
+  Only feature-relevant members are shown.
+endlegend
+@enduml

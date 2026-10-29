@@ -6,9 +6,10 @@ These sources document the implemented `list-recipes` command in
 | Source | View |
 | --- | --- |
 | `classes.puml` | Selected classes, the nullable index, and stored references |
-| `execution.puml` | Parsing and execution of `list-recipes 2`, including the error path |
+| `parsing.puml` | Successful parsing of `list-recipes 2` |
+| `execution.puml` | Successful execution of `list-recipes 2` |
 
-Both diagrams use the shared style in `../shortfall/style.iuml`. SVGs live under
+The diagrams use the shared style in `../rixte/shortfall/style.iuml`. SVGs live under
 `docs/images/list-recipes` so the guide displays without a PlantUML plugin.
 
 ## Regenerating
@@ -29,6 +30,6 @@ not an application dependency.
 
 Keep sources and rendered SVGs together when updating the design. Check depicted methods, message
 order, and guards against the implementation, then inspect every rendered image. The sequence
-diagram condenses command dispatch and shows only the indexed form; its closing note describes
-the no-index form. The class diagram shows `RecipeBook` as passed to `execute`, not stored by
-the command.
+diagram shows only the successful indexed form; the Developer Guide describes the no-index and
+error outcomes. The class diagram shows `RecipeBook` as passed to `execute`, not stored by the
+command.
