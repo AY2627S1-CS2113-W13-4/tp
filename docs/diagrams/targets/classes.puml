@@ -1,23 +1,20 @@
 @startuml
 !pragma layout smetana
 !include ../rixte/shortfall/style.iuml
+hide circle
 
-title Daily targets: selected classes and relationships
+title Saving daily targets: selected classes
 top to bottom direction
-skinparam nodesep 45
-skinparam ranksep 70
+skinparam nodesep 35
+skinparam ranksep 55
 hide empty members
 
 class Parser {
   - targetSettings: TargetSettings
   - parseSetTargets(arguments: String): Command
   - parseViewTargets(arguments: String): Command
-  - parseGeneratePlan(arguments: String): Command
 }
-class SetTargetsParser {
-  + parse(arguments: String): TargetChanges
-}
-interface Command {
+interface Command <<interface>> {
   + execute(recipeBook: RecipeBook): String
 }
 class SetTargetsCommand {
@@ -26,66 +23,19 @@ class SetTargetsCommand {
 class ViewTargetsCommand {
   + execute(recipeBook: RecipeBook): String
 }
-class GeneratePlanCommand {
-  - request: GeneratePlanRequest
-  + execute(recipeBook: RecipeBook): String
-}
-class TargetChanges {
-  - changes: Map<Nutrient, Optional<Integer>>
-  + applyTo(current: NutritionTargets): NutritionTargets
-}
 class TargetSettings {
   - targets: NutritionTargets
   + get(): NutritionTargets
   + set(targets: NutritionTargets): void
 }
-class NutritionTargets {
-  - calories: Integer
-  - protein: Integer
-  - carbs: Integer
-  - fats: Integer
-  + get(nutrient: Nutrient): Integer
-  + overriddenBy(explicit: NutritionTargets): NutritionTargets
-  + summarise(): String
-}
-enum Nutrient {
-  CALORIES
-  PROTEIN
-  CARBS
-  FATS
-}
-class GeneratePlanRequest <<record>> {
-  + days(): int
-  + targets(): NutritionTargets
-}
-class ActiveMealPlan {
-  + setGenerated(plan, request, groceries): void
-}
-
-Parser ..> SetTargetsParser : parses with
+Parser --> "1" TargetSettings : -targetSettings
 Parser ..> SetTargetsCommand : creates
 Parser ..> ViewTargetsCommand : creates
-Parser ..> GeneratePlanCommand : creates
-Parser *--> "1" TargetSettings : shares
-SetTargetsParser ..> TargetChanges : creates
 SetTargetsCommand .up.|> Command
 ViewTargetsCommand .up.|> Command
-GeneratePlanCommand .up.|> Command
-SetTargetsCommand --> "1" TargetChanges
-SetTargetsCommand --> "1" TargetSettings
-ViewTargetsCommand --> "1" TargetSettings
-GeneratePlanCommand --> "1" TargetSettings
-GeneratePlanCommand --> "1" GeneratePlanRequest
-GeneratePlanCommand ..> ActiveMealPlan : stores plan in
-TargetSettings --> "1" NutritionTargets
-GeneratePlanRequest --> "1" NutritionTargets
-TargetChanges ..> Nutrient
-NutritionTargets ..> Nutrient
-
+SetTargetsCommand --> "1" TargetSettings : -targetSettings
+ViewTargetsCommand --> "1" TargetSettings : -targetSettings
 legend bottom
-  Only feature-relevant members are shown; constructors, getters, and the other commands are omitted.
-  One TargetSettings object is created by Parser and shared by the three commands, as DietarySettings is.
-  The targets are read when a command executes, not when it is parsed.
-  Dashed arrows show dependencies or interface realization; solid arrows show stored references.
+  Only feature-relevant members are shown.
 endlegend
 @enduml

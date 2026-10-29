@@ -6,9 +6,16 @@ These sources document the implemented `set-targets` and `view-targets` commands
 
 | Source | View |
 | --- | --- |
-| `classes.puml` | Selected classes, including the shared `TargetSettings` |
-| `set-targets.puml` | Parsing `set-targets` and updating the saved targets |
-| `generate-plan.puml` | How `generate-plan` merges typed and saved targets |
+| `classes.puml` | Classes that parse, store, and display saved targets |
+| `target-parsing-classes.puml` | Parsing and command creation for saved-target changes |
+| `target-values.puml` | Stored nutrition values and validated changes |
+| `generate-classes.puml` | Classes that apply saved targets to plan generation |
+| `set-targets.puml` | Successful parsing of target changes |
+| `set-targets-invalid.puml` | Invalid input ending both parser activations |
+| `set-targets-update.puml` | Applying validated changes to the saved targets |
+| `generate-plan.puml` | Merging saved and typed targets |
+| `generate-plan-publish.puml` | Successful plan generation and publication |
+| `generate-plan-failure.puml` | Generation failure leaving the active plan untouched |
 
 All diagrams use the shared style in `../rixte/shortfall/style.iuml`. SVGs live under
 `docs/images/targets` so the guide displays without a PlantUML plugin.

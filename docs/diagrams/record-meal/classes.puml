@@ -1,19 +1,13 @@
 @startuml
 !pragma layout smetana
 !include style.iuml
-title Meal recording: selected class relationships
+title Meal recording commands and collaborators
 top to bottom direction
-skinparam nodesep 50
-skinparam ranksep 75
+skinparam nodesep 35
+skinparam ranksep 55
 hide empty members
 
-class Parser {
-  - mealLog: MealLog
-  + parseCommand(input: String): Command
-  - parseRecordMeal(arguments: String): Command
-  - parseViewMeals(arguments: String): Command
-}
-interface Command {
+interface Command <<interface>> {
   + execute(recipeBook: RecipeBook): String
 }
 class RecordMealCommand {
@@ -22,49 +16,22 @@ class RecordMealCommand {
 class ViewMealsCommand {
   + execute(recipeBook: RecipeBook): String
 }
-class MealLog {
-  + record(recipe: Recipe): void
-  + getMeals(): List<Recipe>
-  + getTotals(): NutritionTotals
-}
-class NutritionTotals <<record>> {
-  + calories: long
-  + protein: long
-  + carbs: long
-  + fats: long
-}
+class MealLog
 class MealLogViewer {
   + view(meals: List<Recipe>, totals: NutritionTotals): String
   + viewRecorded(meal: Recipe, totals: NutritionTotals): String
 }
-class MacroSplit <<record>> {
-  + proteinPercent: int
-  + carbsPercent: int
-  + fatsPercent: int
-  + {static} of(recipe: Recipe): Optional<MacroSplit>
-  + {static} fromGrams(protein: long, carbs: long, fats: long): Optional<MacroSplit>
-}
-class RecipeBook {
-  + getRecipes(): List<Recipe>
-}
-class Recipe
+class RecipeBook
 
-Parser ..> RecordMealCommand : creates
-Parser ..> ViewMealsCommand : creates
 RecordMealCommand ..|> Command
 ViewMealsCommand ..|> Command
-RecordMealCommand --> "1\n-mealLog" MealLog
+RecordMealCommand --> "1" MealLog : -mealLog
+ViewMealsCommand --> "1" MealLog : -mealLog
 RecordMealCommand ..> RecipeBook : reads
-RecordMealCommand ..> MealLogViewer : formats with
-ViewMealsCommand --> "1\n-mealLog" MealLog
-ViewMealsCommand ..> MealLogViewer : formats with
-MealLog ..> NutritionTotals : creates
-MealLogViewer ..> MacroSplit : formats
-MacroSplit ..> Recipe : reads
-MealLog --> "0..*\n-meals" Recipe
-RecipeBook --> "0..*\n-recipes" Recipe
+RecordMealCommand ..> MealLogViewer : creates and calls
+ViewMealsCommand ..> MealLogViewer : creates and calls
 
 legend bottom
-  Only members relevant to this enhancement are shown.
+  Only feature-relevant members are shown.
 endlegend
 @enduml

@@ -1,6 +1,7 @@
 @startuml
 !pragma layout smetana
 !include ../rixte/shortfall/style.iuml
+hide circle
 
 title Listing recipes: selected classes and relationships
 top to bottom direction
@@ -13,7 +14,7 @@ class Parser {
   - parseListRecipe(arguments: String): Command
   - parseRecipeIndex(arguments: String): int
 }
-interface Command {
+interface Command <<interface>> {
   + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
   + execute(recipeBook: RecipeBook): String
 }
@@ -44,9 +45,6 @@ RecipeViewer ..> Recipe : reads
 Parser -[hidden]right-> Command
 
 legend bottom
-  Only feature-relevant members are shown; constructors and most recipe getters are omitted.
-  index is null when no index was typed (list every recipe); otherwise it is the one-based number shown to the user.
-  Solid arrows show stored references; dashed arrows show dependencies or interface realization.
-  RecipeBook is passed to execute, not retained by ListRecipeCommand. getRecipes returns a read-only copy.
+  Only feature-relevant members are shown.
 endlegend
 @enduml

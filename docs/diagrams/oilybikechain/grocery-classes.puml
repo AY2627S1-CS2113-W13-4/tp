@@ -1,20 +1,23 @@
 @startuml
 !pragma layout smetana
 !include ../rixte/shortfall/style.iuml
-title Grocery generation: selected classes and relationships
+hide circle
+
+title Grocery command integration
 top to bottom direction
-skinparam nodesep 45
-skinparam ranksep 60
+skinparam nodesep 35
+skinparam ranksep 55
 hide empty members
 
 class Parser {
-  + parseCommand(input: String): Command
+  - activeMealPlan: ActiveMealPlan
   - parseGenerateList(arguments: String): Command
 }
-interface Command {
+interface Command <<interface>> {
   + execute(recipeBook: RecipeBook): String
 }
 class GenerateListCommand {
+  - activeMealPlan: ActiveMealPlan
   + execute(recipeBook: RecipeBook): String
 }
 class ActiveMealPlan {
@@ -22,47 +25,11 @@ class ActiveMealPlan {
   + setGroceryList(items: List<GroceryItem>): void
   + getGroceryList(): Optional<List<GroceryItem>>
 }
-class MealPlan {
-  + getDays(): List<DayPlan>
-}
-class DayPlan {
-  + getMeals(): List<Recipe>
-}
-class Recipe {
-  + getIngredients(): List<GroceryItem>
-}
-class GroceryItem {
-  - name: String
-  - quantity: BigDecimal
-  - unit: String
-}
-class GroceryListGenerator {
-  + generate(ingredients: List<GroceryItem>): List<GroceryItem>
-}
-class "GroceryListGenerator.ItemKey" as ItemKey <<record>> {
-  - name: String
-  - unit: String
-}
-
 Parser --> "1" ActiveMealPlan : -activeMealPlan
 Parser ..> GenerateListCommand : creates
 GenerateListCommand ..|> Command
 GenerateListCommand --> "1" ActiveMealPlan : -activeMealPlan
-GenerateListCommand ..> GroceryListGenerator : creates and calls
-GroceryListGenerator ..> ItemKey : creates temporary keys
-GroceryListGenerator ..> GroceryItem : reads and creates
-ActiveMealPlan --> "0..1" MealPlan : -plan
-ActiveMealPlan --> "0..*" GroceryItem : -groceryList\n{ordered, nonunique}
-MealPlan --> "0..*" DayPlan : -days\n{ordered, nonunique}
-DayPlan --> "0..*" Recipe : -meals\n{ordered, nonunique}
-Recipe --> "1..*" GroceryItem : -ingredients\n{ordered, nonunique}
-
 legend bottom
-  Solid arrows represent stored references; dashed arrows represent dependencies or realization.
-  groceryList abbreviates Optional<List<GroceryItem>>: absent and present-empty are distinct states.
-  Lists may share objects; plain associations do not imply exclusive ownership.
-  Normal generation supplies 1-7 days with three distinct recipes per day; model constructors are less restrictive.
-  RecipeBook is an execution parameter, not a stored GenerateListCommand reference.
-  Only relevant members are shown. Generation requests, viewing, and dietary repair are omitted.
+  Only feature-relevant members are shown.
 endlegend
 @enduml

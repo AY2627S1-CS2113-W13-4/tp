@@ -1,0 +1,47 @@
+@startuml
+!pragma layout smetana
+!include ../rixte/shortfall/style.iuml
+hide circle
+
+title Applying saved targets during plan generation
+top to bottom direction
+skinparam nodesep 35
+skinparam ranksep 55
+hide empty members
+
+interface Command <<interface>> {
+  + execute(recipeBook: RecipeBook): String
+}
+class GeneratePlanCommand {
+  - request: GeneratePlanRequest
+  - targetSettings: TargetSettings
+  - activePlan: ActiveMealPlan
+  + execute(recipeBook: RecipeBook): String
+}
+class TargetSettings {
+  + get(): NutritionTargets
+}
+class NutritionTargets {
+  + overriddenBy(explicit: NutritionTargets): NutritionTargets
+  + summarise(): String
+}
+class GeneratePlanRequest <<record>> {
+  + days(): int
+  + targets(): NutritionTargets
+}
+class ActiveMealPlan {
+  + setGenerated(plan: MealPlan, request: GeneratePlanRequest,
+      groceries: Optional<List<GroceryItem>>): void
+}
+
+GeneratePlanCommand .up.|> Command
+GeneratePlanCommand --> "1" TargetSettings : -targetSettings
+GeneratePlanCommand --> "1" GeneratePlanRequest : -request
+GeneratePlanCommand --> "1" ActiveMealPlan : -activePlan
+TargetSettings --> "1" NutritionTargets : -targets
+GeneratePlanRequest --> "1" NutritionTargets : -targets
+
+legend bottom
+  Only feature-relevant members are shown.
+endlegend
+@enduml

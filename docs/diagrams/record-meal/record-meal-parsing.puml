@@ -1,0 +1,27 @@
+@startuml
+!include style.iuml
+title record-meal 2: parse a valid recipe index
+autonumber
+
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "command:RecordMealCommand" as Command
+
+App -> Parser : parseCommand("record-meal 2")
+activate Parser
+Parser -> Parser : parseRecordMeal("2")
+activate Parser
+Parser -> Parser : parseRecipeIndex("2")
+activate Parser
+Parser --> Parser : 2
+deactivate Parser
+create Command
+Parser -> Command : new RecordMealCommand(2, mealLog)
+activate Command
+Command --> Parser : command
+deactivate Command
+Parser --> Parser : command
+deactivate Parser
+Parser --> App : command
+deactivate Parser
+@enduml

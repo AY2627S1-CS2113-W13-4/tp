@@ -1,0 +1,23 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title list-recipes 2: parse a valid index
+autonumber
+
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "command:ListRecipeCommand" as Command
+
+App -> Parser : parseCommand("list-recipes 2")
+activate Parser
+Parser -> Parser : parseRecipeIndex("2")
+activate Parser
+Parser --> Parser : 2
+deactivate Parser
+create Command
+Parser -> Command : new ListRecipeCommand(2)
+activate Command
+Command --> Parser : command
+deactivate Command
+Parser --> App : command
+deactivate Parser
+@enduml
