@@ -15,6 +15,7 @@ import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.RecipeBook;
 
+//@@author peilingggg
 /**
  * Saves dietary requirements, repairs conflicting days, and refreshes existing groceries.
  */
@@ -41,6 +42,7 @@ public final class SetDietCommand implements Command {
         this.planner = new DietaryPlanner(generator);
     }
 
+    //@@author
     //@@author Rixte
     /**
      * Warns before a dietary change can repair or clear the existing plan and groceries.
@@ -57,6 +59,7 @@ public final class SetDietCommand implements Command {
     }
     //@@author
 
+    //@@author peilingggg
     /**
      * Saves the new profile and updates days that conflict with its requirements.
      *
@@ -108,3 +111,4 @@ public final class SetDietCommand implements Command {
         }
     }
 }
+//@@author

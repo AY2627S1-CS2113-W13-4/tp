@@ -12,10 +12,13 @@ import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.Recipe;
 
+//@@author oilybikechain
 /**
  * Combines recipe ingredients into a grocery list for planned meals.
  */
 public class GroceryListGenerator {
+    //@@author
+    //@@author peilingggg
     /**
      * Generates groceries by counting every meal occurrence in the supplied plan.
      *
@@ -37,6 +40,9 @@ public class GroceryListGenerator {
         return generate(ingredients);
     }
 
+    //@@author
+
+    //@@author oilybikechain
     /**
      * Combines quantities for ingredients with the same name and unit.
      * The input should contain the ingredients from every recipe in the active meal plan.
@@ -69,3 +75,4 @@ public class GroceryListGenerator {
     private record ItemKey(String name, String unit) {
     }
 }
+//@@author

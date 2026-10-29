@@ -2,9 +2,23 @@
 
 MishMash is a command-line meal prep planner for managing recipes, generating meal plans, and preparing grocery lists. This guide describes the current design, project practices, requirements, use cases, and manual tests.
 
+## Contents
+
+- [Acknowledgements](#acknowledgements)
+- [Setting Up, Getting Started](#setting-up-getting-started)
+- [Design](#design)
+- [Implementation](#implementation)
+- [Documentation, Logging, Testing, Configuration and DevOps](#documentation-logging-testing-configuration-and-devops)
+- [Appendix A: Product Scope](#appendix-a-product-scope)
+- [Appendix B: User Stories](#appendix-b-user-stories)
+- [Appendix C: Non-Functional Requirements](#appendix-c-non-functional-requirements)
+- [Appendix D: Glossary](#appendix-d-glossary)
+- [Appendix E: Instructions for Manual Testing](#appendix-e-instructions-for-manual-testing)
+
 ## Acknowledgements
 
 - The project originates from the [NUS CS2113 team-project template](https://github.com/NUS-CS2113-AY2627-S1/tp). The team's shared repository is [AY2627S1-CS2113-W13-4/tp](https://github.com/AY2627S1-CS2113-W13-4/tp).
+- The guide structure follows the [AB3 User Guide](https://se-education.org/addressbook-level3/UserGuide.html) and [AB3 Developer Guide](https://se-education.org/addressbook-level3/DeveloperGuide.html), adapted to the [CS2113 deliverable requirements](https://nus-cs2113-ay2627-s1.github.io/website/admin/tp-deliverables.html). Product descriptions refer to MishMash rather than AB3 behaviour.
 - [Gradle](https://gradle.org/) provides build automation and dependency management.
 - [JUnit Jupiter](https://junit.org/junit5/) provides the automated testing framework.
 - [Checkstyle](https://checkstyle.org/) checks Java coding conventions.
@@ -12,6 +26,12 @@ MishMash is a command-line meal prep planner for managing recipes, generating me
 - [PlantUML](https://plantuml.com/) generates the UML diagrams from the editable sources under `docs/diagrams`, which has one folder per feature.
 
 <!-- TEAM: Add any further sources of reused or adapted code, ideas, and documentation before submission. -->
+
+## Setting Up, Getting Started
+
+Refer to [Setting Up and Getting Started](SettingUp.md) for Java 25 prerequisites, importing the project, running tests, packaging the JAR, and troubleshooting.
+
+The JAR currently published on the [team's Releases page](https://github.com/AY2627S1-CS2113-W13-4/tp/releases) is **v2.0**. The team has verified that the published v2.0 JAR matches the current source code described in this guide. Pending v2.0b features are explicitly labelled **Coming soon** in [User Stories](#v20b-follow-up-stories).
 
 ## Design
 
@@ -29,6 +49,10 @@ The application separates terminal interaction, command handling, application da
 
 Command names and prefixes are case-sensitive. Invalid commands normally produce an error and allow the user to continue. The application accepts one command per line and ends when the user enters `bye` or console input ends.
 
+### UI Component
+
+`MishMash` owns the terminal input loop, greeting, name prompt, command execution, confirmation prompts, and recoverable error display. Classes in `mishmash.ui` format recipes, plans, groceries, and recorded meals as text. Commands return results to the loop rather than reading console input themselves. This keeps command execution testable without an interactive terminal.
+
 ### Logic Component
 
 The logic covers command parsing, application actions, and generation. It supports the following commands:
@@ -39,6 +63,8 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `list-recipes` | List stored recipes or display one recipe in full. |
 | `edit-recipe` | Replace selected fields of a recipe at its displayed index. |
 | `delete-recipe` | Remove a recipe by its displayed index after confirmation. |
+| `set-diet` | Replace the session dietary profile and repair or clear conflicting planned days. |
+| `view-diet` | Display the session dietary profile. |
 | `set-targets` | Save, replace, or remove daily calorie, protein, carbohydrate, and fat targets for later plans. |
 | `view-targets` | Display the saved daily targets. |
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. Saved targets fill in nutrients that the command leaves out. |
@@ -69,6 +95,9 @@ Commands validate their arguments and relevant application state. Requests that 
 | `TargetChanges` | Validated changes to the saved targets: a new value, or removal, for each nutrient mentioned. |
 | `TargetSettings` | The daily targets saved with `set-targets`, shared by the commands that use them during the session. |
 | `GeneratePlanRequest` | The requested number of days and nutrition targets. |
+| `DietarySettings` | The shared session dietary profile. |
+| `DietaryPreferences` | An immutable named diet, avoided tags, and normalized excluded ingredient names. |
+| `Diet`, `FoodTag`, `FoodInfo` | Named-diet rules, supported categories, and declared recipe classification. |
 | `ActiveMealPlan` | The current meal plan and its generated grocery list, if available. |
 | `MealLog` | The recipes the user has recorded as eaten, in the order recorded. |
 | `NutritionTotals` | Summed calories, protein, carbohydrates, and fats, held as `long` values. |
@@ -89,247 +118,9 @@ Only one meal plan is active at a time. Successfully generating a replacement pl
 Persistent application-data storage is not implemented. Recipes, saved daily targets, meal plans, grocery lists, and recorded meals are held in memory and are cleared when the application closes. There is no save or load command, save-file format, or application-data recovery process.
 
 Diagnostic logs are written to disk, but they do not save or restore the recipe book or generated data.
-
 ## Implementation
 
-<!-- @@author Rixte -->
-### Confirming plan changes
-
-This implements [#61](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/61): users must agree before
-an existing plan is cleared or replaced. The existing `Command.confirmationPrompt(RecipeBook)` hook
-keeps console interaction in `MishMash` and state decisions in each command.
-
-![Deciding whether a plan change needs confirmation.](images/confirm-plan/decision.svg)
-
-*Prompt lookup after syntax validation; the command-specific conditions are listed below.*
-
-The parser validates syntax first. `MishMash.executeCommand` then requests a prompt before calling
-`execute`. An empty `Optional` proceeds directly. Otherwise `userConfirms` reads one line: only `y`
-or `yes`, ignoring case and surrounding spaces, permits execution. All other answers and EOF return
-`Cancelled. Nothing was changed.` No command execution or state mutation happens on cancellation.
-A command entered as an answer is consumed as that answer and must be entered again at the command prompt.
-
-![Executing a plan change after agreement.](images/confirm-plan/execution.svg)
-
-*An accepted answer permits command execution; its result may still be a recoverable error.*
-
-![Cancelling a plan change without executing it.](images/confirm-plan/cancellation.svg)
-
-*Other answers and EOF skip execution and preserve the session state.*
-
-| Command | Prompt decision, using current shared state |
-| --- | --- |
-| `ResetPlanCommand` | Ask if any plan, generation request, or grocery snapshot is present, including an empty snapshot. |
-| `GeneratePlanCommand` | Ask if a plan exists; successful generation replaces it and clears groceries. |
-| `SetDietCommand` | Ask if an existing plan is incompatible with the proposed preferences. |
-
-Prompts never generate replacements or change settings. They read the holder when called, rather than
-capturing state during parsing, so reused commands see the latest plan. A first generation, an empty
-reset, and a compatible dietary change need no answer. Dietary confirmation mentions both repair and
-clearing on failure because that command saves the new preferences even if repair cannot succeed.
-Cancelling it preserves the previous preferences as well as the plan. Failed `generate-plan` execution
-continues to preserve the old plan, original request, and grocery snapshot.
-
-**Design choice:** Reusing the existing hook avoids passing scanners into commands or storing a
-confirmation flag in the model. Commands remain independently testable. Direct callers of `execute`
-must perform confirmation themselves if needed; execution deliberately contains no console I/O.
-Generation feasibility is checked after agreement, so an impossible but syntactically valid request
-can still ask a question. Pre-generating a candidate would avoid that question but add speculative work
-and cached state to the prompt path. This single-threaded console has no concurrent command execution
-between asking and executing.
-
-**Testing:** `PlanConfirmationTest` covers accepted and rejected answers, EOF, state preservation,
-invalid syntax, current-state lookup, orphaned reset state, and confirmed generation or dietary failures.
-Existing console regression transcripts supply explicit answers at new prompts. Run Java 25 with
-`./gradlew test check jacocoTestReport`; the HTML report is in `build/reports/jacoco/test/html/index.html`.
-`check` requires 100% line and branch coverage for the three affected command classes. That threshold
-is feature-specific and does not imply 100% coverage for the entire application.
-
-**Manual verification:** With a plan and groceries present, cancel reset, replacement generation, and
-an incompatible dietary change. Check `view-plan`, `view-list`, `view-diet`, `view-targets`, and
-`view-meals` afterwards. Confirm reset and check both lists are absent. Generate again, confirm an
-impossible replacement, and verify the plan and groceries survive the error. Try malformed syntax
-and verify it reports an error without consuming the following command as an answer.
-<!-- @@author -->
-
-<!-- @@author Rixte -->
-### Resetting a meal plan
-
-#### Purpose and command contract
-
-This enhancement implements #53: **As a returning user, I want to clear my current meal plan and its generated
-grocery list while keeping my recipes, personal settings, and food intake records so that I can start planning
-again without losing my other information.**
-
-`reset-plan` accepts no arguments. A valid reset removes the active `MealPlan`, its `GeneratePlanRequest`
-(including that plan's daily nutrition targets), and its optional grocery snapshot. It preserves the
-`RecipeBook`, `DietarySettings`, `TargetSettings`, and `MealLog`. The targets attached to the removed
-generation request are cleared; personal targets saved with `set-targets` remain available for later
-generation. Repeating a reset on an empty holder returns a no-plan message.
-
-#### Parsing, execution, and ownership
-
-![Reset command ownership and plan-holder dependency.](images/reset-plan/classes.svg)
-
-*Only reset dependencies are shown. Recipes, dietary settings, saved targets, and recorded meals
-are owned elsewhere; their preservation is described below.*
-
-`Parser.parseResetPlan` validates arguments before constructing `ResetPlanCommand`. Parsing only retains
-the shared `ActiveMealPlan` reference; it does not clear state. Arguments produce a `MishMashException` with
-reset-specific usage, allowing the user to retry at the next prompt without losing data.
-
-![Parsing a reset without changing application data.](images/reset-plan/parsing.svg)
-
-At execution, the command checks whether a plan or groceries were present, then calls the existing
-`ActiveMealPlan.clear()`. That method clears the plan, original generation request, and groceries together.
-The command verifies the clear postcondition before success is logged or reported. A failed clear or
-remaining plan state produces a recoverable `MishMashException`, so the session can continue with its
-recipes, dietary settings, and recorded meals. This check runs whether Java assertions are enabled or
-disabled. The original cause is retained for diagnostics when clearing throws a runtime exception.
-`FINE` logging records only whether plan and grocery state were present, without recipe names or contents.
-
-![Reset execution after agreement, including recoverable failures.](images/reset-plan/execution.svg)
-
-The command only holds the active-plan object. It does not receive dietary settings, saved targets, or the
-meal log, and does not read or mutate the recipe-book parameter inherited from `Command.execute`. This limited access
-makes preserving unrelated session data straightforward. Existing immutable snapshots held by callers
-remain valid after the active holder is cleared.
-
-#### Design choices and boundaries
-
-Reusing `ActiveMealPlan.clear()` avoids duplicating state-clearing logic already used by dietary repair.
-Creating a replacement `ActiveMealPlan` instead would break references held by the parser and commands.
-Clearing individual fields from the command would expose model internals and risk retaining stale targets
-or groceries. Clearing the recipe book or reconstructing the parser would remove unrelated session data.
-
-The command reads state when it executes, so a command parsed before generation also clears a subsequently
-generated plan. Legacy plans without a retained generation request and present-but-empty grocery snapshots
-are supported. A grocery snapshot remaining without a plan is also removed. No new plan or groceries are
-created during reset.
-
-![Rejected reset arguments followed by a valid retry.](images/reset-plan/invalid-input.svg)
-
-*The retry follows normal parsing and then confirmation when state exists; it does not bypass
-the confirmation workflow.*
-
-Reset confirmation is implemented by `ResetPlanCommand.confirmationPrompt`. See
-[Confirming plan changes](#confirming-plan-changes) for the shared interaction and replacement paths.
-
-#### Tests and manual verification
-
-`ResetPlanCommandTest` covers plan/request/grocery clearing, repeated resets, legacy and empty plans,
-current-state lookup, null dependencies, and recoverable failures. `ResetPlanDiagnosticsTest` captures state
-summaries with temporary logging settings and checks failure and retry diagnostics. `ParserResetPlanTest`
-covers whitespace, rejected arguments, case sensitivity, deferred execution, and help.
-`ResetPlanIntegrationTest` verifies preservation of recipes, dietary restrictions, recorded meals, and old
-immutable snapshots, followed by regeneration. It also distinguishes preserved personal targets from
-the removed plan's targets and checks generation using saved targets after reset.
-`MishMashResetPlanTest` exercises supplied application
-sessions, ordered recovery after invalid input or failed reset, and end-of-input behaviour. Failed-reset
-cases include an exception with a null message and verify retained data before retrying successfully.
-The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
-recipe entries, repeated reset cycles, resets after failed generation, and isolation between parser sessions.
-
-For manual verification, add three suitable recipes, record a meal, set compatible dietary preferences,
-generate a targeted two-day plan, and generate groceries. Run `reset-plan`, then check `view-plan`,
-`view-list`, and `check-shortfall`: each should report missing generated data. Verify `list-recipes`,
-`view-diet`, and `view-meals` are unchanged. Generate a new one-day plan and groceries, then verify they
-use the retained recipes and dietary settings. Try `reset-plan extra` before a valid reset; rejection
-must preserve the existing plan and groceries. Repeat a valid reset and verify the no-plan message.
-<!-- @@author -->
-
-<!-- @@author Rixte -->
-### Editing a recipe
-
-#### Purpose and command contract
-
-This feature implements the story: **As a returning user, I want to update an existing recipe's ingredients, quantities, and nutrition values so that my recipe information reflects how I prepare the dish.**
-
-`edit-recipe INDEX` takes at least one optional recipe field: `n/`, `cal/`, `p/`, `c/`, `f/`, repeated `i/`, or `food/`. Nutrition and ingredient syntax use the same validation as `add-recipe`. Omitted fields are preserved, and supplied ingredients replace the complete list. For example, `edit-recipe 1 p/55 i/Chicken:220g i/Rice:150g` replaces protein and ingredients, preserving the name, calories, carbs, fats, and food declaration.
-
-The index is one-based, matching `list-recipes` and `delete-recipe`. Duplicate names do not affect selection. Editing neither inserts nor removes entries. No persistent storage or undo history is introduced.
-
-#### Class responsibilities and relationships
-
-The class diagram shows how parsing, edit data, execution, storage, and formatting fit together.
-`Parser` creates `RecipeChanges` and `EditRecipeCommand`. The command retains the requested changes
-and a displayed index; the recipe book is supplied only when `execute` runs.
-
-![Command responsibilities for recipe editing.](images/edit-recipe/classes.svg)
-
-*Only feature-relevant members are shown. Solid arrows identify stored references; dashed arrows
-show dependencies or interface realization. The book is an execution parameter rather than a stored command field.
-Its ordered list permits repeated references; existing plans can retain the same recipe objects.*
-
-`RecipeChanges` is an immutable record containing only the requested changes. Nullable scalar fields mean unchanged; an empty ingredient list means unchanged. Its constructor rejects an empty edit, blank names, negative nutrition, and invalid ingredient quantities, and defensively copies ingredients. Nullable nutrition distinguishes an omitted value from a requested zero.
-
-#### Successful command parsing
-
-`Parser.parseEditRecipe` splits the index from the prefixed fields. It reuses `collectRecipeArguments`, `parseNutrition`, and `parseIngredient` rather than duplicating recipe syntax rules. Single-value prefixes cannot repeat; ingredients may repeat. Unknown prefixes, blank values, invalid numbers, zero ingredient quantities, and malformed indexes fail before a command is created. Parsing wraps validation errors in `MishMashException` with edit-specific usage and the original cause.
-
-The parsing sequence uses `edit-recipe 2 p/55 i/Chicken:220g i/Rice:150g`. Ingredient fields
-become a local replacement list, protein becomes 55, and omitted scalar fields remain null.
-Only after validation succeeds are the immutable changes and command constructed. The parser
-does not look up recipe 2; the recipe book may change before the command executes.
-
-![Successful parsing and construction of a recipe edit.](images/edit-recipe/parsing.svg)
-
-*Map/list creation, ingredient construction, dispatch, and repeated validation calls are condensed.
-The reference frame summarizes validation through the shared argument and ingredient helpers.
-The diagram shows nutrition parsing separately from collecting the prefixed values. Omitted food information
-is preserved later; it is not inferred or reset during parsing.*
-
-#### Execution and replacement
-
-`EditRecipeCommand` retains the displayed index and changes. It resolves the recipe from the book during execution, so omitted fields come from the current recipe rather than a stale parsing-time copy. It checks the book and index before calling `RecipeChanges.applyTo(original)`. That method builds a new `Recipe` through its existing constructor. The command formats confirmation with `RecipeViewer` before calling `RecipeBook.replace(index - 1, edited)`, so validation or formatting failure cannot leave a partially applied edit. `replace` validates both index and replacement before updating one list element.
-
-![Position checks, formatting, and publication of a recipe edit.](images/edit-recipe/execution.svg)
-
-![Building the validated immutable replacement recipe.](images/edit-recipe/replacement.svg)
-
-*Execution is split between command coordination and replacement construction. The replacement
-view expands `RecipeChanges.applyTo(original)` for an edit such as index 1 and `p/55`. Most getter calls, repeated
-size checks, logging, and formatting details are condensed. Empty books and out-of-range indexes
-raise `MishMashException` before replacement. The current index is resolved at execution time,
-including any renumbering caused by earlier deletions.*
-
-#### Invalid input and recovery
-
-For `edit-recipe 1 n/Changed p/-5`, collecting the local fields succeeds, but `parseNutrition`
-rejects the negative protein value. `parseEditRecipe` wraps the `IllegalArgumentException` in
-`MishMashException`, retaining its cause and attaching edit-specific usage. `MishMash` displays
-the error and then prompts for another command.
-
-![Validation failure and recovery without applying a partial edit.](images/edit-recipe/invalid-input.svg)
-
-*Dispatch and the omitted calorie field are condensed. No changes record, command, or replacement
-recipe is created for this input, so even the otherwise valid `n/Changed` field is never applied.
-The recipe book, active meals, and groceries remain unchanged. A later valid command follows
-the normal parsing and execution paths.*
-
-#### Snapshots and dietary information
-
-`Recipe` objects remain immutable. Replacing the book entry preserves references already held by `DayPlan`, earlier recipe-book snapshots, and the original recipe itself. The command does not access `ActiveMealPlan`; active meals, original generation settings, nutrition totals, and generated groceries therefore remain consistent. Even regenerating groceries from an existing plan uses that plan's old recipes. Users must generate a new plan and then groceries to incorporate edits; confirmation explains this.
-
-Future generation reads the edited book entry, including its food tags and ingredients for dietary filtering. Omitted `food/` preserves its previous declaration. Ingredient edits do not infer food categories; users provide a complete updated declaration when needed. Existing plans do not undergo dietary repair as a side effect of recipe editing.
-
-#### Design choices and alternatives
-
-Replacing an immutable recipe keeps editing local to the recipe book and avoids silently changing previously planned meals or invalidating a saved grocery list. Mutating recipes in place would require coordinating nutrition, dietary compatibility, and grocery regeneration throughout active plans. Automatic plan repair could be added separately if its behavior is specified.
-
-Complete ingredient-list replacement provides addition, quantity changes, and removal without inventing ingredient identifiers or separate subcommands. Requiring every recipe field would be simpler but would make small corrections tedious. The changes record keeps optional edits separate from the complete, validated `Recipe` model.
-
-#### Verification and maintenance
-
-`ParserEditRecipeTest` checks single-field edits, all-field edits in a different order, ingredient replacement, food declarations, whitespace, nutrition boundaries, help, and invalid input. `EditRecipeCommandTest` covers duplicate names, first/middle/last positions, missing targets, execution-time lookup, dietary filtering, and snapshot preservation through plan and grocery regeneration. `RecipeChangesTest` checks defensive copying and model validation. `RecipeBookTest` checks replacement failure and snapshot behavior. `MishMashTest` checks CLI recovery and subsequent detailed listing.
-
-For manual verification, run the User Guide's [editing example](UserGuide.md#editing-a-recipe), inspect `list-recipes 1`, and try `edit-recipe 1 p/-5`. The failed command must preserve the last valid recipe. With three recipes, generate meals and groceries, edit one recipe, and verify that viewing still shows the original plan. Generate the plan and groceries again to see the edited recipe.
-
-The class diagram and three sequence diagrams have editable sources and rendering instructions in
-[`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md). When updating the implementation,
-check method names, object creation, message order, exception paths, and relationship multiplicities
-against the code, then regenerate and visually inspect all four SVGs.
-<!-- @@author -->
+This section explains implemented features in the MVP story order, followed by v2.0b plan-management features and generation diagnostics.
 
 <!-- @@author peilingggg -->
 ### Adding a recipe
@@ -528,64 +319,6 @@ details, and visually inspect regenerated diagrams.
 <!-- @@author -->
 
 <!-- @@author neil0618 -->
-### Listing recipes
-
-#### Purpose and command contract
-
-This feature implements the story: **As a user managing recipes, I want to list my recipes and inspect a selected recipe so that I can find and check its stored details.**
-
-`list-recipes [INDEX]` has two forms. Without an index it shows every recipe as a numbered line with its name and calories. With an index it shows that one recipe in full: nutrition, ingredients, and food tags. The index is one-based and equals the number shown in the list, which is also the number that `edit-recipe` and `delete-recipe` expect. For example, `list-recipes 2` shows the second recipe. Listing is read-only: it never changes the recipe book, the active plan, or the grocery list.
-
-#### Class responsibilities and relationships
-
-`Parser` validates the optional index and creates a `ListRecipeCommand`. The command keeps only a nullable `Integer index`, where `null` means "list every recipe". The recipe book is supplied only when `execute` runs, so the command reads the recipes as they are at that moment rather than a copy taken during parsing. Recipe details are formatted by `RecipeViewer`, the class that also formats the `add-recipe` and `edit-recipe` confirmations, so a recipe looks the same wherever it is shown.
-
-![Selected classes and relationships for recipe listing.](images/list-recipes/classes.svg)
-
-*Only feature-relevant members are shown. Dashed arrows show dependencies or interface realization; the solid arrow shows the book's stored, ordered list. `RecipeBook.getRecipes` returns a read-only copy, so listing cannot change the book.*
-
-#### Parsing and execution
-
-Parsing and execution are drawn together for `list-recipes 2`: the command is small, and both halves end in the same error path.
-
-![Parsing and execution of list-recipes 2.](images/list-recipes/execution.svg)
-
-*Dispatch from `parseCommand` to `parseListRecipe` is condensed. The note at the bottom describes the no-index form, which skips index parsing and the viewer.*
-
-`Parser.parseListRecipe` treats blank arguments as the list-all form. Otherwise it calls `parseRecipeIndex`, the helper that `delete-recipe` also uses. The helper accepts digits only and rejects zero and values above `Integer.MAX_VALUE`. Leading zeros and surrounding spaces are accepted, so `list-recipes 01` selects recipe 1.
-
-The parser does not receive the recipe book, so whether the index exists is decided at execution. `execute` reads the book, then either returns the details of `recipes.get(index - 1)` or throws a `MishMashException`. The list-all form returns `Recipes:` followed by one `N. name (calories kcal)` line per recipe, or `No recipes yet. Use 'add-recipe' to add one.` for an empty book. An empty book is therefore an error only when an index was requested.
-
-#### Invalid input and recovery
-
-| Input or state | Where it is caught | Result |
-| --- | --- | --- |
-| Index that is not digits only (`abc`, `-1`, `1.5`, `1 2`), is `0`, or exceeds `Integer.MAX_VALUE` | `Parser.parseRecipeIndex` | Error ending with `Format: list-recipes [INDEX]`. |
-| Valid index, empty book | `ListRecipeCommand.execute` | Error telling the user to add a recipe. |
-| Valid index above the recipe count | `ListRecipeCommand.execute` | Error stating the valid range. |
-| No index, empty book | `ListRecipeCommand.execute` | Normal message, not an error. |
-| Command word with a different case or spelling (`List-Recipes`, `list-recipe`) | `Parser.parseNamedCommand` | `Unknown command` error. |
-
-Syntax errors start as an `IllegalArgumentException`. `parseListRecipe` wraps it in a `MishMashException` that keeps the original cause and ends with the list-recipes usage, so `MishMash.displayError` does not print the general command list. The two execution-time errors carry no `Format:` line, so `displayError` adds the format of every command. In every case the session continues and the recipe book is unchanged.
-
-#### Design choices and alternatives
-
-| Decision | Alternative | Reason for the current design |
-| --- | --- | --- |
-| One command with an optional index | A separate `show-recipe INDEX` command | There is one command word to learn, and the numbered list shows exactly the numbers that `edit-recipe` and `delete-recipe` need. |
-| Look the recipe up when the command executes | Look it up while parsing | The parser stays independent of application data, as for the other recipe commands, and the lookup sees the book as it is when the command runs. |
-| A nullable `index` means "list all" | Two command classes, or an `Optional<Integer>` field | It is the simplest option that is sufficient, and both forms share the book access. Two classes would be worth it if the forms diverged. |
-| The list shows only names and calories | Show all nutrition for every recipe | A compact list stays readable for a long book, and full details are one command away. |
-| Reuse `RecipeViewer` for the details | Format the text inside the command | A recipe is displayed identically after `add-recipe`, `edit-recipe`, and `list-recipes`. |
-
-#### Verification and maintenance
-
-`ListRecipeCommandTest` checks the numbered list, empty and duplicate-name books, the full details of the first, last, and a duplicate-named recipe, out-of-range and empty-book errors with the book left unchanged, repeated calls, and null arguments. `ParserTest` checks both forms, accepted variations such as leading zeros and extra whitespace, invalid arguments showing only the list-recipes usage, the largest index (which parses and fails only at execution), and near-miss command words. `MishMashTest` checks the console flow: the list followed by one recipe in full, an empty book, a bad index followed by recovery, and the numbers matching those used by `delete-recipe`.
-
-For manual verification, follow [List Recipes](#list-recipes) in the manual-testing appendix, or the User Guide's [Listing Recipes](UserGuide.md#listing-recipes) example. The class diagram and sequence diagram have editable sources and rendering instructions in [`docs/diagrams/list-recipes`](diagrams/list-recipes/README.md). When the implementation changes, check method names, message order, and the error paths against the code, then regenerate and inspect both SVGs.
-<!-- @@author -->
-
-<!-- @@author neil0618 -->
 ### Deleting a recipe
 
 #### Purpose and command contract
@@ -649,6 +382,173 @@ Syntax errors start as an `IllegalArgumentException`, which `parseDeleteRecipe` 
 `DeleteRecipeCommandTest` checks the confirmation text and removal, the first and last positions, repeated deletion at one index, duplicate names, emptying the book, out-of-range and empty-book errors with the book left unchanged, prompts that never modify the book, and null arguments. `ParserTest` checks a valid index, the question naming the recipe, leading zeros and extra whitespace, invalid arguments showing only the delete-recipe usage, and near-miss command words. `MishMashTest` checks the console flow: a confirmed transcript, a cancellation, end of input cancelling instead of deleting, a missing recipe never producing a question, and a later `edit-recipe` using the renumbered index.
 
 For manual verification, follow [Delete a Recipe](#delete-a-recipe) in the manual-testing appendix, or the User Guide's [Deleting a Recipe](UserGuide.md#deleting-a-recipe) example. The class diagram, sequence diagram, and activity diagram have editable sources and rendering instructions in [`docs/diagrams/delete-recipe`](diagrams/delete-recipe/README.md). When the implementation changes, check method names, message order, and the decision branches against the code, then regenerate and inspect all three SVGs.
+<!-- @@author -->
+
+<!-- @@author neil0618 -->
+### Listing recipes
+
+#### Purpose and command contract
+
+This feature implements the story: **As a user managing recipes, I want to list my recipes and inspect a selected recipe so that I can find and check its stored details.**
+
+`list-recipes [INDEX]` has two forms. Without an index it shows every recipe as a numbered line with its name and calories. With an index it shows that one recipe in full: nutrition, ingredients, and food tags. The index is one-based and equals the number shown in the list, which is also the number that `edit-recipe` and `delete-recipe` expect. For example, `list-recipes 2` shows the second recipe. Listing is read-only: it never changes the recipe book, the active plan, or the grocery list.
+
+#### Class responsibilities and relationships
+
+`Parser` validates the optional index and creates a `ListRecipeCommand`. The command keeps only a nullable `Integer index`, where `null` means "list every recipe". The recipe book is supplied only when `execute` runs, so the command reads the recipes as they are at that moment rather than a copy taken during parsing. Recipe details are formatted by `RecipeViewer`, the class that also formats the `add-recipe` and `edit-recipe` confirmations, so a recipe looks the same wherever it is shown.
+
+![Selected classes and relationships for recipe listing.](images/list-recipes/classes.svg)
+
+*Only feature-relevant members are shown. Dashed arrows show dependencies or interface realization; the solid arrow shows the book's stored, ordered list. `RecipeBook.getRecipes` returns a read-only copy, so listing cannot change the book.*
+
+#### Parsing and execution
+
+Parsing and execution are drawn together for `list-recipes 2`: the command is small, and both halves end in the same error path.
+
+![Parsing and execution of list-recipes 2.](images/list-recipes/execution.svg)
+
+*Dispatch from `parseCommand` to `parseListRecipe` is condensed. The note at the bottom describes the no-index form, which skips index parsing and the viewer.*
+
+`Parser.parseListRecipe` treats blank arguments as the list-all form. Otherwise it calls `parseRecipeIndex`, the helper that `delete-recipe` also uses. The helper accepts digits only and rejects zero and values above `Integer.MAX_VALUE`. Leading zeros and surrounding spaces are accepted, so `list-recipes 01` selects recipe 1.
+
+The parser does not receive the recipe book, so whether the index exists is decided at execution. `execute` reads the book, then either returns the details of `recipes.get(index - 1)` or throws a `MishMashException`. The list-all form returns `Recipes:` followed by one `N. name (calories kcal)` line per recipe, or `No recipes yet. Use 'add-recipe' to add one.` for an empty book. An empty book is therefore an error only when an index was requested.
+
+#### Invalid input and recovery
+
+| Input or state | Where it is caught | Result |
+| --- | --- | --- |
+| Index that is not digits only (`abc`, `-1`, `1.5`, `1 2`), is `0`, or exceeds `Integer.MAX_VALUE` | `Parser.parseRecipeIndex` | Error ending with `Format: list-recipes [INDEX]`. |
+| Valid index, empty book | `ListRecipeCommand.execute` | Error telling the user to add a recipe. |
+| Valid index above the recipe count | `ListRecipeCommand.execute` | Error stating the valid range. |
+| No index, empty book | `ListRecipeCommand.execute` | Normal message, not an error. |
+| Command word with a different case or spelling (`List-Recipes`, `list-recipe`) | `Parser.parseNamedCommand` | `Unknown command` error. |
+
+Syntax errors start as an `IllegalArgumentException`. `parseListRecipe` wraps it in a `MishMashException` that keeps the original cause and ends with the list-recipes usage, so `MishMash.displayError` does not print the general command list. The two execution-time errors carry no `Format:` line, so `displayError` adds the format of every command. In every case the session continues and the recipe book is unchanged.
+
+#### Design choices and alternatives
+
+| Decision | Alternative | Reason for the current design |
+| --- | --- | --- |
+| One command with an optional index | A separate `show-recipe INDEX` command | There is one command word to learn, and the numbered list shows exactly the numbers that `edit-recipe` and `delete-recipe` need. |
+| Look the recipe up when the command executes | Look it up while parsing | The parser stays independent of application data, as for the other recipe commands, and the lookup sees the book as it is when the command runs. |
+| A nullable `index` means "list all" | Two command classes, or an `Optional<Integer>` field | It is the simplest option that is sufficient, and both forms share the book access. Two classes would be worth it if the forms diverged. |
+| The list shows only names and calories | Show all nutrition for every recipe | A compact list stays readable for a long book, and full details are one command away. |
+| Reuse `RecipeViewer` for the details | Format the text inside the command | A recipe is displayed identically after `add-recipe`, `edit-recipe`, and `list-recipes`. |
+
+#### Verification and maintenance
+
+`ListRecipeCommandTest` checks the numbered list, empty and duplicate-name books, the full details of the first, last, and a duplicate-named recipe, out-of-range and empty-book errors with the book left unchanged, repeated calls, and null arguments. `ParserTest` checks both forms, accepted variations such as leading zeros and extra whitespace, invalid arguments showing only the list-recipes usage, the largest index (which parses and fails only at execution), and near-miss command words. `MishMashTest` checks the console flow: the list followed by one recipe in full, an empty book, a bad index followed by recovery, and the numbers matching those used by `delete-recipe`.
+
+For manual verification, follow [List Recipes](#list-recipes) in the manual-testing appendix, or the User Guide's [Listing Recipes](UserGuide.md#listing-recipes) example. The class diagram and sequence diagram have editable sources and rendering instructions in [`docs/diagrams/list-recipes`](diagrams/list-recipes/README.md). When the implementation changes, check method names, message order, and the error paths against the code, then regenerate and inspect both SVGs.
+<!-- @@author -->
+
+<!-- @@author peilingggg -->
+### Setting and viewing dietary preferences
+
+`Parser` delegates `set-diet` arguments to `DietaryPreferencesParser`. The parser validates a complete replacement `DietaryPreferences` value; omitted fields use unrestricted defaults. `DietarySettings` shares this immutable profile between commands. `view-diet` formats the current profile with `DietaryPreferences.describe()` and does not mutate state.
+
+`DietaryPreferences.isAllowed(Recipe)` combines named-diet exclusions, explicitly avoided `FoodTag` values, and normalized complete ingredient-name exclusions. Restricted profiles reject unclassified recipes. `FoodInfo` records user-declared categories; no ingredient database infers them.
+
+`SetDietCommand.confirmationPrompt(...)` requests confirmation only if an active plan conflicts with the proposed profile. On execution, `DietaryPlanner` preserves compatible days and generates replacements for conflicting days using the original generation request. Existing groceries are regenerated through `GroceryListGenerator`. If repair fails, the new profile is saved but the incompatible plan and groceries are cleared, with recovery guidance. A compatible existing plan is preserved. Cancellation happens in the application loop before execution.
+
+The complete replacement rule makes clearing restrictions possible with `set-diet diet/none`. Unlike partial edits in `set-targets`, omitted dietary fields are reset. This is simpler than separate add/remove operations but callers must resupply every restriction they want to retain. See the [User Guide](UserGuide.md#setting-dietary-preferences) for syntax and examples.
+
+<!-- @@author -->
+
+<!-- @@author GauthamNandi -->
+### Generating a meal plan
+
+`GeneratePlanCommand` combines command-specific targets with saved `TargetSettings`, filters recipes through the current dietary profile, and delegates selection to `MealPlanGenerator`. Each day contains three distinct recipes; recipes can recur on other days. With no targets, selection is random. With targets, the generator checks combinations against a 15% tolerance for every supplied nutrient. It examines all combinations when there are at most 5,000, otherwise a bounded random sample. Sampling bounds runtime but can miss a valid combination in a large recipe book.
+
+`ActiveMealPlan` stores the successful plan and its generation request. Replacement generation requires confirmation when a plan exists. Success invalidates previous groceries; failure preserves the prior plan.
+
+<!-- @@author -->
+
+<!-- @@author Rixte -->
+### Viewing a meal plan
+
+`ViewPlanCommand` and `MealPlanViewer` read the stored snapshot and display all days or one selected day, including nutrition totals and exact-target excess warnings. Viewing does not generate meals. The nutrition sections below explain totals and warnings in more detail.
+
+<!-- @@author -->
+
+<!-- @@author peilingggg -->
+### Command help
+
+`HelpCommand` returns the supported command names, purposes, and formats to the application loop. Syntax constants are shared with parsers where available, reducing duplication when a command changes. The command does not read console input or change application data. Invalid commands are handled by the loop, which displays an error and allows another command. See the [User Guide help instructions](UserGuide.md#viewing-available-commands-help).
+
+<!-- @@author -->
+
+<!-- @@author oilybikechain -->
+### Grocery command integration
+
+![Grocery class diagram showing command integration, active-plan snapshots, meal ingredients, and aggregation keys.](images/oilybikechain/grocery-classes.svg)
+
+*Grocery structure: the parser and command retain the same active-plan holder. Plain navigable
+associations allow shared model objects; they do not claim exclusive ownership. The optional grocery
+snapshot is abbreviated as an ordered collection with a note distinguishing absent and empty states.
+The temporary aggregation key is a dependency rather than a stored generator field.*
+
+#### Ingredient aggregation
+
+`GroceryItem` holds a trimmed, non-blank ingredient name and unit plus a nonnegative `BigDecimal`
+quantity. Recipe input separately requires strictly positive ingredient quantities; zero is supported
+by the grocery model and aggregation API. `toString()` uses plain decimal notation and removes
+insignificant trailing zeros, for example `Oil: 0.3ml`.
+
+`GroceryListGenerator.generate(List<GroceryItem>)` uses a `LinkedHashMap` keyed by an `ItemKey`
+record containing the ingredient name and unit. Each occurrence is merged with `BigDecimal::add`.
+Exact decimal addition avoids floating-point rounding, and insertion order preserves the first
+appearance of each key. `Rice:200g` and `Rice:100g` combine; `Rice:1kg`, `rice:100g`, and
+`Rice:1cups` remain separate. No unit conversion, spelling normalization, or portion scaling occurs.
+
+The method rejects a null list or item, returns an empty list for empty input, and publishes an
+unmodifiable result with `List.copyOf`. Inputs remain unchanged, and successive calls do not reuse
+previous totals. `GroceryListGeneratorTest` checks exact matching, incompatible units, different
+names, decimal precision, zero quantities, ordering, immutable output, repeated calls, and null inputs.
+
+#### Command parsing and shared state
+
+`Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
+
+The parser accepts `generate-list` without arguments and returns `GenerateListCommand` without reading or modifying the plan. During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator` combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and keeping incompatible units separate.
+
+`ActiveMealPlan.setGroceryList` copies the completed result into a read-only snapshot. `getGroceryList` returns an optional: absence means no list has been generated for the current plan, whereas a present empty list is valid. `ViewListCommand` reads this snapshot during execution and delegates formatting to `GroceryListViewer`; viewing never regenerates data.
+
+Successfully storing a replacement plan clears its old groceries. Failed plan generation or invalid command syntax leaves the previous state intact. All state is kept in memory for one session.
+
+The parse step rejects arguments with `generate-list does not accept arguments.` and
+`Format: generate-list`; it does not inspect the active plan. The command reads the latest plan
+when executed, so a command parsed before generation can use a subsequently generated plan. Without
+a plan it returns `No active meal plan. Use 'generate-plan' first.` without publishing a snapshot.
+Successful generation returns `Grocery list generated. Use 'view-list' to view it.` Only the finished
+result is stored, preserving any previous snapshot if generation fails.
+
+![Sequence diagram of generate-list parsing, active-plan lookup, ingredient collection, aggregation, and publication.](images/oilybikechain/grocery-execution.svg)
+
+*Grocery execution: parsing validates syntax without reading the plan. Execution counts every
+recipe occurrence, then publishes one completed snapshot. Ingredient-key lookup, decimal merging,
+and result-item creation are condensed inside the generator note. The existing application supplies
+confirmation handling, result display, and the next prompt.*
+
+`GenerateListCommandTest`, `ParserGenerateListTest`, and `ActiveMealPlanTest` cover missing plans,
+execution-time plan lookup, every recipe occurrence, repeated generation, syntax rejection, copying,
+and snapshot replacement. `MishMashGeneratePlanTest` exercises the generation-to-viewing connection
+through the console. Grocery-list formatting is supplied by the existing viewer rather than this
+aggregation contribution.
+
+Grocery parsing and viewing use `FINE` logs, successful generation logs counts at `INFO`, and rejected generation requests use `WARNING`. These loggers inherit the existing application configuration; no additional handlers are installed. New diagnostics exclude ingredient names and raw input.
+
+Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
+
+#### Maintaining the grocery and nutrition diagrams
+
+The six class and sequence diagrams above have editable sources and regeneration instructions in
+[`docs/diagrams/oilybikechain`](diagrams/oilybikechain/README.md). Generated SVGs are checked in under
+`docs/images/oilybikechain`. Use Java 25 and PlantUML 1.2026.9 with the existing shared style and
+Smetana class layout. Check method names, retained references, multiplicities, supplier indirection,
+message order, and failure paths against current code, then syntax-check, render, and inspect every
+image. Keep sources and SVGs synchronized. The contribution history identifies the relevant commits;
+teammates' viewing, generation, formatting, and dietary components are shown as integration context.
 <!-- @@author -->
 
 <!-- @@author neil0618 -->
@@ -733,27 +633,176 @@ In every case the session continues, and an error leaves the saved targets uncha
 For manual verification, follow [Set and View Daily Targets](#set-and-view-daily-targets) in the manual-testing appendix, or the User Guide's [Setting Daily Targets](UserGuide.md#setting-daily-targets) example. The class diagram and two sequence diagrams have editable sources and rendering instructions in [`docs/diagrams/targets`](diagrams/targets/README.md). When the implementation changes, check method names, message order, and branches against the code, then regenerate and inspect all three SVGs.
 <!-- @@author -->
 
-<!-- @@author oilybikechain -->
-### Contribution history: oilybikechain
+<!-- @@author GauthamNandi -->
+### Recording meals and tracking nutrition
 
-The following non-merge commits reachable from the current branch establish the scope of these
-contributions. Merge authorship does not imply ownership of the merged feature; the original
-meal-plan generator, plan viewer, grocery formatter, dietary repair, and shortfall command have
-separate contributors. The sections below describe the current integration with those components.
+#### Purpose and scope
 
-| Commit | Contribution documented here |
+This V2.0 enhancement supports two user stories:
+
+* **As a returning user, I want to record meals that I have eaten so that I can keep track of my
+  actual food intake.**
+* **As a user tracking nutrition, I want to calculate the total calories and macronutrients for each
+  meal so that I know the nutritional content of what I am eating.**
+
+It adds two commands:
+
+```text
+record-meal INDEX
+view-meals
+```
+
+`INDEX` is the position of a recipe in the `list-recipes` output, counting from 1, as for
+`delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal), protein, carbs and
+fats (g), and its macro split, followed by the totals for all recorded meals. Unlike `check-shortfall`,
+which examines the *planned* meals of the active plan, this feature records meals the user *has eaten*.
+The recorded meals are kept in memory for the session only, matching the product's current data boundary.
+
+A meal is one whole recipe, and a recipe stores the nutrition the user entered with `add-recipe`; nutrition
+is not derived from ingredients. The nutritional content of one meal is therefore read from its recipe. What
+the feature calculates is what the stored values do not give directly: the *totals* across all recorded
+meals, and for each meal the *macro split*, which is the share of the meal's macronutrient energy that comes
+from protein, carbohydrates and fats. The second user story is satisfied by showing each meal's own values
+and macro split together with those totals.
+
+#### Architecture-level view
+
+The feature follows the existing command workflow. `MishMash` reads input, asks `Parser` for a
+`Command`, executes it, and prints the returned text. Parsing validates syntax and creates the action;
+execution reads or changes session data. A new model class, `MealLog`, holds the recorded meals. Like
+`ActiveMealPlan`, it is session data shared between commands, but it is separate from the plan: the plan
+holds meals the user intends to eat, and the log holds meals the user has eaten.
+
+![Figure 11. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
+
+*Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
+associations with private role names; dashed arrows show dependencies or interface realization.
+`NutritionTotals` is the existing value record that `DayPlan` also uses for daily totals, and `MealLog`
+reuses it; its values are `long` so that adding many recipes cannot overflow. `MacroSplit` is new.*
+
+* `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
+  a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
+  `NutritionTotals`, the same record `DayPlan` returns for a day's meals. The commands never add up nutrition values themselves.
+* `MacroSplit` (model) is an immutable record of three whole-number percentages. `MacroSplit.of(recipe)`
+  calculates a recipe's split, and is empty when the recipe has no protein, carbs or fats to divide.
+* `RecordMealCommand` and `ViewMealsCommand` implement `Command`. Each retains the shared `MealLog`.
+* `MealLogViewer` (ui) turns the meals, their macro splits and the totals into text, in the same way
+  `MealPlanViewer` formats a meal plan. Keeping formatting out of the model and commands lets them be
+  tested without comparing layout text.
+* `Parser` owns the `MealLog` and passes it to the commands it builds, because `Command.execute` only
+  receives the `RecipeBook`. Every `Parser` constructor that is not given a log creates a fresh one, so
+  each session starts with no recorded meals. `Parser(MealLog)` and
+  `Parser(MealLog, MealPlanGenerator, ActiveMealPlan)` accept one, which lets tests supply and inspect
+  the log. The command classes receive the log through their own constructors.
+
+#### Recording a meal
+
+Figure 12 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
+`parseRecordMeal` is condensed into the parser lifeline.
+
+![Figure 12. Sequence for recording a meal.](images/record-meal/record-meal.svg)
+
+*Figure 12: Parsing returns a command without reading any data. The inherited confirmation step is
+omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
+`alt` fragment. The viewer asks `MacroSplit` for the recorded meal's split; its other formatting steps
+are omitted.*
+
+`Parser` checks that the argument is a single positive whole number. A missing, non-numeric, signed,
+zero or extra argument is rejected with the usage line `Format: record-meal INDEX`; nothing is read or
+changed. The command is created only after validation succeeds.
+
+During execution the command converts the index to a zero-based position, as `DeleteRecipeCommand`
+does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
+exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
+`MealLog.record(recipe)` and `MealLog.getTotals()`, then asks `MealLogViewer.viewRecorded` to format the
+recorded meal's calories, macros and macro split with the running totals, so the user sees the effect
+immediately. Recording a meal needs no confirmation: it is quick to repeat, and it changes only the log.
+
+#### Viewing recorded meals and totals
+
+![Figure 13. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
+
+*Figure 13: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
+fragment, and the per-meal macro split lookup as a `loop`.*
+
+`view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
+the meals from the `MealLog`. An empty log is a valid state, not an error, so the command returns
+`No meals recorded yet.` Otherwise it asks the log for the totals and delegates formatting to
+`MealLogViewer`. Each meal appears with its own calories, macros and macro split, which gives the per-meal
+nutrition required by the second user story, followed by one totals line. Viewing never changes the log.
+
+#### Macro split calculation
+
+`MacroSplit.fromGrams(protein, carbs, fats)` converts the grams to energy with the standard factors of
+4 kcal per gram of protein, 4 kcal per gram of carbohydrate and 9 kcal per gram of fat, then expresses each
+nutrient's energy as a percentage of the three nutrients' combined energy. For `Chicken Rice` with 40 g
+protein, 70 g carbs and 15 g fat, the energy is 160, 280 and 135 kcal, giving 27.8%, 48.7% and 23.5%.
+
+Whole-number percentages that are each rounded would not always add up to 100. The calculation therefore
+rounds every percentage down and gives the remaining points, one each, to the nutrients with the largest
+fractional parts, preferring protein, then carbs, then fats on a tie. The example becomes 28%, 49% and 23%.
+The three values always add up to 100.
+
+If a recipe has 0 g of all three nutrients there is nothing to divide, so `MacroSplit.of` returns an empty
+`Optional` and the viewer shows `Macro split: n/a`. The calculation uses `long` arithmetic, so the largest
+values a recipe can hold do not overflow.
+
+#### Invalid input and recovery
+
+The recoverable errors reuse the existing path: `Parser` or the command throws `MishMashException`,
+`MishMash.executeCommand` catches it, displays the message, and prompts for another command.
+
+| Boundary or invalid condition | Behavior |
 | --- | --- |
-| `667d642` | Ingredient quantity model and grocery aggregation by exact name and unit. |
-| `c3f6e95` | Grocery aggregation regression tests and API documentation. |
-| `6b960ad` | `generate-list` parsing, command execution, and shared grocery snapshot integration. |
-| `ba80853` | Preserved exception causes, generator assertions, and generation diagnostics. |
-| `4c82e81` | Combined daily nutrition totals through `DayPlan` and `NutritionTotals`. |
-| `f81dc10` | Daily warnings when planned nutrition exceeds exact generation targets. |
+| `record-meal` with no argument, a non-numeric, signed, zero or decimal index, or an extra token | Reject with the command format; no data is read or changed. |
+| Index larger than the number of recipes | Reject with `Recipe index must be between 1 and N.`; nothing is recorded. |
+| `record-meal` while the recipe book is empty | Reject with a message that there are no recipes to record; nothing is recorded. |
+| `view-meals` with any argument | Reject with the command format. |
+| `view-meals` before any meal is recorded | Return `No meals recorded yet.` |
+| Recipe deleted, edited with `edit-recipe`, or otherwise changed after a meal was recorded | The recorded meal keeps its original calories and macros. |
+| Same recipe recorded twice | Two entries are kept, and both count toward the totals. |
+| Recipe with 0 g of protein, carbs and fats | The meal is recorded and counted in the totals, and its split is shown as `Macro split: n/a`. |
 
-Earlier implementations on other branches are not additional features: `5ff6c3f` is the earlier
-grocery integration, and `b814afb` is the pre-update nutrition-warning implementation. The current
-guide describes their integrated replacements above. Profile and README edits are not product features.
+#### Rationale and alternatives considered
 
+| Decision | Alternative considered | Reason for the current choice |
+| --- | --- | --- |
+| Store the `Recipe` itself in the log | Store the recipe's index | `Recipe` is immutable, so the log keeps the nutrition as it was when the meal was eaten. Indexes shift whenever `delete-recipe` runs, so an old entry could silently point to a different recipe. |
+| `MealLog.getTotals()` sums the meals on every call | Keep running totals updated by `record` | The meal list is the single source of truth, so totals cannot drift out of step with it. Sessions are small, so the repeated sum costs nothing noticeable. Running totals would need extra care if removing meals is added later. |
+| `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | `Parser` already owns and shares `ActiveMealPlan`, and this leaves the `Command` interface and every existing command unchanged. Constructors that take a `MealLog` let tests supply their own, as the `ActiveMealPlan` constructors do. A context object becomes worthwhile if many more data holders are added. |
+| Pick a meal by recipe index | Type nutrition values in directly | Reusing stored recipes avoids duplicating the input and validation of `add-recipe` and keeps unchecked numbers out of the log. Free-text entry would help when eating out, so it is a possible extension. |
+| Show the share of macronutrient energy as the per-meal calculation | Show the share of the recipe's stated calories, or only grams | The stated calories are entered by the user and need not equal 4/4/9 kcal per gram of the entered macros, so shares of them could add up to more or less than 100%. Shares of the macro energy always add up to 100 and need no extra input. |
+| Round down and distribute the remaining points by largest remainder | Round each percentage to the nearest whole number | Plain rounding can give 99% or 101% in total, which looks like an error to a reader. Largest remainder keeps the total at exactly 100 and is deterministic. |
+| Return formatted text through `Command.execute`, using a small viewer | Print from the command or the model | The viewer matches `MealPlanViewer` and keeps layout out of the logic, so the model and commands can be tested without comparing layout text. |
+
+#### Limitations and possible extensions
+
+* The log lives in memory for one session and is lost when the application exits.
+* All meals form one list. A later version could add `d/DATE` to record meals against a day and show
+  daily totals, or compare the totals with the targets given to `check-shortfall`.
+* There is no command to remove or correct a recorded meal yet.
+* Each meal counts as one whole recipe; portion sizes are not supported, as for meal plans.
+
+#### Verification
+
+The feature is covered by `MealLogTest`, `MacroSplitTest`, `MealLogViewerTest`, `RecordMealCommandTest`,
+`ViewMealsCommandTest`, `ParserRecordMealTest`, and console-workflow tests in `MishMashTest`. They check
+the totals (including values beyond the `int` range), the macro split for typical, tied, single-nutrient,
+zero and very large values, the exact output layout, every invalid index in the table above, the empty-log
+and empty-book cases, that failed commands leave the log unchanged, and that the log is separate from the
+active plan. The manual checks are under [Record and View Meals](#record-and-view-meals); the use cases are
+UC11 and UC12.
+
+#### Diagram maintenance
+
+Editable sources for the three figures are under
+[`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
+`docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
+regeneration commands. Check every depicted call, branch and message against the code after any change, and
+update the sources and images together.
+<!-- @@author -->
+
+<!-- @@author oilybikechain -->
 ### Combined daily nutrition totals
 
 The structural view connects the combined totals API with the separate target-aware viewing path.
@@ -790,35 +839,9 @@ internals are condensed, and the caller represents an API client rather than the
 
 `DayPlanTest` covers ordinary meals, one meal, zero nutrition, an empty day, repeated recipes,
 independent days and repeated calls, unchanged meals, and totals above the integer range.
+<!-- @@author -->
 
-### Defensive checks and generation diagnostics
-
-`GeneratePlanCommand` retains an `IllegalArgumentException` as the cause when wrapping a generation
-failure in `MishMashException`. Parser validation for `generate-plan`, `delete-recipe`, and
-`list-recipes` likewise preserves the cause while adding the relevant command usage. Users receive
-the existing recoverable error and can retry; developers can inspect the original exception through
-`getCause()` or the application's rejection log. This does not add new command syntax.
-
-`MealPlanGenerator` uses assertions to check two internal invariants: the returned number of days
-matches the request, and candidate construction starts with enough recipes. Normal argument validation
-still handles user mistakes; assertions diagnose programming errors. Tests enable assertions through
-the existing Gradle configuration. Enable them in a direct application run with
-`java -ea -jar build/libs/MishMash.jar` when investigating invariants.
-
-Generation logs at `FINE` record the requested day count, recipe count, whether targets were supplied,
-and how many candidate combinations matched. They use the existing logger configuration and do not
-record recipe contents. `ParserTest.parseCommand_invalidArguments_preservesCauseAndUsage` checks
-the cause and usage for all three parsing paths; `GeneratePlanCommandTest` verifies the original
-generation cause is retained. These changes strengthen diagnostics around teammates' commands rather
-than implementing those commands.
-
-![Sequence diagram of invalid generate-plan input, cause-preserving exception wrapping, logging, and recovery.](images/oilybikechain/diagnostic-recovery.svg)
-
-*Diagnostic recovery: `generate-plan d/0` fails while parsing, so no command is constructed or
-executed. The outer exception retains the validation cause. Application error display and the next
-prompt are integration context; the added generator assertions and diagnostics belong to successful
-validation paths and are summarized in the diagram's note.*
-
+<!-- @@author oilybikechain -->
 ### Detecting exceeded nutrition targets
 
 `ActiveMealPlan` already retains the original `GeneratePlanRequest` alongside a generated plan for dietary
@@ -855,77 +878,6 @@ Tests cover exact comparison boundaries, omitted targets, simultaneous excesses,
 and day selection. Integration tests verify the generation tolerance, replacement after success or failure,
 legacy plans without requests, dietary repair and clearing, and independence from `check-shortfall`.
 Run `gradlew.bat test checkstyleMain checkstyleTest` with Java 25.
-
-### Grocery command integration
-
-![Grocery class diagram showing command integration, active-plan snapshots, meal ingredients, and aggregation keys.](images/oilybikechain/grocery-classes.svg)
-
-*Grocery structure: the parser and command retain the same active-plan holder. Plain navigable
-associations allow shared model objects; they do not claim exclusive ownership. The optional grocery
-snapshot is abbreviated as an ordered collection with a note distinguishing absent and empty states.
-The temporary aggregation key is a dependency rather than a stored generator field.*
-
-#### Ingredient aggregation
-
-`GroceryItem` holds a trimmed, non-blank ingredient name and unit plus a nonnegative `BigDecimal`
-quantity. Recipe input separately requires strictly positive ingredient quantities; zero is supported
-by the grocery model and aggregation API. `toString()` uses plain decimal notation and removes
-insignificant trailing zeros, for example `Oil: 0.3ml`.
-
-`GroceryListGenerator.generate(List<GroceryItem>)` uses a `LinkedHashMap` keyed by an `ItemKey`
-record containing the ingredient name and unit. Each occurrence is merged with `BigDecimal::add`.
-Exact decimal addition avoids floating-point rounding, and insertion order preserves the first
-appearance of each key. `Rice:200g` and `Rice:100g` combine; `Rice:1kg`, `rice:100g`, and
-`Rice:1cups` remain separate. No unit conversion, spelling normalization, or portion scaling occurs.
-
-The method rejects a null list or item, returns an empty list for empty input, and publishes an
-unmodifiable result with `List.copyOf`. Inputs remain unchanged, and successive calls do not reuse
-previous totals. `GroceryListGeneratorTest` checks exact matching, incompatible units, different
-names, decimal precision, zero quantities, ordering, immutable output, repeated calls, and null inputs.
-
-#### Command parsing and shared state
-
-`Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
-
-The parser accepts `generate-list` without arguments and returns `GenerateListCommand` without reading or modifying the plan. During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator` combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and keeping incompatible units separate.
-
-`ActiveMealPlan.setGroceryList` copies the completed result into a read-only snapshot. `getGroceryList` returns an optional: absence means no list has been generated for the current plan, whereas a present empty list is valid. `ViewListCommand` reads this snapshot during execution and delegates formatting to `GroceryListViewer`; viewing never regenerates data.
-
-Successfully storing a replacement plan clears its old groceries. Failed plan generation or invalid command syntax leaves the previous state intact. All state is kept in memory for one session.
-
-The parse step rejects arguments with `generate-list does not accept arguments.` and
-`Format: generate-list`; it does not inspect the active plan. The command reads the latest plan
-when executed, so a command parsed before generation can use a subsequently generated plan. Without
-a plan it returns `No active meal plan. Use 'generate-plan' first.` without publishing a snapshot.
-Successful generation returns `Grocery list generated. Use 'view-list' to view it.` Only the finished
-result is stored, preserving any previous snapshot if generation fails.
-
-![Sequence diagram of generate-list parsing, active-plan lookup, ingredient collection, aggregation, and publication.](images/oilybikechain/grocery-execution.svg)
-
-*Grocery execution: parsing validates syntax without reading the plan. Execution counts every
-recipe occurrence, then publishes one completed snapshot. Ingredient-key lookup, decimal merging,
-and result-item creation are condensed inside the generator note. The existing application supplies
-confirmation handling, result display, and the next prompt.*
-
-`GenerateListCommandTest`, `ParserGenerateListTest`, and `ActiveMealPlanTest` cover missing plans,
-execution-time plan lookup, every recipe occurrence, repeated generation, syntax rejection, copying,
-and snapshot replacement. `MishMashGeneratePlanTest` exercises the generation-to-viewing connection
-through the console. Grocery-list formatting is supplied by the existing viewer rather than this
-aggregation contribution.
-
-Grocery parsing and viewing use `FINE` logs, successful generation logs counts at `INFO`, and rejected generation requests use `WARNING`. These loggers inherit the existing application configuration; no additional handlers are installed. New diagnostics exclude ingredient names and raw input.
-
-Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to verify the integration.
-
-#### Maintaining the grocery and nutrition diagrams
-
-The six class and sequence diagrams above have editable sources and regeneration instructions in
-[`docs/diagrams/oilybikechain`](diagrams/oilybikechain/README.md). Generated SVGs are checked in under
-`docs/images/oilybikechain`. Use Java 25 and PlantUML 1.2026.9 with the existing shared style and
-Smetana class layout. Check method names, retained references, multiplicities, supplier indirection,
-message order, and failure paths against current code, then syntax-check, render, and inspect every
-image. Keep sources and SVGs synchronized. The contribution history identifies the relevant commits;
-teammates' viewing, generation, formatting, and dietary components are shown as integration context.
 <!-- @@author -->
 
 <!-- @@author Rixte -->
@@ -1150,180 +1102,300 @@ the diagrams display without a website plugin. The source README records the ren
 version and regeneration commands. Sources and images must be updated together after
 changes to methods, references, or control flow. Syntax checks verify that the diagrams
 render; accuracy also requires checking every depicted call and branch against the code.
-
 <!-- @@author -->
 
-<!-- @@author GauthamNandi -->
-### Recording meals and tracking nutrition
+<!-- @@author Rixte -->
+### Editing a recipe
 
-#### Purpose and scope
+#### Purpose and command contract
 
-This V2.0 enhancement supports two user stories:
+This feature implements the story: **As a returning user, I want to update an existing recipe's ingredients, quantities, and nutrition values so that my recipe information reflects how I prepare the dish.**
 
-* **As a returning user, I want to record meals that I have eaten so that I can keep track of my
-  actual food intake.**
-* **As a user tracking nutrition, I want to calculate the total calories and macronutrients for each
-  meal so that I know the nutritional content of what I am eating.**
+`edit-recipe INDEX` takes at least one optional recipe field: `n/`, `cal/`, `p/`, `c/`, `f/`, repeated `i/`, or `food/`. Nutrition and ingredient syntax use the same validation as `add-recipe`. Omitted fields are preserved, and supplied ingredients replace the complete list. For example, `edit-recipe 1 p/55 i/Chicken:220g i/Rice:150g` replaces protein and ingredients, preserving the name, calories, carbs, fats, and food declaration.
 
-It adds two commands:
+The index is one-based, matching `list-recipes` and `delete-recipe`. Duplicate names do not affect selection. Editing neither inserts nor removes entries. No persistent storage or undo history is introduced.
 
-```text
-record-meal INDEX
-view-meals
-```
+#### Class responsibilities and relationships
 
-`INDEX` is the position of a recipe in the `list-recipes` output, counting from 1, as for
-`delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal), protein, carbs and
-fats (g), and its macro split, followed by the totals for all recorded meals. Unlike `check-shortfall`,
-which examines the *planned* meals of the active plan, this feature records meals the user *has eaten*.
-The recorded meals are kept in memory for the session only, matching the product's current data boundary.
+The class diagram shows how parsing, edit data, execution, storage, and formatting fit together.
+`Parser` creates `RecipeChanges` and `EditRecipeCommand`. The command retains the requested changes
+and a displayed index; the recipe book is supplied only when `execute` runs.
 
-A meal is one whole recipe, and a recipe stores the nutrition the user entered with `add-recipe`; nutrition
-is not derived from ingredients. The nutritional content of one meal is therefore read from its recipe. What
-the feature calculates is what the stored values do not give directly: the *totals* across all recorded
-meals, and for each meal the *macro split*, which is the share of the meal's macronutrient energy that comes
-from protein, carbohydrates and fats. The second user story is satisfied by showing each meal's own values
-and macro split together with those totals.
+![Command responsibilities for recipe editing.](images/edit-recipe/classes.svg)
 
-#### Architecture-level view
+*Only feature-relevant members are shown. Solid arrows identify stored references; dashed arrows
+show dependencies or interface realization. The book is an execution parameter rather than a stored command field.
+Its ordered list permits repeated references; existing plans can retain the same recipe objects.*
 
-The feature follows the existing command workflow. `MishMash` reads input, asks `Parser` for a
-`Command`, executes it, and prints the returned text. Parsing validates syntax and creates the action;
-execution reads or changes session data. A new model class, `MealLog`, holds the recorded meals. Like
-`ActiveMealPlan`, it is session data shared between commands, but it is separate from the plan: the plan
-holds meals the user intends to eat, and the log holds meals the user has eaten.
+`RecipeChanges` is an immutable record containing only the requested changes. Nullable scalar fields mean unchanged; an empty ingredient list means unchanged. Its constructor rejects an empty edit, blank names, negative nutrition, and invalid ingredient quantities, and defensively copies ingredients. Nullable nutrition distinguishes an omitted value from a requested zero.
 
-![Figure 11. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
+#### Successful command parsing
 
-*Figure 11: Only members relevant to this enhancement are shown. Solid arrows are navigable
-associations with private role names; dashed arrows show dependencies or interface realization.
-`NutritionTotals` is the existing value record that `DayPlan` also uses for daily totals, and `MealLog`
-reuses it; its values are `long` so that adding many recipes cannot overflow. `MacroSplit` is new.*
+`Parser.parseEditRecipe` splits the index from the prefixed fields. It reuses `collectRecipeArguments`, `parseNutrition`, and `parseIngredient` rather than duplicating recipe syntax rules. Single-value prefixes cannot repeat; ingredients may repeat. Unknown prefixes, blank values, invalid numbers, zero ingredient quantities, and malformed indexes fail before a command is created. Parsing wraps validation errors in `MishMashException` with edit-specific usage and the original cause.
 
-* `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
-  a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
-  `NutritionTotals`, the same record `DayPlan` returns for a day's meals. The commands never add up nutrition values themselves.
-* `MacroSplit` (model) is an immutable record of three whole-number percentages. `MacroSplit.of(recipe)`
-  calculates a recipe's split, and is empty when the recipe has no protein, carbs or fats to divide.
-* `RecordMealCommand` and `ViewMealsCommand` implement `Command`. Each retains the shared `MealLog`.
-* `MealLogViewer` (ui) turns the meals, their macro splits and the totals into text, in the same way
-  `MealPlanViewer` formats a meal plan. Keeping formatting out of the model and commands lets them be
-  tested without comparing layout text.
-* `Parser` owns the `MealLog` and passes it to the commands it builds, because `Command.execute` only
-  receives the `RecipeBook`. Every `Parser` constructor that is not given a log creates a fresh one, so
-  each session starts with no recorded meals. `Parser(MealLog)` and
-  `Parser(MealLog, MealPlanGenerator, ActiveMealPlan)` accept one, which lets tests supply and inspect
-  the log. The command classes receive the log through their own constructors.
+The parsing sequence uses `edit-recipe 2 p/55 i/Chicken:220g i/Rice:150g`. Ingredient fields
+become a local replacement list, protein becomes 55, and omitted scalar fields remain null.
+Only after validation succeeds are the immutable changes and command constructed. The parser
+does not look up recipe 2; the recipe book may change before the command executes.
 
-#### Recording a meal
+![Successful parsing and construction of a recipe edit.](images/edit-recipe/parsing.svg)
 
-Figure 12 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
-`parseRecordMeal` is condensed into the parser lifeline.
+*Map/list creation, ingredient construction, dispatch, and repeated validation calls are condensed.
+The reference frame summarizes validation through the shared argument and ingredient helpers.
+The diagram shows nutrition parsing separately from collecting the prefixed values. Omitted food information
+is preserved later; it is not inferred or reset during parsing.*
 
-![Figure 12. Sequence for recording a meal.](images/record-meal/record-meal.svg)
+#### Execution and replacement
 
-*Figure 12: Parsing returns a command without reading any data. The inherited confirmation step is
-omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
-`alt` fragment. The viewer asks `MacroSplit` for the recorded meal's split; its other formatting steps
-are omitted.*
+`EditRecipeCommand` retains the displayed index and changes. It resolves the recipe from the book during execution, so omitted fields come from the current recipe rather than a stale parsing-time copy. It checks the book and index before calling `RecipeChanges.applyTo(original)`. That method builds a new `Recipe` through its existing constructor. The command formats confirmation with `RecipeViewer` before calling `RecipeBook.replace(index - 1, edited)`, so validation or formatting failure cannot leave a partially applied edit. `replace` validates both index and replacement before updating one list element.
 
-`Parser` checks that the argument is a single positive whole number. A missing, non-numeric, signed,
-zero or extra argument is rejected with the usage line `Format: record-meal INDEX`; nothing is read or
-changed. The command is created only after validation succeeds.
+![Position checks, formatting, and publication of a recipe edit.](images/edit-recipe/execution.svg)
 
-During execution the command converts the index to a zero-based position, as `DeleteRecipeCommand`
-does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
-exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
-`MealLog.record(recipe)` and `MealLog.getTotals()`, then asks `MealLogViewer.viewRecorded` to format the
-recorded meal's calories, macros and macro split with the running totals, so the user sees the effect
-immediately. Recording a meal needs no confirmation: it is quick to repeat, and it changes only the log.
+![Building the validated immutable replacement recipe.](images/edit-recipe/replacement.svg)
 
-#### Viewing recorded meals and totals
-
-![Figure 13. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
-
-*Figure 13: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
-fragment, and the per-meal macro split lookup as a `loop`.*
-
-`view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
-the meals from the `MealLog`. An empty log is a valid state, not an error, so the command returns
-`No meals recorded yet.` Otherwise it asks the log for the totals and delegates formatting to
-`MealLogViewer`. Each meal appears with its own calories, macros and macro split, which gives the per-meal
-nutrition required by the second user story, followed by one totals line. Viewing never changes the log.
-
-#### Macro split calculation
-
-`MacroSplit.fromGrams(protein, carbs, fats)` converts the grams to energy with the standard factors of
-4 kcal per gram of protein, 4 kcal per gram of carbohydrate and 9 kcal per gram of fat, then expresses each
-nutrient's energy as a percentage of the three nutrients' combined energy. For `Chicken Rice` with 40 g
-protein, 70 g carbs and 15 g fat, the energy is 160, 280 and 135 kcal, giving 27.8%, 48.7% and 23.5%.
-
-Whole-number percentages that are each rounded would not always add up to 100. The calculation therefore
-rounds every percentage down and gives the remaining points, one each, to the nutrients with the largest
-fractional parts, preferring protein, then carbs, then fats on a tie. The example becomes 28%, 49% and 23%.
-The three values always add up to 100.
-
-If a recipe has 0 g of all three nutrients there is nothing to divide, so `MacroSplit.of` returns an empty
-`Optional` and the viewer shows `Macro split: n/a`. The calculation uses `long` arithmetic, so the largest
-values a recipe can hold do not overflow.
+*Execution is split between command coordination and replacement construction. The replacement
+view expands `RecipeChanges.applyTo(original)` for an edit such as index 1 and `p/55`. Most getter calls, repeated
+size checks, logging, and formatting details are condensed. Empty books and out-of-range indexes
+raise `MishMashException` before replacement. The current index is resolved at execution time,
+including any renumbering caused by earlier deletions.*
 
 #### Invalid input and recovery
 
-The recoverable errors reuse the existing path: `Parser` or the command throws `MishMashException`,
-`MishMash.executeCommand` catches it, displays the message, and prompts for another command.
+For `edit-recipe 1 n/Changed p/-5`, collecting the local fields succeeds, but `parseNutrition`
+rejects the negative protein value. `parseEditRecipe` wraps the `IllegalArgumentException` in
+`MishMashException`, retaining its cause and attaching edit-specific usage. `MishMash` displays
+the error and then prompts for another command.
 
-| Boundary or invalid condition | Behavior |
-| --- | --- |
-| `record-meal` with no argument, a non-numeric, signed, zero or decimal index, or an extra token | Reject with the command format; no data is read or changed. |
-| Index larger than the number of recipes | Reject with `Recipe index must be between 1 and N.`; nothing is recorded. |
-| `record-meal` while the recipe book is empty | Reject with a message that there are no recipes to record; nothing is recorded. |
-| `view-meals` with any argument | Reject with the command format. |
-| `view-meals` before any meal is recorded | Return `No meals recorded yet.` |
-| Recipe deleted, edited with `edit-recipe`, or otherwise changed after a meal was recorded | The recorded meal keeps its original calories and macros. |
-| Same recipe recorded twice | Two entries are kept, and both count toward the totals. |
-| Recipe with 0 g of protein, carbs and fats | The meal is recorded and counted in the totals, and its split is shown as `Macro split: n/a`. |
+![Validation failure and recovery without applying a partial edit.](images/edit-recipe/invalid-input.svg)
 
-#### Rationale and alternatives considered
+*Dispatch and the omitted calorie field are condensed. No changes record, command, or replacement
+recipe is created for this input, so even the otherwise valid `n/Changed` field is never applied.
+The recipe book, active meals, and groceries remain unchanged. A later valid command follows
+the normal parsing and execution paths.*
 
-| Decision | Alternative considered | Reason for the current choice |
-| --- | --- | --- |
-| Store the `Recipe` itself in the log | Store the recipe's index | `Recipe` is immutable, so the log keeps the nutrition as it was when the meal was eaten. Indexes shift whenever `delete-recipe` runs, so an old entry could silently point to a different recipe. |
-| `MealLog.getTotals()` sums the meals on every call | Keep running totals updated by `record` | The meal list is the single source of truth, so totals cannot drift out of step with it. Sessions are small, so the repeated sum costs nothing noticeable. Running totals would need extra care if removing meals is added later. |
-| `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | `Parser` already owns and shares `ActiveMealPlan`, and this leaves the `Command` interface and every existing command unchanged. Constructors that take a `MealLog` let tests supply their own, as the `ActiveMealPlan` constructors do. A context object becomes worthwhile if many more data holders are added. |
-| Pick a meal by recipe index | Type nutrition values in directly | Reusing stored recipes avoids duplicating the input and validation of `add-recipe` and keeps unchecked numbers out of the log. Free-text entry would help when eating out, so it is a possible extension. |
-| Show the share of macronutrient energy as the per-meal calculation | Show the share of the recipe's stated calories, or only grams | The stated calories are entered by the user and need not equal 4/4/9 kcal per gram of the entered macros, so shares of them could add up to more or less than 100%. Shares of the macro energy always add up to 100 and need no extra input. |
-| Round down and distribute the remaining points by largest remainder | Round each percentage to the nearest whole number | Plain rounding can give 99% or 101% in total, which looks like an error to a reader. Largest remainder keeps the total at exactly 100 and is deterministic. |
-| Return formatted text through `Command.execute`, using a small viewer | Print from the command or the model | The viewer matches `MealPlanViewer` and keeps layout out of the logic, so the model and commands can be tested without comparing layout text. |
+#### Snapshots and dietary information
 
-#### Limitations and possible extensions
+`Recipe` objects remain immutable. Replacing the book entry preserves references already held by `DayPlan`, earlier recipe-book snapshots, and the original recipe itself. The command does not access `ActiveMealPlan`; active meals, original generation settings, nutrition totals, and generated groceries therefore remain consistent. Even regenerating groceries from an existing plan uses that plan's old recipes. Users must generate a new plan and then groceries to incorporate edits; confirmation explains this.
 
-* The log lives in memory for one session and is lost when the application exits.
-* All meals form one list. A later version could add `d/DATE` to record meals against a day and show
-  daily totals, or compare the totals with the targets given to `check-shortfall`.
-* There is no command to remove or correct a recorded meal yet.
-* Each meal counts as one whole recipe; portion sizes are not supported, as for meal plans.
+Future generation reads the edited book entry, including its food tags and ingredients for dietary filtering. Omitted `food/` preserves its previous declaration. Ingredient edits do not infer food categories; users provide a complete updated declaration when needed. Existing plans do not undergo dietary repair as a side effect of recipe editing.
 
-#### Verification
+#### Design choices and alternatives
 
-The feature is covered by `MealLogTest`, `MacroSplitTest`, `MealLogViewerTest`, `RecordMealCommandTest`,
-`ViewMealsCommandTest`, `ParserRecordMealTest`, and console-workflow tests in `MishMashTest`. They check
-the totals (including values beyond the `int` range), the macro split for typical, tied, single-nutrient,
-zero and very large values, the exact output layout, every invalid index in the table above, the empty-log
-and empty-book cases, that failed commands leave the log unchanged, and that the log is separate from the
-active plan. The manual checks are under [Record and View Meals](#record-and-view-meals); the use cases are
-UC11 and UC12.
+Replacing an immutable recipe keeps editing local to the recipe book and avoids silently changing previously planned meals or invalidating a saved grocery list. Mutating recipes in place would require coordinating nutrition, dietary compatibility, and grocery regeneration throughout active plans. Automatic plan repair could be added separately if its behavior is specified.
 
-#### Diagram maintenance
+Complete ingredient-list replacement provides addition, quantity changes, and removal without inventing ingredient identifiers or separate subcommands. Requiring every recipe field would be simpler but would make small corrections tedious. The changes record keeps optional edits separate from the complete, validated `Recipe` model.
 
-Editable sources for the three figures are under
-[`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
-`docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
-regeneration commands. Check every depicted call, branch and message against the code after any change, and
-update the sources and images together.
+#### Verification and maintenance
 
+`ParserEditRecipeTest` checks single-field edits, all-field edits in a different order, ingredient replacement, food declarations, whitespace, nutrition boundaries, help, and invalid input. `EditRecipeCommandTest` covers duplicate names, first/middle/last positions, missing targets, execution-time lookup, dietary filtering, and snapshot preservation through plan and grocery regeneration. `RecipeChangesTest` checks defensive copying and model validation. `RecipeBookTest` checks replacement failure and snapshot behavior. `MishMashTest` checks CLI recovery and subsequent detailed listing.
+
+For manual verification, run the User Guide's [editing example](UserGuide.md#editing-a-recipe), inspect `list-recipes 1`, and try `edit-recipe 1 p/-5`. The failed command must preserve the last valid recipe. With three recipes, generate meals and groceries, edit one recipe, and verify that viewing still shows the original plan. Generate the plan and groceries again to see the edited recipe.
+
+The class diagram and three sequence diagrams have editable sources and rendering instructions in
+[`docs/diagrams/edit-recipe`](diagrams/edit-recipe/README.md). When updating the implementation,
+check method names, object creation, message order, exception paths, and relationship multiplicities
+against the code, then regenerate and visually inspect all four SVGs.
 <!-- @@author -->
 
-## Documentation Logging Testing Configuration and DevOps
+<!-- @@author Rixte -->
+### Confirming plan changes
+
+This implements [#61](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/61): users must agree before
+an existing plan is cleared or replaced. The existing `Command.confirmationPrompt(RecipeBook)` hook
+keeps console interaction in `MishMash` and state decisions in each command.
+
+![Deciding whether a plan change needs confirmation.](images/confirm-plan/decision.svg)
+
+*Prompt lookup after syntax validation; the command-specific conditions are listed below.*
+
+The parser validates syntax first. `MishMash.executeCommand` then requests a prompt before calling
+`execute`. An empty `Optional` proceeds directly. Otherwise `userConfirms` reads one line: only `y`
+or `yes`, ignoring case and surrounding spaces, permits execution. All other answers and EOF return
+`Cancelled. Nothing was changed.` No command execution or state mutation happens on cancellation.
+A command entered as an answer is consumed as that answer and must be entered again at the command prompt.
+
+![Executing a plan change after agreement.](images/confirm-plan/execution.svg)
+
+*An accepted answer permits command execution; its result may still be a recoverable error.*
+
+![Cancelling a plan change without executing it.](images/confirm-plan/cancellation.svg)
+
+*Other answers and EOF skip execution and preserve the session state.*
+
+| Command | Prompt decision, using current shared state |
+| --- | --- |
+| `ResetPlanCommand` | Ask if any plan, generation request, or grocery snapshot is present, including an empty snapshot. |
+| `GeneratePlanCommand` | Ask if a plan exists; successful generation replaces it and clears groceries. |
+| `SetDietCommand` | Ask if an existing plan is incompatible with the proposed preferences. |
+
+Prompts never generate replacements or change settings. They read the holder when called, rather than
+capturing state during parsing, so reused commands see the latest plan. A first generation, an empty
+reset, and a compatible dietary change need no answer. Dietary confirmation mentions both repair and
+clearing on failure because that command saves the new preferences even if repair cannot succeed.
+Cancelling it preserves the previous preferences as well as the plan. Failed `generate-plan` execution
+continues to preserve the old plan, original request, and grocery snapshot.
+
+**Design choice:** Reusing the existing hook avoids passing scanners into commands or storing a
+confirmation flag in the model. Commands remain independently testable. Direct callers of `execute`
+must perform confirmation themselves if needed; execution deliberately contains no console I/O.
+Generation feasibility is checked after agreement, so an impossible but syntactically valid request
+can still ask a question. Pre-generating a candidate would avoid that question but add speculative work
+and cached state to the prompt path. This single-threaded console has no concurrent command execution
+between asking and executing.
+
+**Testing:** `PlanConfirmationTest` covers accepted and rejected answers, EOF, state preservation,
+invalid syntax, current-state lookup, orphaned reset state, and confirmed generation or dietary failures.
+Existing console regression transcripts supply explicit answers at new prompts. Run Java 25 with
+`./gradlew test check jacocoTestReport`; the HTML report is in `build/reports/jacoco/test/html/index.html`.
+`check` requires 100% line and branch coverage for the three affected command classes. That threshold
+is feature-specific and does not imply 100% coverage for the entire application.
+
+**Manual verification:** With a plan and groceries present, cancel reset, replacement generation, and
+an incompatible dietary change. Check `view-plan`, `view-list`, `view-diet`, `view-targets`, and
+`view-meals` afterwards. Confirm reset and check both lists are absent. Generate again, confirm an
+impossible replacement, and verify the plan and groceries survive the error. Try malformed syntax
+and verify it reports an error without consuming the following command as an answer.
+<!-- @@author -->
+
+<!-- @@author Rixte -->
+### Resetting a meal plan
+
+#### Purpose and command contract
+
+This enhancement implements #53: **As a returning user, I want to clear my current meal plan and its generated
+grocery list while keeping my recipes, personal settings, and food intake records so that I can start planning
+again without losing my other information.**
+
+`reset-plan` accepts no arguments. A valid reset removes the active `MealPlan`, its `GeneratePlanRequest`
+(including that plan's daily nutrition targets), and its optional grocery snapshot. It preserves the
+`RecipeBook`, `DietarySettings`, `TargetSettings`, and `MealLog`. The targets attached to the removed
+generation request are cleared; personal targets saved with `set-targets` remain available for later
+generation. Repeating a reset on an empty holder returns a no-plan message.
+
+#### Parsing, execution, and ownership
+
+![Reset command ownership and plan-holder dependency.](images/reset-plan/classes.svg)
+
+*Only reset dependencies are shown. Recipes, dietary settings, saved targets, and recorded meals
+are owned elsewhere; their preservation is described below.*
+
+`Parser.parseResetPlan` validates arguments before constructing `ResetPlanCommand`. Parsing only retains
+the shared `ActiveMealPlan` reference; it does not clear state. Arguments produce a `MishMashException` with
+reset-specific usage, allowing the user to retry at the next prompt without losing data.
+
+![Parsing a reset without changing application data.](images/reset-plan/parsing.svg)
+
+At execution, the command checks whether a plan or groceries were present, then calls the existing
+`ActiveMealPlan.clear()`. That method clears the plan, original generation request, and groceries together.
+The command verifies the clear postcondition before success is logged or reported. A failed clear or
+remaining plan state produces a recoverable `MishMashException`, so the session can continue with its
+recipes, dietary settings, and recorded meals. This check runs whether Java assertions are enabled or
+disabled. The original cause is retained for diagnostics when clearing throws a runtime exception.
+`FINE` logging records only whether plan and grocery state were present, without recipe names or contents.
+
+![Reset execution after agreement, including recoverable failures.](images/reset-plan/execution.svg)
+
+The command only holds the active-plan object. It does not receive dietary settings, saved targets, or the
+meal log, and does not read or mutate the recipe-book parameter inherited from `Command.execute`. This limited access
+makes preserving unrelated session data straightforward. Existing immutable snapshots held by callers
+remain valid after the active holder is cleared.
+
+#### Design choices and boundaries
+
+Reusing `ActiveMealPlan.clear()` avoids duplicating state-clearing logic already used by dietary repair.
+Creating a replacement `ActiveMealPlan` instead would break references held by the parser and commands.
+Clearing individual fields from the command would expose model internals and risk retaining stale targets
+or groceries. Clearing the recipe book or reconstructing the parser would remove unrelated session data.
+
+The command reads state when it executes, so a command parsed before generation also clears a subsequently
+generated plan. Legacy plans without a retained generation request and present-but-empty grocery snapshots
+are supported. A grocery snapshot remaining without a plan is also removed. No new plan or groceries are
+created during reset.
+
+![Rejected reset arguments followed by a valid retry.](images/reset-plan/invalid-input.svg)
+
+*The retry follows normal parsing and then confirmation when state exists; it does not bypass
+the confirmation workflow.*
+
+Reset confirmation is implemented by `ResetPlanCommand.confirmationPrompt`. See
+[Confirming plan changes](#confirming-plan-changes) for the shared interaction and replacement paths.
+
+#### Tests and manual verification
+
+`ResetPlanCommandTest` covers plan/request/grocery clearing, repeated resets, legacy and empty plans,
+current-state lookup, null dependencies, and recoverable failures. `ResetPlanDiagnosticsTest` captures state
+summaries with temporary logging settings and checks failure and retry diagnostics. `ParserResetPlanTest`
+covers whitespace, rejected arguments, case sensitivity, deferred execution, and help.
+`ResetPlanIntegrationTest` verifies preservation of recipes, dietary restrictions, recorded meals, and old
+immutable snapshots, followed by regeneration. It also distinguishes preserved personal targets from
+the removed plan's targets and checks generation using saved targets after reset.
+`MishMashResetPlanTest` exercises supplied application
+sessions, ordered recovery after invalid input or failed reset, and end-of-input behaviour. Failed-reset
+cases include an exception with a null message and verify retained data before retrying successfully.
+The expanded cases cover one-to-seven-day plans, maximum targets, duplicate
+recipe entries, repeated reset cycles, resets after failed generation, and isolation between parser sessions.
+
+For manual verification, add three suitable recipes, record a meal, set compatible dietary preferences,
+generate a targeted two-day plan, and generate groceries. Run `reset-plan`, then check `view-plan`,
+`view-list`, and `check-shortfall`: each should report missing generated data. Verify `list-recipes`,
+`view-diet`, and `view-meals` are unchanged. Generate a new one-day plan and groceries, then verify they
+use the retained recipes and dietary settings. Try `reset-plan extra` before a valid reset; rejection
+must preserve the existing plan and groceries. Repeat a valid reset and verify the no-plan message.
+<!-- @@author -->
+
+<!-- @@author oilybikechain -->
+### Defensive checks and generation diagnostics
+
+`GeneratePlanCommand` retains an `IllegalArgumentException` as the cause when wrapping a generation
+failure in `MishMashException`. Parser validation for `generate-plan`, `delete-recipe`, and
+`list-recipes` likewise preserves the cause while adding the relevant command usage. Users receive
+the existing recoverable error and can retry; developers can inspect the original exception through
+`getCause()` or the application's rejection log. This does not add new command syntax.
+
+`MealPlanGenerator` uses assertions to check two internal invariants: the returned number of days
+matches the request, and candidate construction starts with enough recipes. Normal argument validation
+still handles user mistakes; assertions diagnose programming errors. Tests enable assertions through
+the existing Gradle configuration. Enable them in a direct application run with
+`java -ea -jar build/libs/MishMash.jar` when investigating invariants.
+
+Generation logs at `FINE` record the requested day count, recipe count, whether targets were supplied,
+and how many candidate combinations matched. They use the existing logger configuration and do not
+record recipe contents. `ParserTest.parseCommand_invalidArguments_preservesCauseAndUsage` checks
+the cause and usage for all three parsing paths; `GeneratePlanCommandTest` verifies the original
+generation cause is retained. These changes strengthen diagnostics around teammates' commands rather
+than implementing those commands.
+
+![Sequence diagram of invalid generate-plan input, cause-preserving exception wrapping, logging, and recovery.](images/oilybikechain/diagnostic-recovery.svg)
+
+*Diagnostic recovery: `generate-plan d/0` fails while parsing, so no command is constructed or
+executed. The outer exception retains the validation cause. Application error display and the next
+prompt are integration context; the added generator assertions and diagnostics belong to successful
+validation paths and are summarized in the diagram's note.*
+<!-- @@author -->
+
+<!-- @@author oilybikechain -->
+### Contribution history: oilybikechain
+
+The following non-merge commits reachable from the current branch establish the scope of these
+contributions. Merge authorship does not imply ownership of the merged feature; the original
+meal-plan generator, plan viewer, grocery formatter, dietary repair, and shortfall command have
+separate contributors. The sections below describe the current integration with those components.
+
+| Commit | Contribution documented here |
+| --- | --- |
+| `667d642` | Ingredient quantity model and grocery aggregation by exact name and unit. |
+| `c3f6e95` | Grocery aggregation regression tests and API documentation. |
+| `6b960ad` | `generate-list` parsing, command execution, and shared grocery snapshot integration. |
+| `ba80853` | Preserved exception causes, generator assertions, and generation diagnostics. |
+| `4c82e81` | Combined daily nutrition totals through `DayPlan` and `NutritionTotals`. |
+| `f81dc10` | Daily warnings when planned nutrition exceeds exact generation targets. |
+
+Earlier implementations on other branches are not additional features: `5ff6c3f` is the earlier
+grocery integration, and `b814afb` is the pre-update nutrition-warning implementation. The current
+guide describes their integrated replacements above. Profile and README edits are not product features.
+<!-- @@author -->
+
+## Documentation, Logging, Testing, Configuration and DevOps
 
 ### Documentation
 
@@ -1387,10 +1459,7 @@ The supported plan length is 1 to 7 days. Each generated day contains exactly th
 GitHub Actions runs `./gradlew check` for pushes and pull requests on Ubuntu, macOS, and Windows using Java 25. Check the resulting reports before merging changes.
 
 The Gradle build packages the application as `build/libs/MishMash.jar`. Release documentation should use that filename and describe the features included in the actual release.
-
-## Appendix Requirements
-
-### Product Scope
+## Appendix A: Product Scope
 
 **Target user profile:** Users who prepare meals in advance, want to organise recipes and review calorie or macronutrient totals, and are comfortable entering text commands. Users provide their own recipes and nutrition information.
 
@@ -1398,40 +1467,55 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 
 **Current boundaries:** Data lasts for one session. Nutrition is entered by the user rather than calculated from an ingredient database. Plans use whole recipes without portion scaling. Ingredient names and units are matched exactly; automatic unit conversion and grocery-item ticking are not supported.
 
-### User Stories for Current Functionality
+## Appendix B: User Stories
 
-| As a ... | I want to ... | So that I can ... |
-| --- | --- | --- |
-| New user | View available commands and formats | Learn how to use the application |
-| Meal prep user | Add a recipe with nutrition, ingredients, and quantities | Make it available for planning |
-| User managing recipes | List recipes and inspect a selected recipe | Find and check its stored details |
-| Returning user | Update an existing recipe's ingredients, quantities, and nutrition | Keep recipe information consistent with how I prepare the dish |
-| User managing recipes | Confirm deletion of a selected recipe | Check that I am removing the intended entry |
-| Meal prep user | Generate a random meal plan | Reduce manual meal selection |
-| User tracking nutrition | Supply daily calorie and macronutrient targets | Generate meals within the supported tolerance |
-| User tracking nutrition | Set my daily calorie target once | Have my meal plans meet my desired calorie intake without retyping it |
-| User tracking nutrition | Set my daily protein, carbohydrate, and fat targets once | Have my meal plans meet my desired macronutrient intake without retyping them |
-| User tracking nutrition | See daily excesses above my generation targets | Identify days that exceed an exact target despite the generation tolerance |
-| User tracking nutrition | Detect when planned meals fall short of calorie or macronutrient targets | Add or adjust meals accordingly |
-| Meal prep user | View all planned days or a selected day | Review meals and daily nutrition totals |
-| Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
-| Shopper | View the generated grocery list | See what to purchase |
-| Returning user | Record the meals that I have eaten | Keep track of my actual food intake |
-| User tracking nutrition | See the calories, macronutrients, and macro split of each recorded meal, and their totals | Know the nutritional content of what I am eating |
-| User who makes a typing mistake | Receive an error and enter another command | Correct the mistake without restarting |
+Priorities follow the AB3 convention: `***` essential, `**` useful, `*` optional. Grey rows are the v1.0 MVP; green rows are the v2.0 MVP. Text labels retain that meaning when colour is unavailable. Owners record the team's planned responsibility, rather than attributing every later integration change.
+
+<table>
+<thead><tr><th>Release</th><th>Priority</th><th>As a ...</th><th>I want to ...</th><th>So that I can ...</th><th>Owner</th><th>Current support</th></tr></thead>
+<tbody>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>Meal prep user</td><td>Add a recipe</td><td>Use my own dishes in meal plans</td><td>Pei Ling</td><td><code>add-recipe</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>User managing recipes</td><td>Delete a recipe</td><td>Remove dishes I no longer need</td><td>Neil</td><td><code>delete-recipe</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>User managing recipes</td><td>List recipes and inspect one recipe</td><td>Choose a dish and check its details</td><td>Neil</td><td><code>list-recipes [INDEX]</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>Meal prep user</td><td>Generate a random meal plan</td><td>Reduce manual meal selection</td><td>Gautham</td><td><code>generate-plan</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>Shopper</td><td>Generate a grocery list</td><td>Obtain combined ingredient quantities for my plan</td><td>Justin</td><td><code>generate-list</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>Shopper</td><td>View the grocery list</td><td>See what to purchase</td><td>Samantha</td><td><code>view-list</code></td></tr>
+<tr style="background-color: #e6e6e6; color: #111111;"><td>v1.0 MVP</td><td>***</td><td>Meal prep user</td><td>View my meal plan</td><td>Review the meals selected for each day</td><td>Samantha</td><td><code>view-plan</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User with dietary requirements</td><td>Set dietary preferences and restrictions</td><td>Generate meals compatible with my declared requirements</td><td>Pei Ling</td><td><code>set-diet</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>New user</td><td>Receive assistance from a help command</td><td>Find available commands and their formats</td><td>Pei Ling</td><td><code>help</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Set a daily calorie target</td><td>Plan toward my desired calorie intake</td><td>Neil</td><td><code>set-targets cal/...</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Set daily macronutrient targets</td><td>Plan toward my protein, carbohydrate, and fat goals</td><td>Neil</td><td><code>set-targets p/... c/... f/...</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking intake</td><td>Record meals eaten</td><td>Keep track of my actual food intake</td><td>Gautham</td><td><code>record-meal</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Calculate nutrition totals for each meal</td><td>Review each recorded meal's nutrition and macro split</td><td>Gautham</td><td><code>view-meals</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Calculate daily nutrition totals</td><td>Review the combined nutrition of each planned day</td><td>Justin</td><td><code>view-plan</code>; recorded totals are session-wide</td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Detect meal plans that exceed nutrition targets</td><td>Identify days above my exact generation targets</td><td>Justin</td><td><code>view-plan</code> warnings</td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User tracking nutrition</td><td>Detect meal plans that fall short of nutrition targets</td><td>Identify deficits against the targets I supply</td><td>Samantha</td><td><code>check-shortfall</code></td></tr>
+<tr style="background-color: #d9ead3; color: #111111;"><td>v2.0 MVP</td><td>***</td><td>User managing recipes</td><td>Edit an existing recipe</td><td>Keep its details consistent with how I prepare it</td><td>Samantha</td><td><code>edit-recipe</code></td></tr>
+</tbody>
+</table>
+
+### v2.0b Follow-up Stories
+
+This is a source-checkout audit against the [v2.0b milestone](https://github.com/AY2627S1-CS2113-W13-4/tp/issues?q=is%3Aissue+milestone%3Av2.0b), not a claim that every milestone item has shipped. An open issue can have partial or existing support.
+
+| Priority | As a ... | I want to ... | So that I can ... | Issue | Support in this checkout |
+| --- | --- | --- | --- | --- | --- |
+| `**` | Returning user | Reset my active plan and groceries | Start planning again while keeping recipes, settings, and intake records | [#53](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/53) | Implemented: `reset-plan`. |
+| `**` | Returning user | Confirm plan removal or replacement | Avoid losing a plan accidentally | [#61](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/61) | Implemented for the documented plan-changing commands. |
+| `**` | User with dietary requirements | View my dietary settings | Check which restrictions apply to generation | [#71](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/71) | Implemented: `view-diet`. |
+| `**` | User with dietary requirements | Clear my dietary restrictions | Generate meals without restrictions | [#72](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/72) | Available through `set-diet diet/none`; issue remains open. |
+| `**` | Meal prep user | Understand unsuccessful generation | Know which recipes or settings to change | [#59](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/59) | Existing diagnostics and dietary-repair recovery; check issue acceptance before closing. |
+| `**` | Meal prep user | Replace an individual planned meal | Adapt a plan to what I want to eat | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) | Coming soon (v2.0b); no individual replacement command. |
+| `**` | Meal prep user | Adjust a planned meal's portion | Match nutrition and grocery quantities to my serving | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) | Coming soon (v2.0b); whole-recipe portions only. |
+| `**` | Meal prep user | Customise one planned meal's ingredients | Adapt that meal without editing the original recipe | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) | Coming soon (v2.0b); recipe editing does not change existing plan snapshots. |
+| `**` | User tracking intake | Review recorded meals by date | Understand my intake for a selected day | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) | Coming soon (v2.0b); records have no dates. |
+| `**` | User tracking intake | Correct or remove a recorded meal | Keep my intake records accurate | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) | Coming soon (v2.0b); no correction or removal command. |
+
+**Needs clarification:** [#51](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/51) is titled “Retain data between sessions”, but its body repeats the reset-plan story. Persistence is not implemented. Confirm the intended requirement before treating this issue as satisfied. [#77](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/77) tracks team PPP deliverables, rather than a product user story.
 
 ### User Stories for Future Consideration
 
-The following ideas are not implemented and are not commitments for a particular release:
-
-- Search recipes.
-- Apply dietary restrictions or allergy preferences.
-- Record meals against dates, and remove or correct a recorded meal. The current design is described in
-  [Recording meals and tracking nutrition](#recording-meals-and-tracking-nutrition).
-- Save and restore recipes or meal plans between sessions.
-- Estimate meal or grocery costs.
-
-Daily nutrition targets, daily nutrition totals, and recording meals eaten are already supported and are therefore included in the current-functionality stories.
+Optional ideas beyond the milestone include searching recipes and estimating grocery costs. These are not implemented or release commitments.
 
 ### Use Cases
 
@@ -1653,7 +1737,38 @@ The command does not change the recipe book or an existing meal plan. The saved 
 - 2a. No target is saved: MishMash displays `No daily targets saved. Use 'set-targets' to set them.` The use case ends.
 <!-- @@author -->
 
-### Non Functional Requirements
+#### UC15 Edit a recipe
+
+**MSS**
+
+1. The user lists recipes and chooses an index.
+2. The user enters `edit-recipe INDEX` with at least one replacement field.
+3. MishMash validates the input, replaces the recipe at that index, and displays its updated details.
+
+**Extensions**
+
+- 2a. The index or a supplied field is invalid, or no edits are supplied: MishMash displays an error and leaves the recipe unchanged. The use case ends.
+- Existing meal plans and recorded meals keep their previous recipe snapshots.
+
+#### UC16 Set and view dietary preferences
+
+**MSS**
+
+1. The user enters `set-diet` with at least one dietary field.
+2. MishMash validates a complete replacement profile.
+3. If the current plan conflicts, MishMash requests confirmation and the user agrees.
+4. MishMash saves the profile, repairs conflicting days when possible, and refreshes existing groceries after repair.
+5. The user enters `view-diet` to review the saved profile.
+
+**Extensions**
+
+- 2a. Input is invalid: MishMash displays an error; the profile and plan remain unchanged. The use case ends.
+- 3a. The user declines: all existing state is kept. The use case ends.
+- 3b. There is no plan or the plan already matches: no confirmation or repair is required.
+- 4a. Repair fails: the profile is still saved, the incompatible plan and groceries are cleared, and MishMash displays recovery guidance.
+- 1a. The user enters `set-diet diet/none`: all restrictions are cleared because omitted fields use unrestricted defaults.
+
+## Appendix C: Non-Functional Requirements
 
 - The application requires Java 25 and provides a command-line interface.
 - The project targets Windows, macOS, and Linux, with verification configured on all three operating systems.
@@ -1662,7 +1777,7 @@ The command does not change the recipe book or an existing meal plan. The saved 
 - Generating meals and groceries must leave the stored recipe entries unchanged.
 - The normal application workflow does not require a network connection or an external database.
 
-### Glossary
+## Appendix D: Glossary
 
 | Term | Meaning |
 | --- | --- |
@@ -1676,14 +1791,14 @@ The command does not change the recipe book or an existing meal plan. The saved 
 | Grocery list | The combined ingredient quantities generated from the active plan. |
 | Session | One running instance of the application; application data is not retained after it ends. |
 
-## Appendix Instructions for Manual Testing
+## Appendix E: Instructions for Manual Testing
 
 These checks cover current behaviour. Testers may explore additional inputs. Each subsection is independent: start a fresh session and load the sample recipes where needed so earlier tests do not change later preconditions.
 
 ### Launch
 
-1. Use Java 25 and open a terminal in the project root containing the built JAR.
-2. Run `java -ea -jar build/libs/MishMash.jar`.
+1. Install Java 25 and download the published **v2.0 JAR** from the team's [Releases page](https://github.com/AY2627S1-CS2113-W13-4/tp/releases). Save it in an empty folder and open a terminal in that folder.
+2. Run `java -ea -jar "MishMash.jar"`, replacing `MishMash.jar` with the downloaded file's actual name if it differs. The `-ea` option enables the application's internal assertion checks during manual testing.
 3. Confirm that the banner and name prompt appear. Enter a name and check that a command prompt follows.
 
 ### Sample Recipes
@@ -1923,4 +2038,78 @@ For every manual workflow above, answer `yes` when reset, replacement generation
 dietary change asks for agreement, unless that step explicitly tests cancellation. This also applies
 to replacement requests expected to fail generation. The first generation and malformed commands
 need no answer. Use [Confirming plan changes](#confirming-plan-changes) for cancellation checks.
+<!-- @@author -->
+
+<!-- @@author Rixte -->
+### Edit a Recipe
+
+1. With the sample recipes loaded, enter `edit-recipe 1 cal/700 p/55`, then `list-recipes 1`. Check that calories and protein change while the omitted fields remain unchanged.
+2. Enter `edit-recipe 1`. Expect an error requiring at least one edit; the recipe stays unchanged.
+3. If a plan or log already contains that recipe, check it still shows its earlier snapshot. Regenerate to use edited recipe values in a plan.
+
+<!-- @@author -->
+
+<!-- @@author peilingggg -->
+### Set, View, and Clear Dietary Preferences
+
+1. In a fresh session after entering a name, enter `view-diet`. Expect `none` for the diet and both exclusion lists.
+2. Enter `set-diet diet/vegetarian avoid/peanut exclude/Olive Oil`, then `view-diet`. Check that all three restrictions appear.
+3. Enter `set-diet diet/invalid`. Expect an error listing supported diets; `view-diet` must still show the previous profile.
+4. Enter `set-diet diet/none`, then `view-diet`. Check that all restrictions are cleared, including the omitted category and ingredient exclusions.
+5. Test plan repair and grocery refresh using the separate classified recipes below. The general sample recipes above are unclassified and cannot exercise successful dietary repair.
+
+#### Successful repair and grocery refresh
+
+Start a fresh session and enter your name. Do not load the general sample recipes or save daily targets. Enter these commands one line at a time:
+
+```text
+add-recipe n/Chicken A cal/400 p/30 c/0 f/10 i/Chicken:100g food/poultry
+add-recipe n/Chicken B cal/400 p/30 c/0 f/10 i/Chicken:100g food/poultry
+add-recipe n/Chicken C cal/400 p/30 c/0 f/10 i/Chicken:100g food/poultry
+generate-plan d/2
+generate-list
+view-plan
+view-list
+```
+
+Each day must contain all three chicken recipes, in any order. The grocery list contains `Chicken` with a total of 600g. Now add three recipes suitable for a vegetarian plan:
+
+```text
+add-recipe n/Rice Bowl cal/400 p/10 c/70 f/5 i/Rice:100g food/none
+add-recipe n/Potato Bowl cal/400 p/10 c/70 f/5 i/Potato:200g food/none
+add-recipe n/Oat Bowl cal/400 p/10 c/70 f/5 i/Oats:50g food/oat
+set-diet diet/vegetarian
+n
+view-diet
+view-plan
+view-list
+```
+
+Check that cancellation preserves the unrestricted profile, both chicken-plan days, and the 600g chicken grocery entry. Adding recipes alone must not change those snapshots. Apply the change again and agree:
+
+```text
+set-diet diet/vegetarian
+y
+view-diet
+view-plan
+view-list
+```
+
+Expect confirmation that conflicting days were replaced and the grocery list was updated. Both days now contain Rice Bowl, Potato Bowl, and Oat Bowl, in any order. The refreshed groceries contain Rice 200g, Potato 400g, and Oats 100g, with no Chicken entry. Do not run `generate-list` again here: `view-list` must demonstrate that dietary repair refreshed the existing groceries automatically.
+
+Generating the original plan before adding the vegetarian recipes makes the conflict certain; having exactly three compatible recipes makes the repaired contents predictable despite random meal ordering.
+
+#### Failed repair clears the incompatible plan and groceries
+
+Continue from the successfully repaired plan above:
+
+```text
+set-diet diet/vegetarian avoid/oat
+y
+view-diet
+view-plan
+view-list
+```
+
+Expect the new vegetarian profile with avoided category `oat` to be saved. Only two recipes now satisfy it, so repair must fail with an explanation that at least three compatible, classified recipes are required. Both the plan and groceries must be cleared; the view commands should report that no plan or generated grocery list is available. The recipe book must still contain all six recipes. This checks the failure path separately from the successful-repair path.
 <!-- @@author -->
