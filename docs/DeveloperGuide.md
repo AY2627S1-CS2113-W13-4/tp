@@ -972,6 +972,26 @@ The shared holders expose current session data. `DietaryPreferences` copies its 
 sets and normalizes ingredient names by trimming, lowercasing with `Locale.ROOT`, and
 collapsing whitespace. Collection copies do not deep-copy shared recipes or days.
 
+#### Classifying existing recipes
+
+Recipes added without `food/` are **unclassified**. In contrast, `food/none` explicitly
+declares that no supported food categories apply. Any active dietary restriction excludes
+unclassified recipes; declarations are not inferred from ingredient names.
+
+Users can classify a recipe they have already added through
+[Editing a Recipe](UserGuide.md#editing-a-recipe). For example, if recipe 1 contains soy
+and legumes and no other supported categories, enter:
+
+```text
+edit-recipe 1 food/soy,legume
+```
+
+Use the recipe's current index from `list-recipes`. The `food/` field replaces its complete
+category declaration, so include every applicable tag. Omitting other fields preserves
+the recipe's name, nutrition, and ingredients. Existing plans and groceries keep their
+previous recipe snapshots; run `generate-plan`, then `generate-list` to use the updated
+classification in a new plan and grocery list.
+
 #### Parsing and confirmation
 
 `Parser.parseSetDiet` delegates validation to `DietaryPreferencesParser.parse`, then creates
