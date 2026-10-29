@@ -1,71 +1,55 @@
 # Add-recipe UML diagrams
 
-These sources document the implemented `add-recipe` feature in
-[the Developer Guide](../../DeveloperGuide.md#adding-a-recipe).
+These sources support [Adding a recipe](../../DeveloperGuide.md#adding-a-recipe).
+The feature uses one compact structural view and two focused sequence diagrams.
 
-| Source | View |
-| --- | --- |
-| `architecture.puml` | Feature-level architecture and dependencies |
-| `classes.puml` | Selected classes, references, and multiplicities |
-| `parsing.puml` | Successful validation, parsing, and object creation |
-| `execution.puml` | Confirmation preparation, recipe insertion, and the next prompt |
-| `invalid-input.puml` | Validation failure, exception wrapping, and CLI recovery |
+| Source | Figure | Scope |
+| --- | --- | --- |
+| `classes.puml` | 1 | Selected stored recipe references. |
+| `parsing.puml` | 2 | Successful validation and recipe/command creation. |
+| `execution.puml` | 3 | Format confirmation before insertion. |
 
-The five `.puml` files are self-contained and use PlantUML's default styling.
-They do not include `style.iuml`, so each complete source can be pasted into an
-online renderer without uploading additional files. `style.iuml` is retained
-as a reference copy of the shortfall settings; it is not loaded by these diagrams.
+The former architecture and invalid-input diagrams are retired. The responsibilities
+table replaces the overlapping architecture view; errors and recovery are covered in
+the guide's input table. Figure numbers in other sections are unchanged. `style.iuml`
+is an unused reference; none of these sources includes it.
 
-Generated SVGs belong under `docs/images/add-recipe` and are embedded directly
-in the guide so the images display without a website plugin or browser extension.
+## Editing and regenerating
 
-## Regenerating
-
-Use Java 25 and the [official PlantUML distribution](https://plantuml.com/download).
-The shortfall diagrams use PlantUML **1.2026.9**, LGPL distribution; use the
-same renderer version for consistent output. PlantUML is a documentation tool,
-not an application dependency.
-
-From the repository root, set `PLANTUML_JAR` to the local renderer path, then run:
+Use Java 25 and a local [PlantUML JAR](https://plantuml.com/download). From the repository
+root in PowerShell:
 
 ```powershell
-java -version
 java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/add-recipe/*.puml"
 java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/add-recipe "docs/diagrams/add-recipe/*.puml"
 ```
 
-The output directory is relative to each source file. Architecture and class
-diagrams use the built-in Smetana layout engine, so a separate Graphviz
-installation is not required. For an online preview, paste the entire `.puml`
-file from `@startuml` to `@enduml`; no include file is needed.
+The output directory is relative to each source file. The class diagram uses Smetana,
+so it needs no separate Graphviz installation. Each source is self-contained.
 
-Commit the generated SVGs alongside their sources after inspecting all five
-images. Rendering has not been run in the preparation environment.
+The committed SVGs use explicit layouts for predictable reading size. PlantUML may
+arrange the same relationships and interactions differently. Inspect regenerated
+images at normal guide width before replacing them. Keep each image within about
+700 pixels, use text at least 16 pixels after scaling, and commit source and SVG together.
 
-## Modeling conventions and maintenance
+## Course conventions and maintenance
 
-Follow the course's
-[Modeling (Using UML) chapter](https://nus-cs2113-ay2627-s1.github.io/website/se-book-adapted/chapters/modeling.html).
-The architecture diagram groups existing responsibilities; it does not
-introduce Java components or new interfaces.
+Follow the course's [modeling chapter](https://nus-cs2113-ay2627-s1.github.io/website/se-book-adapted/chapters/modeling.html).
 
-The class diagram uses navigable associations for stored references and
-dependencies for temporary objects and parameter use. Interface implementation
-is shown as realization. Association ends carry private role names and
-target-end multiplicities; reverse multiplicities are left unspecified.
-Ordered, nonunique list ends allow repeated references. Stored references are
-shown once, without duplicating association ends as attributes. Plain
-associations avoid claiming exclusive ownership of shared objects.
+- Class associations use open navigability heads and target multiplicities. Stored
+  references are not repeated as attributes. Collection order and repeated entries
+  are explained in the guide; plain associations permit sharing. Members, temporary
+  dependencies, and interface realization are deliberately omitted. `hide circle`
+  suppresses C/I symbols.
+- Sequence calls use filled arrowheads; returns are dashed. Object names are not
+  underlined. Creation arrows reach object boxes, with constructor activations below
+  the boxes. Every expanded call has an activation ending at its return.
+- Folded-corner notes and message labels must leave activation bars visible. The
+  parsing note summarizes dispatch, ingredient construction, and validation. Its
+  constructor arrows show only `Recipe` and `AddRecipeCommand` creation. The execution
+  sequence omits the inherited confirmation check, formatting internals, logging,
+  and application printing. These omissions are also stated in the guide captions.
 
-Sequence diagrams show synchronous calls, dashed returns, nested activations,
-and constructor messages starting new lifelines. Constructor returns are
-consistently omitted. The underlined MishMash participant and explicitly shown
-static self-calls denote class-level application behavior. Exception messages
-are labelled explicitly. Notes identify condensed dispatch, formatting,
-logging, and standard-library details.
-
-After changing code, check every depicted method, constructor, call order,
-reference, multiplicity, and failure path against the implementation. Render
-the diagrams and inspect the images; structural and syntax checks alone do
-not establish that a diagram accurately represents the code. Update sources
-and generated images together.
+Check depicted fields, multiplicities, methods, and call order against the code. In
+particular, formatting must finish before `RecipeBook.add`, and parsing must not
+modify the recipe book. Syntax and layout checks do not establish code accuracy.

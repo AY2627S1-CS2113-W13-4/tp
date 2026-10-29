@@ -1,77 +1,20 @@
 @startuml
 !pragma layout smetana
-title Adding a recipe: selected class relationships
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
 top to bottom direction
-skinparam nodesep 160
-skinparam ranksep 120
+hide circle
 hide empty members
-
-class Parser {
-  + parseCommand(input: String): Command
-  - parseAddRecipeCommand(arguments: String): Command
-  - parseAddRecipe(arguments: String): Command
-  - collectRecipeArguments(arguments, fields, ingredients): void
-  - readArgument(prefix, value, fields, ingredients): void
-  - validateRequiredFields(fields, ingredients): void
-  - parseNutrition(value: String, fieldName: String): int
-  - parseIngredient(value: String): GroceryItem
-}
-interface Command {
-  + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
-  + execute(recipeBook: RecipeBook): String
-}
-class AddRecipeCommand {
-  + AddRecipeCommand(recipe: Recipe)
-  + execute(recipeBook: RecipeBook): String
-}
-class RecipeViewer {
-  + view(recipe: Recipe): String
-}
-class RecipeBook {
-  + add(recipe: Recipe): void
-  + getRecipes(): List<Recipe>
-}
-class Recipe {
-  - name: String
-  - calories: int
-  - protein: int
-  - carbs: int
-  - fats: int
-  + Recipe(name, calories, protein, carbs, fats, ingredients)
-  + getName(): String
-  + getCalories(): int
-  + getProtein(): int
-  + getCarbs(): int
-  + getFats(): int
-  + getIngredients(): List<GroceryItem>
-}
-class GroceryItem {
-  - name: String
-  - quantity: BigDecimal
-  - unit: String
-  + GroceryItem(name: String, quantity: BigDecimal, unit: String)
-  + getQuantity(): BigDecimal
-  + toString(): String
-}
-
-Parser ..> AddRecipeCommand : creates
-Parser ..> Recipe : creates
-Parser ..> GroceryItem : creates
-AddRecipeCommand ..|> Command
-AddRecipeCommand -down-> "1\n-recipe" Recipe
-AddRecipeCommand ..> RecipeBook : execute parameter
-AddRecipeCommand ..> RecipeViewer : creates and uses
-RecipeViewer .left.> Recipe : view parameter
-RecipeBook -right-> "0..*\n-recipes\n{ordered,\nnonunique}" Recipe
-Recipe -down-> "1..*\n-ingredients\n{ordered,\nnonunique}" GroceryItem
-
-legend bottom
-  Only feature-relevant members and relationships are shown; some parameter types are abbreviated.
-  Solid arrows show stored references, with private role names and target-end multiplicities.
-  Reverse multiplicities are unspecified. Each reference is shown once, not repeated as an attribute.
-  Dashed arrows show dependencies; the hollow triangle denotes interface realization.
-  RecipeBook and RecipeViewer are not stored AddRecipeCommand fields.
-  Plain associations avoid implying exclusive ownership of shared objects.
-  Static constants, validation helpers inside Recipe, and library classes are omitted.
-endlegend
+class AddRecipeCommand
+class RecipeBook
+class Recipe
+class GroceryItem
+class FoodInfo
+AddRecipeCommand --> "1\n-recipe" Recipe
+RecipeBook --> "0..*\n-recipes" Recipe
+Recipe --> "1..*\n-ingredients" GroceryItem
+Recipe --> "1\n-foodInfo" FoodInfo
 @enduml
