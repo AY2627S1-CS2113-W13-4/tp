@@ -5,6 +5,7 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
+' Keep notes beside lifelines so activation bars stay visible.
 participant "command:\nSetDietCommand" as C
 participant "planner:\nDietaryPlanner" as P
 participant "generator:\nMealPlanGenerator" as G
@@ -12,19 +13,19 @@ participant "generator:\nMealPlanGenerator" as G
 activate C
 C -> P : repair(...)
 activate P
-note over P : Count conflicting days;\nretain daily targets.
+note left of P : Count conflicting days;\nretain daily targets.
 P -> P : generate(...)
 activate P
-note over P : Filter eligible recipes.
+note left of P : Filter eligible recipes.
 P -> G : generate(...)
 activate G
 G --> P : replacementPlan
 deactivate G
 P --> P : replacementPlan
 deactivate P
-note over P : Reuse compatible days;\nreplace conflicting days.
+note left of P : Reuse compatible days;\nreplace conflicting days.
 P --> C : updatedPlan
 deactivate P
-note over C : Continue in Figure 8.
+note right of C : Continue in Figure 8.
 deactivate C
 @enduml

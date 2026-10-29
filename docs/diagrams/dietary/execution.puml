@@ -5,6 +5,7 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
+' Keep the constructor label between the caller and the created participant.
 participant "command:\nSetDietCommand" as C
 participant "groceries:\nGroceryListGenerator" as G
 participant "activePlan:\nActiveMealPlan" as A
@@ -15,7 +16,7 @@ activate A
 A --> C : snapshot present
 deactivate A
 create G
-C -> G : new GroceryListGenerator()
+C -> G : new\nGroceryListGenerator()
 C -> G : generateForPlan(...)
 activate G
 G --> C : groceries
