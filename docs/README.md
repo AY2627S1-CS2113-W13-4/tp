@@ -5,4 +5,5 @@ MishMash is a command-line meal prep planner. Add your recipes, use them to plan
 Useful links:
 * [User Guide](UserGuide.md)
 * [Developer Guide](DeveloperGuide.md)
+* [Setting Up and Getting Started](SettingUp.md)
 * [About Us](AboutUs.md)

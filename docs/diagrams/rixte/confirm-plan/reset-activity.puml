@@ -1,0 +1,26 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Reset confirmation decisions
+skinparam defaultFontSize 16
+skinparam ConditionStyle InsideDiamond
+
+start
+:Receive a validated reset-plan command;
+if (State exists?) then ([yes])
+  :Ask for confirmation;
+  :Read one answer, or detect EOF;
+  if (Accepted?) then ([yes])
+  else ([no])
+    :Show cancellation;
+    stop
+  endif
+else ([no])
+endif
+:Clear plan, generation request, and groceries;
+:Show reset confirmation or no-plan feedback;
+stop
+
+@enduml
+'@@author

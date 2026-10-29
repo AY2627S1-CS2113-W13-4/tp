@@ -12,6 +12,7 @@ import mishmash.model.Diet;
 import mishmash.model.DietaryPreferences;
 import mishmash.model.FoodTag;
 
+//@@author peilingggg
 /**
  * Parses dietary preferences without reading or changing application state.
  */
@@ -116,3 +117,4 @@ public final class DietaryPreferencesParser {
         };
     }
 }
+//@@author

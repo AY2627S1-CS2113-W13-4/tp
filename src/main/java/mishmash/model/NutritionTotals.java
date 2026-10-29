@@ -1,5 +1,6 @@
 package mishmash.model;
 
+//@@author oilybikechain
 /**
  * Holds immutable nutrition totals, using long values so sums can exceed the maximum integer value.
  *
@@ -10,3 +11,4 @@ package mishmash.model;
  */
 public record NutritionTotals(long calories, long protein, long carbs, long fats) {
 }
+//@@author
