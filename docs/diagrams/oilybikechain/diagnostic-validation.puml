@@ -1,0 +1,36 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title Invalid generate-plan input: preserve the validation cause
+autonumber
+
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "planParser:GeneratePlanParser" as PlanParser
+participant "<<class>>\nGeneratePlanParser" as PlanParserClass
+
+App -> Parser : parseCommand("generate-plan d/0")
+activate Parser
+Parser -> Parser : parseGeneratePlan("d/0")
+activate Parser
+create PlanParser
+Parser -> PlanParser : new GeneratePlanParser()
+activate PlanParser
+PlanParser --> Parser : planParser
+deactivate PlanParser
+Parser -> PlanParser : parse("d/0")
+activate PlanParser
+PlanParser -> PlanParserClass : splitIntoValues("d/0")
+activate PlanParserClass
+PlanParserClass --> PlanParser : values
+deactivate PlanParserClass
+PlanParser -> PlanParserClass : parseDays("0")
+activate PlanParserClass
+PlanParserClass --> PlanParser : throws IllegalArgumentException
+deactivate PlanParserClass
+PlanParser --> Parser : throws IllegalArgumentException
+deactivate PlanParser
+Parser --> Parser : throws MishMashException with cause
+deactivate Parser
+Parser --> App : throws MishMashException with cause
+deactivate Parser
+@enduml

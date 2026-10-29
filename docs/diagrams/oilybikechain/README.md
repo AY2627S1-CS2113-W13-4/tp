@@ -1,6 +1,6 @@
 # Grocery and nutrition contribution UML
 
-These six diagrams document oilybikechain's implementation contributions in the
+These fourteen diagrams document oilybikechain's implementation contributions in the
 [Developer Guide](../../DeveloperGuide.md#contribution-history-oilybikechain).
 The guide's commit table links each contribution to its original non-merge commit.
 Diagrams describe the current implementation; teammates' classes appear only as
@@ -9,11 +9,19 @@ integration context. Earlier implementations on other branches are not additiona
 | Source | UML view | Contribution |
 | --- | --- | --- |
 | `grocery-classes.puml` | Class diagram | Ingredient aggregation and grocery command integration (`667d642`, `6b960ad`). |
-| `nutrition-classes.puml` | Class diagram | Combined totals and target-aware viewing (`4c82e81`, `f81dc10`). |
-| `grocery-execution.puml` | Sequence diagram | Parsing, execution-time plan lookup, aggregation, and snapshot publication (`6b960ad`). |
+| `grocery-model-classes.puml` | Class diagram | Active plan, meal hierarchy, and grocery snapshot (`6b960ad`). |
+| `grocery-aggregation-classes.puml` | Class diagram | Aggregation keys and grocery values (`667d642`). |
+| `nutrition-classes.puml` | Class diagram | Combined daily totals (`4c82e81`). |
+| `warning-classes.puml` | Class diagram | Target-aware viewing (`f81dc10`). |
+| `grocery-parsing.puml` | Sequence diagram | Syntax validation and command creation without reading plan state (`6b960ad`). |
+| `grocery-collection.puml` | Sequence diagram | Ingredient lookup for every meal occurrence (`6b960ad`). |
+| `grocery-execution.puml` | Sequence diagram | Plan lookup, aggregation, and snapshot publication (`6b960ad`). |
 | `daily-totals.puml` | Sequence diagram | Four daily sums and construction of the combined result (`4c82e81`). |
-| `excess-warnings.puml` | Sequence diagram | Saved targets, selected days, and exact excess warnings (`f81dc10`). |
-| `diagnostic-recovery.puml` | Sequence diagram | Exception cause preservation and recoverable invalid input (`ba80853`). |
+| `excess-state-lookup.puml` | Sequence diagram | Execution-time meal and target lookup (`f81dc10`). |
+| `excess-target-lookup.puml` | Sequence diagram | Targets retained with the active request (`f81dc10`). |
+| `excess-warnings.puml` | Sequence diagram | Exact warning calculation for displayed days (`f81dc10`). |
+| `diagnostic-validation.puml` | Sequence diagram | Exception cause preservation during parsing (`ba80853`). |
+| `diagnostic-recovery.puml` | Sequence diagram | Logging, display, and recovery after invalid input (`ba80853`). |
 
 `c3f6e95` supplies grocery aggregation tests and Javadoc, rather than another runtime
 component. Commit `995af37` supplies the existing contribution documentation.
@@ -52,10 +60,9 @@ application dependencies.
 - Supplier bindings represent the existing Java generic interface, not new
   interfaces. Their dependencies on `ActiveMealPlan` describe the lambdas wired
   by the default shared-state parser; custom suppliers need not read that state.
-- Sequence diagrams use synchronous calls, dashed returns, activation bars, and
-  creation messages starting new lifelines. Constructor returns are omitted.
-  Underlined `MishMash` labels denote class-level application behavior. Notes
-  explain omitted dispatch, loops, standard-library operations, and formatting.
+- Sequence diagrams use object-name-and-class lifelines, synchronous calls,
+  dashed returns, activation bars, and explicit object creation. Each diagram
+  focuses on one scenario so calls and returns have matching activations.
 - `DayPlan`'s combined API returns a new `NutritionTotals` after four separate
   recipe sums. The viewer independently sums `MealSummary` values. Preserve this
   distinction; there is no viewer-to-`DayPlan` call for warning calculation.

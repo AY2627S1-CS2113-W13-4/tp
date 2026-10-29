@@ -1,6 +1,7 @@
 @startuml
 !pragma layout smetana
 !include ../rixte/shortfall/style.iuml
+hide circle
 
 title Recipe deletion: selected classes and relationships
 top to bottom direction
@@ -9,14 +10,14 @@ skinparam ranksep 85
 hide empty members
 
 class MishMash {
-  - {static} executeCommand(input: String, scanner: Scanner, ...): void
-  - {static} userConfirms(scanner: Scanner, question: String): boolean
+  - executeCommand(input: String): void
+  - userConfirms(question: String): boolean
 }
 class Parser {
   + parseCommand(input: String): Command
   - parseDeleteRecipe(arguments: String): Command
 }
-interface Command {
+interface Command <<interface>> {
   + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
   + execute(recipeBook: RecipeBook): String
 }
@@ -36,7 +37,7 @@ class Recipe {
   + getName(): String
 }
 
-MishMash ..> Parser : asks for a Command
+MishMash --> "1" Parser : -parser
 MishMash ..> Command : asks, then executes
 Parser ..> DeleteRecipeCommand : creates
 DeleteRecipeCommand .up.|> Command
@@ -44,10 +45,6 @@ DeleteRecipeCommand ..> RecipeBook : execution parameter
 RecipeBook --> "0..*" Recipe : -recipes\n{ordered, nonunique}
 
 legend bottom
-  Only feature-relevant members are shown; constructors and most getters are omitted.
-  Command.confirmationPrompt is a default method that returns an empty Optional; DeleteRecipeCommand overrides it.
-  MishMash owns all console input and output, so DeleteRecipeCommand never reads the user's answer itself.
-  index is the one-based number the user typed; RecipeBook.remove takes a zero-based index.
-  Dashed arrows show dependencies or interface realization; solid arrows show stored references.
+  Only feature-relevant members are shown.
 endlegend
 @enduml

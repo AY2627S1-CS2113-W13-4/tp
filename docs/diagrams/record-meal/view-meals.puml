@@ -1,40 +1,32 @@
 @startuml
 !include style.iuml
-title Viewing recorded meals: view-meals
+title view-meals: display a non-empty meal log
 autonumber
 
-participant "MishMash" as App
-participant "cmd:\nViewMealsCommand" as Cmd
-participant "mealLog: MealLog" as Log
-participant "viewer:\nMealLogViewer" as Viewer
-participant "MacroSplit" as Split
+participant "mishMash:MishMash" as App
+participant "command:ViewMealsCommand" as Command
+participant "mealLog:MealLog" as Log
+participant "viewer:MealLogViewer" as Viewer
 
-note over App, Cmd
-  Parsing mirrors record-meal: Parser accepts no arguments
-  and creates ViewMealsCommand(mealLog). It is omitted here.
-end note
-
-App -> Cmd : execute(recipeBook)
-activate Cmd
-Cmd -> Log : getMeals()
-Log --> Cmd : meals
-alt meals is empty
-  Cmd --> App : "No meals recorded yet."
-else at least one meal
-  Cmd -> Log : getTotals()
-  Log --> Cmd : totals: NutritionTotals
-  create Viewer
-  Cmd -> Viewer : new MealLogViewer()
-  Cmd -> Viewer : view(meals, totals)
-  loop for each meal
-    Viewer -> Split : of(meal)
-    Split --> Viewer : Optional<MacroSplit>
-  end
-  Viewer --> Cmd : formatted text
-  Cmd --> App : each meal's calories, macros\nand macro split, then the totals
-end
-deactivate Cmd
-note over App, Log
-  No model data is changed. RecipeBook is not read by this command.
-end note
+App -> Command : execute(recipeBook)
+activate Command
+Command -> Log : getMeals()
+activate Log
+Log --> Command : meals
+deactivate Log
+Command -> Log : getTotals()
+activate Log
+Log --> Command : totals
+deactivate Log
+create Viewer
+Command -> Viewer : new MealLogViewer()
+activate Viewer
+Viewer --> Command : viewer
+deactivate Viewer
+Command -> Viewer : view(meals, totals)
+activate Viewer
+Viewer --> Command : formatted meals and totals
+deactivate Viewer
+Command --> App : formatted meals and totals
+deactivate Command
 @enduml

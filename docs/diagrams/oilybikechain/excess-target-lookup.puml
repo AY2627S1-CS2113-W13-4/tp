@@ -1,0 +1,18 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title view-plan: read targets stored with the current plan
+autonumber
+
+participant "viewCommand:ViewPlanCommand" as View
+participant "targetsSource:Supplier" as TargetSource
+participant "activePlan:ActiveMealPlan" as Active
+
+View -> TargetSource : get()
+activate TargetSource
+TargetSource -> Active : getRequest()
+activate Active
+Active --> TargetSource : optional request
+deactivate Active
+TargetSource --> View : request targets or NutritionTargets.none()
+deactivate TargetSource
+@enduml

@@ -1,0 +1,23 @@
+@startuml
+!include ../rixte/shortfall/style.iuml
+title view-plan: read the current meals
+autonumber
+
+participant "viewCommand:ViewPlanCommand" as View
+participant "mealPlanSource:Supplier" as MealSource
+participant "activePlan:ActiveMealPlan" as Active
+participant "plan:MealPlan" as Plan
+
+View -> MealSource : get()
+activate MealSource
+MealSource -> Active : get()
+activate Active
+Active --> MealSource : optional plan
+deactivate Active
+MealSource -> Plan : toMealSummaries()
+activate Plan
+Plan --> MealSource : mealsByDay
+deactivate Plan
+MealSource --> View : mealsByDay
+deactivate MealSource
+@enduml

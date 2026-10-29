@@ -5,9 +5,11 @@ These sources document the `record-meal` and `view-meals` enhancement in
 
 | Source | View |
 | --- | --- |
-| `classes.puml` | Selected classes, references, and multiplicities |
-| `record-meal.puml` | Parsing and execution of `record-meal`, including the invalid-index branch |
-| `view-meals.puml` | Execution of `view-meals`, including the empty-log branch |
+| `classes.puml` | Commands and their collaborators |
+| `model-classes.puml` | Stored model references and nutrition totals |
+| `record-meal-parsing.puml` | Successful parsing of `record-meal` |
+| `record-meal.puml` | Successful execution of `record-meal` |
+| `view-meals.puml` | Execution of `view-meals` for a non-empty log |
 
 `style.iuml` contains shared visual settings. Generated SVGs are stored under
 `docs/images/record-meal` and embedded directly in the guide, as for the other features.

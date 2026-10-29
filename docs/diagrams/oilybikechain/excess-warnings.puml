@@ -1,83 +1,38 @@
 @startuml
 !include ../rixte/shortfall/style.iuml
-title view-plan: execution-time targets and exact daily excesses
+title view-plan: calculate warnings for each displayed day
 autonumber
-participant "<u>MishMash</u>" as App
-participant "command: ViewPlanCommand" as Cmd
-participant "mealPlanSource: Supplier" as Meals
-participant "targetsSource: Supplier" as TargetSource
-participant "active: ActiveMealPlan" as Active
-participant "plan: MealPlan" as Plan
 
-note over Cmd, TargetSource : Parser supplies both lambdas when constructing the command; parsing is omitted.
-App -> Cmd : execute(book)
-activate Cmd
-Cmd -> Meals : get()
-activate Meals
-Meals -> Active : get()
-Active --> Meals : optional plan
-opt plan is present
-  Meals -> Plan : toMealSummaries()
-  Plan --> Meals : meals grouped by day
-end
-Meals --> Cmd : mealsByDay (empty if no plan)
-deactivate Meals
-create participant "viewer: MealPlanViewer" as Viewer
-Cmd -> Viewer : new MealPlanViewer()
-alt mealsByDay is empty
-  Cmd -> Viewer : view(mealsByDay)
-  Viewer --> Cmd : no-active-plan message
-  Cmd --> App : message
-else selected day exceeds plan size
-  Cmd --> App : throws MishMashException with view-plan usage
-else all days or valid selected day
-  Cmd -> TargetSource : get()
-  activate TargetSource
-  TargetSource -> Active : getRequest()
-  Active --> TargetSource : optional generation request
-  note right of TargetSource : Read request.targets(), or use\nNutritionTargets.none() if absent.
-  TargetSource --> Cmd : targets
-  deactivate TargetSource
-  participant "targets: NutritionTargets" as Targets
-  Cmd -> Viewer : view(mealsByDay, targets) or\nview(mealsByDay, dayNumber, targets)
+participant "viewCommand:ViewPlanCommand" as View
+participant "viewer:MealPlanViewer" as Viewer
+participant "targets:NutritionTargets" as Targets
+
+View -> Viewer : view(mealsByDay, dayNumber, targets)
+activate Viewer
+loop each displayed day
+  Viewer -> Viewer : formatDay(meals, dayNumber, targets)
   activate Viewer
-  loop each displayed day only
-    Viewer -> Viewer : formatDay(meals, dayNumber, targets)
+  Viewer -> Viewer : formatDailyTotals(meals, targets)
+  activate Viewer
+  Viewer -> Viewer : formatWarnings(totals, targets)
+  activate Viewer
+  Viewer -> Targets : calculateExcesses(totals)
+  activate Targets
+  Targets --> Viewer : excesses
+  deactivate Targets
+  loop calories, protein, carbs, fats
+    Viewer -> Viewer : formatWarning(actual, target, excess)
     activate Viewer
-    note right of Viewer
-      formatDay first formats meals; formatDailyTotals then sums
-      the day's MealSummary nutrition with mapToLong(...).sum().
-      Construct NutritionTotals for actual daily values.
-    end note
-    Viewer -> Viewer : formatWarnings(totals, targets)
-    activate Viewer
-    Viewer -> Targets : calculateExcesses(totals)
-    activate Targets
-    note right of Targets
-      For each nutrient: zero if target is null or actual <= target;
-      otherwise actual - target. Generation tolerance is not applied.
-      Construct a new NutritionTotals containing the excesses.
-    end note
-    Targets --> Viewer : excesses
-    deactivate Targets
-    note right of Viewer
-      Read targets and excesses; formatWarning emits a line only for
-      a positive excess. Order: calories, protein, carbs, fats.
-      Place warnings after daily totals and before the closing separator.
-    end note
-    Viewer --> Viewer : warning lines, or empty string
-    deactivate Viewer
-    Viewer --> Viewer : formatted day
+    Viewer --> Viewer : warning line or empty string
     deactivate Viewer
   end
-  Viewer --> Cmd : formatted selection
+  Viewer --> Viewer : warning text
   deactivate Viewer
-  Cmd --> App : formatted selection
+  Viewer --> Viewer : daily totals and warnings
+  deactivate Viewer
+  Viewer --> Viewer : formatted day
+  deactivate Viewer
 end
-deactivate Cmd
-note over Meals, Plan
-  Supplier calls depict the default shared-state parser configuration.
-  Null-source programming errors are omitted. An invalid upper day bound does not read targets.
-  Empty-plan viewing delegates through the no-target overload; there is no active-state mutation.
-end note
+Viewer --> View : formatted selection
+deactivate Viewer
 @enduml

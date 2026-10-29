@@ -1,0 +1,33 @@
+@startuml
+!pragma layout smetana
+!include style.iuml
+title Meal recording model
+top to bottom direction
+skinparam nodesep 35
+skinparam ranksep 55
+hide empty members
+
+class MealLog {
+  + record(recipe: Recipe): void
+  + getMeals(): List<Recipe>
+  + getTotals(): NutritionTotals
+}
+class NutritionTotals <<record>> {
+  - calories: long
+  - protein: long
+  - carbs: long
+  - fats: long
+}
+class RecipeBook {
+  + getRecipes(): List<Recipe>
+}
+class Recipe
+
+MealLog --> "0..*" Recipe : -meals
+RecipeBook --> "0..*" Recipe : -recipes
+MealLog ..> NutritionTotals : creates
+
+legend bottom
+  Only feature-relevant members are shown.
+endlegend
+@enduml

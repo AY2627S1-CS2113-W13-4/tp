@@ -1,62 +1,31 @@
 @startuml
 !include ../rixte/shortfall/style.iuml
-title generate-list: parsing, aggregation, and snapshot publication
+title generate-list: aggregate and publish a completed snapshot
 autonumber
-participant "<u>MishMash</u>" as App
-participant "parser: Parser" as Parser
-participant "active: ActiveMealPlan" as Active
 
-App -> Parser : parseCommand("generate-list")
-activate Parser
-Parser -> Parser : parseGenerateList("")
-note right of Parser : Dispatch is condensed. Nonblank arguments throw\nMishMashException before a command is created.
-create participant "command: GenerateListCommand" as Cmd
-Parser -> Cmd : new GenerateListCommand(active)
-Parser --> App : command
-deactivate Parser
-note over App, Cmd : The inherited confirmationPrompt(book) returns Optional.empty(); no confirmation is requested.
-App -> Cmd : execute(book)
-activate Cmd
-Cmd -> Active : get()
-Active --> Cmd : Optional<MealPlan>
-alt plan is absent
-  note right of Cmd : Log WARNING; no snapshot is published.
-  Cmd --> App : "No active meal plan. Use 'generate-plan' first."
-else plan is present
-  participant "plan: MealPlan" as Plan
-  participant "day: DayPlan" as Day
-  participant "meal: Recipe" as Meal
-  Cmd -> Plan : getDays()
-  Plan --> Cmd : days
-  loop each day
-    Cmd -> Day : getMeals()
-    Day --> Cmd : meals
-    loop each meal occurrence
-      Cmd -> Meal : getIngredients()
-      Meal --> Cmd : ingredients
-      note right of Cmd : Append ingredients to a local list.
-    end
-  end
-  create participant "generator: GroceryListGenerator" as Generator
-  Cmd -> Generator : new GroceryListGenerator()
-  Cmd -> Generator : generate(ingredients)
-  activate Generator
-  note right of Generator
-    Validate input; merge quantities by ItemKey(name, unit)
-    in a LinkedHashMap using BigDecimal::add.
-    Create combined GroceryItems in first-appearance order.
-    Return List.copyOf(result); collection and item calls are condensed.
-  end note
-  Generator --> Cmd : unmodifiable groceries
-  deactivate Generator
-  Cmd -> Active : setGroceryList(groceries)
-  activate Active
-  note right of Active : Copy with List.copyOf before assigning\nthe present snapshot. No partial result is stored.
-  Active --> Cmd : void
-  deactivate Active
-  note right of Cmd : Log INFO with occurrence and item counts.
-  Cmd --> App : "Grocery list generated. Use 'view-list' to view it."
-end
-deactivate Cmd
-note over App, Active : The caller prints the result and next prompt. RecipeBook is not read or changed by this command.
+participant "mishMash:MishMash" as App
+participant "command:GenerateListCommand" as Command
+participant "generator:GroceryListGenerator" as Generator
+participant "activePlan:ActiveMealPlan" as Active
+
+App -> Command : execute(recipeBook)
+activate Command
+ref over Command
+  Collect ingredients from the active plan
+end ref
+create Generator
+Command -> Generator : new GroceryListGenerator()
+activate Generator
+Generator --> Command : generator
+deactivate Generator
+Command -> Generator : generate(ingredients)
+activate Generator
+Generator --> Command : groceries
+deactivate Generator
+Command -> Active : setGroceryList(groceries)
+activate Active
+Active --> Command : void
+deactivate Active
+Command --> App : generation confirmation
+deactivate Command
 @enduml

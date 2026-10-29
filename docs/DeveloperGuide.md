@@ -48,7 +48,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
 | `record-meal` | Record the recipe at a displayed index as a meal eaten. |
-| `view-meals` | Display the recorded meals with their nutrition, macro split, and totals. |
+| `view-meals` | Display the recorded meals with their nutrition and totals. |
 | `set-diet` | Replace dietary preferences and repair conflicting planned days. |
 | `view-diet` | Display the current dietary profile without changing data. |
 | `help` | Display the supported commands and their formats. |
@@ -76,7 +76,6 @@ Commands validate their arguments and relevant application state. Requests that 
 | `ActiveMealPlan` | The current meal plan and its generated grocery list, if available. |
 | `MealLog` | The recipes the user has recorded as eaten, in the order recorded. |
 | `NutritionTotals` | Summed calories, protein, carbohydrates, and fats, held as `long` values. |
-| `MacroSplit` | The whole-number share of a meal's macronutrient energy from protein, carbohydrates, and fats. |
 
 There are no separate `Ingredient` or `GroceryList` classes in the current model. Recipe ingredients and generated grocery entries use `GroceryItem`.
 
@@ -582,11 +581,14 @@ This feature implements the story: **As a user managing recipes, I want to list 
 
 #### Parsing and execution
 
-Parsing and execution are drawn together for `list-recipes 2`: the command is small, and both halves end in the same error path.
+The successful `list-recipes 2` scenario is separated into parsing and execution. Invalid and
+no-index outcomes are described afterwards so both interactions remain readable at guide width.
 
-![Parsing and execution of list-recipes 2.](images/list-recipes/execution.svg)
+![Parsing list-recipes 2.](images/list-recipes/parsing.svg)
 
-*Dispatch from `parseCommand` to `parseListRecipe` is condensed. The note at the bottom describes the no-index form, which skips index parsing and the viewer.*
+![Executing list-recipes 2.](images/list-recipes/execution.svg)
+
+*The no-index form skips index parsing and the viewer.*
 
 `Parser.parseListRecipe` treats blank arguments as the list-all form. Otherwise it calls `parseRecipeIndex`, the helper that `delete-recipe` also uses. The helper accepts digits only and rejects zero and values above `Integer.MAX_VALUE`. Leading zeros and surrounding spaces are accepted, so `list-recipes 01` selects recipe 1.
 
@@ -644,11 +646,16 @@ This keeps all console input and output in `MishMash`. `DeleteRecipeCommand` onl
 
 #### Execution and confirmation
 
-The sequence below starts after parsing, for `delete-recipe 2`.
+The first sequence starts after parsing and follows a confirmed `delete-recipe 2`.
 
 ![Execution of recipe deletion, with confirmation.](images/delete-recipe/execution.svg)
 
-*Dispatch, index validation, and logging are condensed. The inner `alt` shows the two possible answers; the outer one shows an index that cannot be deleted.*
+*The command validates the index once while building the prompt and again immediately before removal.*
+
+An invalid index is a separate scenario. The `confirmationPrompt` activation ends at the exception,
+so the diagram does not imply that the method continues after throwing.
+
+![Invalid recipe deletion ends before confirmation.](images/delete-recipe/invalid-index.svg)
 
 `confirmationPrompt` finds the target through `findTarget`, which throws if the book is empty or the index is too large. An impossible request therefore fails before any question is asked. `execute` calls `findTarget` again instead of trusting an earlier prompt, so it is also safe when called on its own. It then calls `RecipeBook.remove(index - 1)` and returns `Recipe deleted!`, the recipe's name, and `Recipes remaining: N`. `RecipeBook.remove` checks the index itself with `Objects.checkIndex`.
 
@@ -684,7 +691,7 @@ Syntax errors start as an `IllegalArgumentException`, which `parseDeleteRecipe` 
 
 `DeleteRecipeCommandTest` checks the confirmation text and removal, the first and last positions, repeated deletion at one index, duplicate names, emptying the book, out-of-range and empty-book errors with the book left unchanged, prompts that never modify the book, and null arguments. `ParserTest` checks a valid index, the question naming the recipe, leading zeros and extra whitespace, invalid arguments showing only the delete-recipe usage, and near-miss command words. `MishMashTest` checks the console flow: a confirmed transcript, a cancellation, end of input cancelling instead of deleting, a missing recipe never producing a question, and a later `edit-recipe` using the renumbered index.
 
-For manual verification, follow [Delete a Recipe](#delete-a-recipe) in the manual-testing appendix, or the User Guide's [Deleting a Recipe](UserGuide.md#deleting-a-recipe) example. The class diagram, sequence diagram, and activity diagram have editable sources and rendering instructions in [`docs/diagrams/delete-recipe`](diagrams/delete-recipe/README.md). When the implementation changes, check method names, message order, and the decision branches against the code, then regenerate and inspect all three SVGs.
+For manual verification, follow [Delete a Recipe](#delete-a-recipe) in the manual-testing appendix, or the User Guide's [Deleting a Recipe](UserGuide.md#deleting-a-recipe) example. The editable diagram sources and rendering instructions are in [`docs/diagrams/delete-recipe`](diagrams/delete-recipe/README.md). When the implementation changes, check method names, message order, and the decision branches against the code, then regenerate and inspect every SVG.
 <!-- @@author -->
 
 <!-- @@author neil0618 -->
@@ -704,6 +711,10 @@ The saved targets are used by `generate-plan`. For every nutrient that the `gene
 
 ![Selected classes and relationships for daily targets.](images/targets/classes.svg)
 
+![Classes that parse saved-target changes.](images/targets/target-parsing-classes.svg)
+
+![Stored daily target values and changes.](images/targets/target-values.svg)
+
 *Only feature-relevant members are shown. Dashed arrows show dependencies or interface realization; solid arrows show stored references.*
 
 `TargetChanges` records, for each nutrient the user mentioned, either a new value or `Optional.empty()` for "remove". Nutrients that were not mentioned are absent from its map. This three-way distinction (keep, replace, remove) cannot be expressed with `NutritionTargets` alone, where `null` already means "no target".
@@ -714,17 +725,37 @@ The sequence below shows `set-targets cal/2000 p/none`.
 
 ![Parsing and execution of set-targets.](images/targets/set-targets.svg)
 
-*Dispatch on the command word and logging are condensed. The upper branch of the `alt` is every parsing failure.*
+*All parsing succeeds before the command updates the shared target settings.*
+
+Invalid parsing is shown separately so both parser activations end at their exception returns.
+
+![Invalid set-targets input is rejected before a command is created.](images/targets/set-targets-invalid.svg)
 
 `SetTargetsParser` reads each whitespace-separated token as `PREFIX/VALUE`. Prefixes are case-sensitive, like every other prefix, and `none` is accepted in any letter case, as for `food/none`. A value must consist of digits only and fit in an `int`; zero is rejected. The parser validates all tokens before creating a `TargetChanges`, and `Parser.parseSetTargets` wraps any `IllegalArgumentException` in a `MishMashException` that ends with the set-targets format. A command object is created only if every token is valid, so a bad command can never partly change the saved targets.
+
+Once parsing succeeds, execution reads the saved targets, applies the validated changes, and stores
+the replacement value.
+
+![Applying validated target changes.](images/targets/set-targets-update.svg)
 
 `SetTargetsCommand.execute` reads the saved targets, asks `TargetChanges.applyTo` for the updated targets, and stores them. `applyTo` builds a new `NutritionTargets` and does not modify the old one. The reply lists every target now saved, or says `All daily targets cleared.` when none remain, and reminds the user that an existing plan is unchanged.
 
 #### Using the targets in `generate-plan`
 
+![Classes that apply saved targets during plan generation.](images/targets/generate-classes.svg)
+
 ![How generate-plan combines typed and saved targets.](images/targets/generate-plan.svg)
 
-*The first `alt` shows the merge; the second shows the two outcomes of generation.*
+*This scenario shows successful generation with saved targets contributing to the effective request.*
+
+The plan-generation and publication part is shown separately from target merging.
+
+![Generating and publishing the effective request.](images/targets/generate-plan-publish.svg)
+
+Generation failure is a separate interaction. The planner activation ends when it throws, and
+`ActiveMealPlan.setGenerated` is never called.
+
+![Failed plan generation leaves the active plan unchanged.](images/targets/generate-plan-failure.svg)
 
 `GeneratePlanCommand` reads `TargetSettings` when it executes, not when it is created, so a `set-targets` entered after parsing but before execution is respected, exactly as for dietary preferences. If nothing is saved, the request is used unchanged, so behaviour without `set-targets` is identical to before. Otherwise `NutritionTargets.overriddenBy` merges the typed targets over the saved ones and the command builds an effective `GeneratePlanRequest`.
 
@@ -766,7 +797,7 @@ In every case the session continues, and an error leaves the saved targets uncha
 
 `TargetChangesTest` checks setting, keeping, and removing nutrients, that the original targets are never modified, the merge in `NutritionTargets.overriddenBy`, the summary text, and `TargetSettings`. `SetTargetsParserTest` checks every accepted form (any order, extra spaces, `none` in any case, leading zeros, the largest `int`) and every rejection above. `SetTargetsCommandTest` checks the confirmation texts, partial updates, removal, the untouched plan and recipes, `view-targets`, and the interaction with `generate-plan`: saved targets used, typed targets winning per nutrient, saved targets read at execution, removal, a typed target replacing an impossible saved one, a failed generation keeping the previous plan, and the `Daily targets used:` and `Daily targets applied:` lines appearing only when a saved target contributed. `ParserTargetsTest` checks that the parser creates the commands, shares one set of targets between them, reports errors with the set-targets usage only, and lists both commands in the usage and help text.
 
-For manual verification, follow [Set and View Daily Targets](#set-and-view-daily-targets) in the manual-testing appendix, or the User Guide's [Setting Daily Targets](UserGuide.md#setting-daily-targets) example. The class diagram and two sequence diagrams have editable sources and rendering instructions in [`docs/diagrams/targets`](diagrams/targets/README.md). When the implementation changes, check method names, message order, and branches against the code, then regenerate and inspect all three SVGs.
+For manual verification, follow [Set and View Daily Targets](#set-and-view-daily-targets) in the manual-testing appendix, or the User Guide's [Setting Daily Targets](UserGuide.md#setting-daily-targets) example. Editable sources and rendering instructions are in [`docs/diagrams/targets`](diagrams/targets/README.md). When the implementation changes, check method names, message order, and branches against the code, then regenerate and inspect every SVG.
 <!-- @@author -->
 
 <!-- @@author oilybikechain -->
@@ -792,16 +823,12 @@ guide describes their integrated replacements above. Profile and README edits ar
 
 ### Combined daily nutrition totals
 
-The structural view connects the combined totals API with the separate target-aware viewing path.
-The supplier bindings show how viewing reads the latest shared state rather than capturing a plan
-when the command is parsed.
+The structural view focuses on the combined totals API and the recipe values it sums.
 
 ![Nutrition class diagram showing daily totals, targets, generation requests, and viewing suppliers.](images/oilybikechain/nutrition-classes.svg)
 
-*Nutrition structure: solid associations show retained references, while dashed dependencies show
-temporary use. The supplier-to-holder dependencies describe the default parser's lambdas; these
-are bindings of Java's existing `Supplier` interface. Unrelated members and plan-to-day links are
-omitted here; the grocery class diagram below shows the plan hierarchy.*
+*Nutrition structure: `DayPlan` retains its ordered meals and creates an immutable totals value.
+Only members used by this calculation are shown.*
 
 `DayPlan.calculateDailyNutritionTotals()` returns one immutable `NutritionTotals` record containing
 `calories()`, `protein()`, `carbs()`, and `fats()`. Calories are measured in kcal; the macronutrients
@@ -848,14 +875,24 @@ the cause and usage for all three parsing paths; `GeneratePlanCommandTest` verif
 generation cause is retained. These changes strengthen diagnostics around teammates' commands rather
 than implementing those commands.
 
-![Sequence diagram of invalid generate-plan input, cause-preserving exception wrapping, logging, and recovery.](images/oilybikechain/diagnostic-recovery.svg)
+The validation and application-recovery interactions are separate so their exception returns and
+activation bars remain clear.
 
-*Diagnostic recovery: `generate-plan d/0` fails while parsing, so no command is constructed or
-executed. The outer exception retains the validation cause. Application error display and the next
-prompt are integration context; the added generator assertions and diagnostics belong to successful
-validation paths and are summarized in the diagram's note.*
+![Sequence diagram of invalid generate-plan input preserving its validation cause.](images/oilybikechain/diagnostic-validation.svg)
+
+`generate-plan d/0` fails while parsing, so no command is constructed or executed. The outer
+exception retains the validation cause. `MishMash` then logs the rejection, displays the recoverable
+error, and prompts for another command.
+
+![Sequence diagram of logging a rejected command and continuing.](images/oilybikechain/diagnostic-recovery.svg)
 
 ### Detecting exceeded nutrition targets
+
+The target-aware viewing structure is kept separate from the combined-totals model so both class
+diagrams remain legible at guide width. The supplier interfaces are bindings of Java's existing
+`Supplier` type; the dashed dependencies show the default lambdas reading current shared state.
+
+![Class diagram of target-aware plan viewing.](images/oilybikechain/warning-classes.svg)
 
 `ActiveMealPlan` already retains the original `GeneratePlanRequest` alongside a generated plan for dietary
 repair. Exceedance warnings reuse this request's immutable `NutritionTargets` rather than storing another
@@ -880,12 +917,22 @@ closing separator in calories, protein, carbohydrates, and fats order. Warnings 
 total, and target, using kcal for calories and g for the macronutrients. They do not change application state.
 `check-shortfall` continues to use its explicitly supplied targets independently of this display.
 
-![Sequence diagram of execution-time meal and target lookup, selected-day validation, and exact excess warnings.](images/oilybikechain/excess-warnings.svg)
+State lookup and warning calculation are shown separately so their messages remain readable. The
+first sequence follows a valid selected day: the default meal supplier adapts the current active plan,
+then the target supplier reads the request stored with that plan.
 
-*Warning calculation: the default meal supplier adapts the active plan to summaries; the target
-supplier reads the retained generation request. Missing plans bypass the target supplier, and an
-out-of-range selected day fails before targets are read. Daily formatting and immutable value
-construction are condensed in notes. Only displayed days are compared, using strict excesses.*
+![Sequence diagram of execution-time meal and target lookup.](images/oilybikechain/excess-state-lookup.svg)
+
+The corresponding targets are read through a separate supplier after the selected day is known to
+be valid.
+
+![Sequence diagram of execution-time target lookup.](images/oilybikechain/excess-target-lookup.svg)
+
+With no active plan, execution returns before reading the target supplier. An out-of-range selected
+day is also rejected before targets are read. For a valid selection, the viewer calculates and formats
+warnings only for the displayed days.
+
+![Sequence diagram of calculating exact excess warnings for displayed days.](images/oilybikechain/excess-warnings.svg)
 
 Tests cover exact comparison boundaries, omitted targets, simultaneous excesses, large totals, exact output,
 and day selection. Integration tests verify the generation tolerance, replacement after success or failure,
@@ -894,12 +941,19 @@ Run `gradlew.bat test checkstyleMain checkstyleTest` with Java 25.
 
 ### Grocery command integration
 
-![Grocery class diagram showing command integration, active-plan snapshots, meal ingredients, and aggregation keys.](images/oilybikechain/grocery-classes.svg)
+The grocery structure is divided by responsibility: command integration, source and snapshot state,
+and aggregation values.
 
-*Grocery structure: the parser and command retain the same active-plan holder. Plain navigable
-associations allow shared model objects; they do not claim exclusive ownership. The optional grocery
-snapshot is abbreviated as an ordered collection with a note distinguishing absent and empty states.
-The temporary aggregation key is a dependency rather than a stored generator field.*
+![Class diagram of grocery command integration.](images/oilybikechain/grocery-classes.svg)
+
+![Class diagram of the grocery source and snapshot model.](images/oilybikechain/grocery-model-classes.svg)
+
+![Class diagram of grocery aggregation values.](images/oilybikechain/grocery-aggregation-classes.svg)
+
+The parser and command retain the same active-plan holder. Plain navigable associations allow shared
+model objects; they do not claim exclusive ownership. The optional grocery snapshot distinguishes an
+absent snapshot from a present empty list. The temporary aggregation key is a dependency rather than
+a stored generator field.
 
 #### Ingredient aggregation
 
@@ -923,7 +977,17 @@ names, decimal precision, zero quantities, ordering, immutable output, repeated 
 
 `Parser()` shares one `ActiveMealPlan` between meal-plan generation, grocery generation, and viewing. For deterministic tests or an externally managed plan, use `Parser(MealPlanGenerator, ActiveMealPlan)`. The supplier-based constructors retain their caller-provided viewing sources; their grocery viewers do not automatically read the internally generated grocery snapshot.
 
-The parser accepts `generate-list` without arguments and returns `GenerateListCommand` without reading or modifying the plan. During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator` combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and keeping incompatible units separate.
+The parser accepts `generate-list` without arguments and returns `GenerateListCommand` without reading
+or modifying the plan.
+
+![Sequence diagram of parsing generate-list without reading plan state.](images/oilybikechain/grocery-parsing.svg)
+
+During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's
+ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator`
+combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and
+keeping incompatible units separate.
+
+![Sequence diagram of collecting every ingredient occurrence.](images/oilybikechain/grocery-collection.svg)
 
 `ActiveMealPlan.setGroceryList` copies the completed result into a read-only snapshot. `getGroceryList` returns an optional: absence means no list has been generated for the current plan, whereas a present empty list is valid. `ViewListCommand` reads this snapshot during execution and delegates formatting to `GroceryListViewer`; viewing never regenerates data.
 
@@ -936,12 +1000,11 @@ a plan it returns `No active meal plan. Use 'generate-plan' first.` without publ
 Successful generation returns `Grocery list generated. Use 'view-list' to view it.` Only the finished
 result is stored, preserving any previous snapshot if generation fails.
 
-![Sequence diagram of generate-list parsing, active-plan lookup, ingredient collection, aggregation, and publication.](images/oilybikechain/grocery-execution.svg)
+![Sequence diagram of grocery aggregation and snapshot publication.](images/oilybikechain/grocery-execution.svg)
 
-*Grocery execution: parsing validates syntax without reading the plan. Execution counts every
-recipe occurrence, then publishes one completed snapshot. Ingredient-key lookup, decimal merging,
-and result-item creation are condensed inside the generator note. The existing application supplies
-confirmation handling, result display, and the next prompt.*
+The execution sequence counts every recipe occurrence, then publishes one completed snapshot.
+Ingredient-key lookup, decimal merging, and result-item construction happen inside
+`GroceryListGenerator.generate` and are described in the ingredient-aggregation section above.
 
 `GenerateListCommandTest`, `ParserGenerateListTest`, and `ActiveMealPlanTest` cover missing plans,
 execution-time plan lookup, every recipe occurrence, repeated generation, syntax rejection, copying,
@@ -955,7 +1018,7 @@ Run `gradlew.bat test checkstyleMain checkstyleTest` on Windows with Java 25 to 
 
 #### Maintaining the grocery and nutrition diagrams
 
-The six class and sequence diagrams above have editable sources and regeneration instructions in
+The class and sequence diagrams above have editable sources and regeneration instructions in
 [`docs/diagrams/oilybikechain`](diagrams/oilybikechain/README.md). Generated SVGs are checked in under
 `docs/images/oilybikechain`. Use Java 25 and PlantUML 1.2026.9 with the existing shared style and
 Smetana class layout. Check method names, retained references, multiplicities, supplier indirection,
@@ -1273,16 +1336,14 @@ view-meals
 
 `INDEX` is the position of a recipe in the `list-recipes` output, counting from 1, as for
 `delete-recipe`. `view-meals` lists every recorded meal with its calories (kcal), protein, carbs and
-fats (g), and its macro split, followed by the totals for all recorded meals. Unlike `check-shortfall`,
-which examines the *planned* meals of the active plan, this feature records meals the user *has eaten*.
+fats (g), followed by the totals for all recorded meals. Unlike `check-shortfall`, which examines the
+*planned* meals of the active plan, this feature records meals the user *has eaten*.
 The recorded meals are kept in memory for the session only, matching the product's current data boundary.
 
-A meal is one whole recipe, and a recipe stores the nutrition the user entered with `add-recipe`; nutrition
-is not derived from ingredients. The nutritional content of one meal is therefore read from its recipe. What
-the feature calculates is what the stored values do not give directly: the *totals* across all recorded
-meals, and for each meal the *macro split*, which is the share of the meal's macronutrient energy that comes
-from protein, carbohydrates and fats. The second user story is satisfied by showing each meal's own values
-and macro split together with those totals.
+A meal is one whole recipe, and a recipe stores the nutrition the user entered with `add-recipe`;
+nutrition is not derived from ingredients. The nutritional content of one meal is therefore read from
+its recipe. The feature calculates the totals across all recorded meals and shows them together with
+each meal's stored nutrition values.
 
 #### Architecture-level view
 
@@ -1292,20 +1353,22 @@ execution reads or changes session data. A new model class, `MealLog`, holds the
 `ActiveMealPlan`, it is session data shared between commands, but it is separate from the plan: the plan
 holds meals the user intends to eat, and the log holds meals the user has eaten.
 
-![Figure 17. Selected classes and relationships used by meal recording.](images/record-meal/classes.svg)
+Figure 17 separates command collaborators from the stored model relationships.
+
+![Figure 17a. Meal-recording commands and collaborators.](images/record-meal/classes.svg)
+
+![Figure 17b. Meal-recording model relationships.](images/record-meal/model-classes.svg)
 
 *Figure 17: Only members relevant to this enhancement are shown. Solid arrows are navigable
 associations with private role names; dashed arrows show dependencies or interface realization.
 `NutritionTotals` is the existing value record that `DayPlan` also uses for daily totals, and `MealLog`
-reuses it; its values are `long` so that adding many recipes cannot overflow. `MacroSplit` is new.*
+reuses it; its values are `long` so that adding many recipes cannot overflow.*
 
 * `MealLog` stores the recorded meals in the order they were recorded. It offers `record(Recipe)`,
   a read-only `getMeals()`, and `getTotals()`, which sums calories, protein, carbs and fats into a
   `NutritionTotals`, the same record `DayPlan` returns for a day's meals. The commands never add up nutrition values themselves.
-* `MacroSplit` (model) is an immutable record of three whole-number percentages. `MacroSplit.of(recipe)`
-  calculates a recipe's split, and is empty when the recipe has no protein, carbs or fats to divide.
 * `RecordMealCommand` and `ViewMealsCommand` implement `Command`. Each retains the shared `MealLog`.
-* `MealLogViewer` (ui) turns the meals, their macro splits and the totals into text, in the same way
+* `MealLogViewer` (ui) turns the meals and totals into text, in the same way
   `MealPlanViewer` formats a meal plan. Keeping formatting out of the model and commands lets them be
   tested without comparing layout text.
 * `Parser` owns the `MealLog` and passes it to the commands it builds, because `Command.execute` only
@@ -1316,15 +1379,19 @@ reuses it; its values are `long` so that adding many recipes cannot overflow. `M
 
 #### Recording a meal
 
-Figure 18 follows `record-meal 2`. The dispatch from `parseCommand` through `parseNamedCommand` to
-`parseRecordMeal` is condensed into the parser lifeline.
+Figure 18 is split into parsing and execution so both remain readable at guide width. Figure 18a
+follows the successful parsing of `record-meal 2`; command dispatch is condensed into the parser
+lifeline.
 
-![Figure 18. Sequence for recording a meal.](images/record-meal/record-meal.svg)
+![Figure 18a. Parsing a valid record-meal command.](images/record-meal/record-meal-parsing.svg)
 
-*Figure 18: Parsing returns a command without reading any data. The inherited confirmation step is
-omitted because the command returns an empty `Optional`. The invalid-index branch is shown as an
-`alt` fragment. The viewer asks `MacroSplit` for the recorded meal's split; its other formatting steps
-are omitted.*
+Figure 18b starts with the command returned by parsing and follows its successful execution.
+
+![Figure 18b. Recording and displaying the selected meal.](images/record-meal/record-meal.svg)
+
+*Figure 18: Parsing returns a command without reading application data. The inherited confirmation
+step is omitted because the command returns an empty `Optional`. Invalid indexes are described below
+rather than combined with either successful interaction.*
 
 `Parser` checks that the argument is a single positive whole number. A missing, non-numeric, signed,
 zero or extra argument is rejected with the usage line `Format: record-meal INDEX`; nothing is read or
@@ -1334,37 +1401,21 @@ During execution the command converts the index to a zero-based position, as `De
 does, and looks the recipe up in the `RecipeBook` passed to `execute`. If the book is empty or the index
 exceeds the number of recipes, it throws a `MishMashException` and nothing is recorded. Otherwise it calls
 `MealLog.record(recipe)` and `MealLog.getTotals()`, then asks `MealLogViewer.viewRecorded` to format the
-recorded meal's calories, macros and macro split with the running totals, so the user sees the effect
-immediately. Recording a meal needs no confirmation: it is quick to repeat, and it changes only the log.
+recorded meal's calories and macros with the running totals, so the user sees the effect immediately.
+Recording a meal needs no confirmation: it is quick to repeat, and it changes only the log.
 
 #### Viewing recorded meals and totals
 
 ![Figure 19. Sequence for viewing recorded meals.](images/record-meal/view-meals.svg)
 
-*Figure 19: Parsing mirrors `record-meal` and is omitted. The empty-log case is shown as an `alt`
-fragment, and the per-meal macro split lookup as a `loop`.*
+*Figure 19: Parsing mirrors `record-meal` and is omitted. The sequence follows a non-empty log; the
+empty-log result is described below.*
 
 `view-meals` takes no arguments; any argument is rejected with its usage line. `ViewMealsCommand` reads
 the meals from the `MealLog`. An empty log is a valid state, not an error, so the command returns
 `No meals recorded yet.` Otherwise it asks the log for the totals and delegates formatting to
-`MealLogViewer`. Each meal appears with its own calories, macros and macro split, which gives the per-meal
-nutrition required by the second user story, followed by one totals line. Viewing never changes the log.
-
-#### Macro split calculation
-
-`MacroSplit.fromGrams(protein, carbs, fats)` converts the grams to energy with the standard factors of
-4 kcal per gram of protein, 4 kcal per gram of carbohydrate and 9 kcal per gram of fat, then expresses each
-nutrient's energy as a percentage of the three nutrients' combined energy. For `Chicken Rice` with 40 g
-protein, 70 g carbs and 15 g fat, the energy is 160, 280 and 135 kcal, giving 27.8%, 48.7% and 23.5%.
-
-Whole-number percentages that are each rounded would not always add up to 100. The calculation therefore
-rounds every percentage down and gives the remaining points, one each, to the nutrients with the largest
-fractional parts, preferring protein, then carbs, then fats on a tie. The example becomes 28%, 49% and 23%.
-The three values always add up to 100.
-
-If a recipe has 0 g of all three nutrients there is nothing to divide, so `MacroSplit.of` returns an empty
-`Optional` and the viewer shows `Macro split: n/a`. The calculation uses `long` arithmetic, so the largest
-values a recipe can hold do not overflow.
+`MealLogViewer`. Each meal appears with its own calories and macros, followed by one totals line. Viewing
+never changes the log.
 
 #### Invalid input and recovery
 
@@ -1380,7 +1431,7 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 | `view-meals` before any meal is recorded | Return `No meals recorded yet.` |
 | Recipe deleted, edited with `edit-recipe`, or otherwise changed after a meal was recorded | The recorded meal keeps its original calories and macros. |
 | Same recipe recorded twice | Two entries are kept, and both count toward the totals. |
-| Recipe with 0 g of protein, carbs and fats | The meal is recorded and counted in the totals, and its split is shown as `Macro split: n/a`. |
+| Recipe with 0 g of protein, carbs and fats | The meal is recorded and contributes zeros for those nutrients. |
 
 #### Rationale and alternatives considered
 
@@ -1390,8 +1441,6 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 | `MealLog.getTotals()` sums the meals on every call | Keep running totals updated by `record` | The meal list is the single source of truth, so totals cannot drift out of step with it. Sessions are small, so the repeated sum costs nothing noticeable. Running totals would need extra care if removing meals is added later. |
 | `Parser` owns the `MealLog` and passes it to the commands | Widen `Command.execute` to take a shared context object | `Parser` already owns and shares `ActiveMealPlan`, and this leaves the `Command` interface and every existing command unchanged. Constructors that take a `MealLog` let tests supply their own, as the `ActiveMealPlan` constructors do. A context object becomes worthwhile if many more data holders are added. |
 | Pick a meal by recipe index | Type nutrition values in directly | Reusing stored recipes avoids duplicating the input and validation of `add-recipe` and keeps unchecked numbers out of the log. Free-text entry would help when eating out, so it is a possible extension. |
-| Show the share of macronutrient energy as the per-meal calculation | Show the share of the recipe's stated calories, or only grams | The stated calories are entered by the user and need not equal 4/4/9 kcal per gram of the entered macros, so shares of them could add up to more or less than 100%. Shares of the macro energy always add up to 100 and need no extra input. |
-| Round down and distribute the remaining points by largest remainder | Round each percentage to the nearest whole number | Plain rounding can give 99% or 101% in total, which looks like an error to a reader. Largest remainder keeps the total at exactly 100 and is deterministic. |
 | Return formatted text through `Command.execute`, using a small viewer | Print from the command or the model | The viewer matches `MealPlanViewer` and keeps layout out of the logic, so the model and commands can be tested without comparing layout text. |
 
 #### Limitations and possible extensions
@@ -1404,17 +1453,17 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 
 #### Verification
 
-The feature is covered by `MealLogTest`, `MacroSplitTest`, `MealLogViewerTest`, `RecordMealCommandTest`,
+The feature is covered by `MealLogTest`, `MealLogViewerTest`, `RecordMealCommandTest`,
 `ViewMealsCommandTest`, `ParserRecordMealTest`, and console-workflow tests in `MishMashTest`. They check
-the totals (including values beyond the `int` range), the macro split for typical, tied, single-nutrient,
-zero and very large values, the exact output layout, every invalid index in the table above, the empty-log
+the totals (including values beyond the `int` range), the exact output layout, every invalid index in
+the table above, the empty-log
 and empty-book cases, that failed commands leave the log unchanged, and that the log is separate from the
 active plan. The manual checks are under [Record and View Meals](#record-and-view-meals); the use cases are
 UC11 and UC12.
 
 #### Diagram maintenance
 
-Editable sources for the three figures are under
+The five editable diagram sources are under
 [`docs/diagrams/record-meal`](diagrams/record-meal/README.md). Rendered SVGs are checked in under
 `docs/images/record-meal` so the diagrams display without a plugin. The source README gives the
 regeneration commands. Check every depicted call, branch and message against the code after any change, and
@@ -1516,7 +1565,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 | Shopper | Generate groceries from the active plan | Obtain combined ingredient quantities |
 | Shopper | View the generated grocery list | See what to purchase |
 | Returning user | Record the meals that I have eaten | Keep track of my actual food intake |
-| User tracking nutrition | See the calories, macronutrients, and macro split of each recorded meal, and their totals | Know the nutritional content of what I am eating |
+| User tracking nutrition | See the calories and macronutrients of each recorded meal, and their totals | Know the nutritional content of what I am eating |
 | User who makes a typing mistake | Receive an error and enter another command | Correct the mistake without restarting |
 | User with dietary requirements | Set named diets, category exclusions, and ingredient exclusions | Generate compatible meals and repair conflicting planned days |
 | User with dietary requirements | View the active dietary profile | Check the restrictions currently applied |
@@ -1700,7 +1749,7 @@ the retained generation targets. Clearing the plan removes the warnings.
 1. The user enters `record-meal INDEX`, using an index shown by `list-recipes`.
 2. MishMash validates the index and finds the recipe at that position.
 3. MishMash adds the recipe to the recorded meals.
-4. MishMash displays the meal, its macro split, and the totals of all recorded meals, then prompts for another command.
+4. MishMash displays the meal and the totals of all recorded meals, then prompts for another command.
 
 **Extensions**
 
@@ -1715,7 +1764,7 @@ No confirmation is requested. Recording changes only the recorded meals; recipes
 
 1. The user enters `view-meals`.
 2. MishMash reads the recorded meals and sums their nutrition.
-3. MishMash displays each meal in the order recorded with its calories, macronutrients, and macro split, followed by the totals, then prompts for another command.
+3. MishMash displays each meal in the order recorded with its calories and macronutrients, followed by the totals, then prompts for another command.
 
 **Extensions**
 
