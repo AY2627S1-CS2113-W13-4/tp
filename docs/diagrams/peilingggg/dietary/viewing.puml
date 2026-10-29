@@ -1,0 +1,40 @@
+@startuml
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
+hide footbox
+participant "parser:\nParser" as P
+participant "view:\nCommand" as C
+participant "settings:\nDietarySettings" as S
+participant "profile:\nDietaryPreferences" as D
+[-> P : parseCommand("view-diet")
+activate P
+P -> P : requireNoDietArguments(...)
+activate P
+P --> P
+deactivate P
+create C
+P -> C : <<create>> lambda
+activate C
+C --> P
+deactivate C
+P -->[ : view
+deactivate P
+note over P, D
+  Lambda captures settings; the current profile is read during execution.
+end note
+[-> C : execute(recipeBook)
+activate C
+C -> S : get()
+activate S
+S --> C : current profile
+deactivate S
+C -> D : describe()
+activate D
+D --> C : three-line description
+deactivate D
+C -->[ : three-line description
+deactivate C
+@enduml
