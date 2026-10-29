@@ -5,7 +5,8 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
-' Keep the constructor label between the caller and the created participant.
+' Constructor creation reaches the object box; its activation starts below the box.
+' Solid filled call arrows and dashed returns follow the course notation.
 participant "command:\nSetDietCommand" as C
 participant "groceries:\nGroceryListGenerator" as G
 participant "activePlan:\nActiveMealPlan" as A
@@ -17,6 +18,9 @@ A --> C : snapshot present
 deactivate A
 create G
 C -> G : new\nGroceryListGenerator()
+activate G
+G --> C
+deactivate G
 C -> G : generateForPlan(...)
 activate G
 G --> C : groceries
