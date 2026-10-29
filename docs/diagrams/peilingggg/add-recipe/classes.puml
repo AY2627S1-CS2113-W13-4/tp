@@ -1,0 +1,20 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
+top to bottom direction
+hide circle
+hide empty members
+class AddRecipeCommand
+class RecipeBook
+class Recipe
+class GroceryItem
+class FoodInfo
+AddRecipeCommand --> "1\n-recipe" Recipe
+RecipeBook --> "0..*\n-recipes" Recipe
+Recipe --> "1..*\n-ingredients" GroceryItem
+Recipe --> "1\n-foodInfo" FoodInfo
+@enduml

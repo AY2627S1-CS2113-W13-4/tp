@@ -1,0 +1,30 @@
+@startuml
+skinparam backgroundColor white
+skinparam defaultFontName SansSerif
+skinparam defaultFontSize 17
+skinparam shadowing false
+skinparam monochrome true
+hide footbox
+participant "parser:\nParser" as P
+participant "recipe:\nRecipe" as R
+participant "add:\nAddRecipeCommand" as A
+[-> P : parseCommand(input)
+activate P
+note right of P
+  Collect fields and ingredients;
+  validate required fields,
+  nutrition and food tags.
+end note
+create R
+P -> R : new Recipe(...)
+activate R
+R --> P : recipe
+deactivate R
+create A
+P -> A : new AddRecipeCommand(recipe)
+activate A
+A --> P : command
+deactivate A
+P -->[ : command
+deactivate P
+@enduml
