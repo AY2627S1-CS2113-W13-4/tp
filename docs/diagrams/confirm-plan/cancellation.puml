@@ -3,13 +3,16 @@
 !include ../shortfall/readable.iuml
 title Cancelling a plan change
 actor User
-participant MishMash
-participant "Plan-changing command" as Command
+participant "mishMash:MishMash" as MishMash
+participant "command:Command" as Command
 note over MishMash, Command : Starts after a question was returned.
-MishMash -> User : question (y/n)
-User --> MishMash : other answer, blank line, or EOF
-MishMash -> MishMash : userConfirms returns false
-MishMash --> User : Cancelled. Nothing was changed.
+MishMash -> MishMash : userConfirms(question)
+activate MishMash
+MishMash -> User : display question (y/n)
+User -> MishMash : other answer, blank line, or EOF
+MishMash --> MishMash : false
+deactivate MishMash
+MishMash -> User : display "Cancelled. Nothing was changed."
 note over MishMash, Command
   execute is not called.
   Plan, groceries, and settings stay unchanged.

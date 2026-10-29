@@ -17,7 +17,7 @@ class Parser {
 class SetTargetsParser {
   + parse(arguments: String): TargetChanges
 }
-interface Command {
+interface Command <<interface>> {
   + execute(recipeBook: RecipeBook): String
 }
 class SetTargetsCommand {
@@ -40,15 +40,15 @@ class TargetSettings {
   + set(targets: NutritionTargets): void
 }
 class NutritionTargets {
-  - calories: Integer
-  - protein: Integer
-  - carbs: Integer
-  - fats: Integer
+  - calories: Integer [0..1]
+  - protein: Integer [0..1]
+  - carbs: Integer [0..1]
+  - fats: Integer [0..1]
   + get(nutrient: Nutrient): Integer
   + overriddenBy(explicit: NutritionTargets): NutritionTargets
   + summarise(): String
 }
-enum Nutrient {
+enum Nutrient <<enumeration>> {
   CALORIES
   PROTEIN
   CARBS
@@ -59,14 +59,14 @@ class GeneratePlanRequest <<record>> {
   + targets(): NutritionTargets
 }
 class ActiveMealPlan {
-  + setGenerated(plan, request, groceries): void
+  + setGenerated(plan: MealPlan, request: GeneratePlanRequest,\n    groceries: Optional<List<GroceryItem>>): void
 }
 
 Parser ..> SetTargetsParser : parses with
 Parser ..> SetTargetsCommand : creates
 Parser ..> ViewTargetsCommand : creates
 Parser ..> GeneratePlanCommand : creates
-Parser *--> "1" TargetSettings : shares
+Parser --> "1" TargetSettings : -targetSettings
 SetTargetsParser ..> TargetChanges : creates
 SetTargetsCommand .up.|> Command
 ViewTargetsCommand .up.|> Command
@@ -76,7 +76,7 @@ SetTargetsCommand --> "1" TargetSettings
 ViewTargetsCommand --> "1" TargetSettings
 GeneratePlanCommand --> "1" TargetSettings
 GeneratePlanCommand --> "1" GeneratePlanRequest
-GeneratePlanCommand ..> ActiveMealPlan : stores plan in
+GeneratePlanCommand --> "1" ActiveMealPlan : -activePlan
 TargetSettings --> "1" NutritionTargets
 GeneratePlanRequest --> "1" NutritionTargets
 TargetChanges ..> Nutrient
@@ -84,7 +84,7 @@ NutritionTargets ..> Nutrient
 
 legend bottom
   Only feature-relevant members are shown; constructors, getters, and the other commands are omitted.
-  One TargetSettings object is created by Parser and shared by the three commands, as DietarySettings is.
+  One TargetSettings object is created by Parser and shared with the three commands, as DietarySettings is.
   The targets are read when a command executes, not when it is parsed.
   Dashed arrows show dependencies or interface realization; solid arrows show stored references.
 endlegend

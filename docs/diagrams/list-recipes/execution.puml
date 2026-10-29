@@ -3,11 +3,11 @@
 title Parsing and executing list-recipes 2
 autonumber
 
-participant "MishMash" as App
-participant "parser: Parser" as Parser
-participant "list: ListRecipeCommand" as List
-participant "book: RecipeBook" as Book
-participant "viewer: RecipeViewer" as Viewer
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "list:ListRecipeCommand" as List
+participant "book:RecipeBook" as Book
+participant "viewer:RecipeViewer" as Viewer
 
 App -> Parser : parseCommand("list-recipes 2")
 activate Parser
@@ -21,6 +21,9 @@ note right of Parser
 end note
 create List
 Parser -> List : new ListRecipeCommand(2)
+activate List
+List --> Parser : list
+deactivate List
 Parser --> App : list
 deactivate Parser
 
@@ -35,7 +38,11 @@ alt recipes is empty, or index exceeds recipes.size()
 else index is valid
   create Viewer
   List -> Viewer : new RecipeViewer()
-  List -> Viewer : view(recipes.get(index - 1))
+  activate Viewer
+  Viewer --> List : viewer
+  deactivate Viewer
+  note over List : Select recipe = recipes.get(index - 1).
+  List -> Viewer : view(recipe)
   Viewer --> List : name, nutrition, ingredients, food tags
   List --> App : details of recipe 2
 end

@@ -2,9 +2,9 @@
 !include ../shortfall/style.iuml
 title Combined daily totals: one read-only calculation
 autonumber
-participant "caller" as Caller
-participant "day: DayPlan" as Day
-participant "meal: Recipe" as Meal
+actor Caller
+participant "day:DayPlan" as Day
+participant "meal:Recipe" as Meal
 
 Caller -> Day : calculateDailyNutritionTotals()
 activate Day
@@ -42,8 +42,11 @@ group Four getters evaluated in constructor argument order
   Day --> Day : long fat sum
   deactivate Day
 end
-create participant "totals: NutritionTotals" as Totals
+create participant "totals:NutritionTotals" as Totals
 Day -> Totals : new NutritionTotals(calories, protein, carbs, fats)
+activate Totals
+Totals --> Day : totals
+deactivate Totals
 Day --> Caller : totals
 deactivate Day
 

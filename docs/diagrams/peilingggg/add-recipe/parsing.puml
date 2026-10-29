@@ -5,10 +5,11 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
-participant "parser:\nParser" as P
-participant "recipe:\nRecipe" as R
-participant "add:\nAddRecipeCommand" as A
-[-> P : parseCommand(input)
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as P
+participant "recipe:Recipe" as R
+participant "add:AddRecipeCommand" as A
+App -> P : parseCommand(input)
 activate P
 note right of P
   Collect fields and ingredients;
@@ -25,6 +26,6 @@ P -> A : new AddRecipeCommand(recipe)
 activate A
 A --> P : command
 deactivate A
-P -->[ : command
+P --> App : command
 deactivate P
 @enduml

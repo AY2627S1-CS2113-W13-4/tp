@@ -14,5 +14,9 @@ App ..> Check : execute
 Check ..> Models : read
 Parsing ..> Models : share holder;\ncreate targets
 
+legend bottom
+  Component responsibility view. Dashed arrows mean "uses"; labels state how each component is used.
+endlegend
+
 @enduml
 '@@author

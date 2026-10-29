@@ -11,7 +11,7 @@ class Parser {
   + parseCommand(input: String): Command
   - parseGenerateList(arguments: String): Command
 }
-interface Command {
+interface Command <<interface>> {
   + execute(recipeBook: RecipeBook): String
 }
 class GenerateListCommand {

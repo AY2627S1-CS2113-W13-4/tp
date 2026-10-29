@@ -2,10 +2,10 @@
 @startuml
 !include readable.iuml
 title Checking the current plan
-participant MishMash as App
-participant CheckShortfallCommand as Check
-participant ActiveMealPlan as Active
-participant MealPlan as Plan
+participant "mishMash:MishMash" as App
+participant "check:CheckShortfallCommand" as Check
+participant "activePlan:ActiveMealPlan" as Active
+participant "plan:MealPlan" as Plan
 App -> Check : execute(recipeBook)
 Check -> Active : get()
 Active --> Check : optional plan
@@ -19,7 +19,8 @@ else plan has days
  loop each day in order
   Check -> Plan : getDays()
   Plan --> Check : days
-  Check -> Check : findShortfalls(days.get(index))
+  note over Check : Select day = days.get(index).
+  Check -> Check : findShortfalls(day)
   ref over Check, Plan : Daily comparison (separate diagram)
   Check -> Check : append day result
  end

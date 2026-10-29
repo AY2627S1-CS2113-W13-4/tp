@@ -4,28 +4,43 @@ title Setting targets: parse, then update the saved targets
 autonumber
 
 actor "User" as User
-participant "MishMash" as App
-participant "parser: Parser" as Parser
-participant "SetTargetsParser" as SParser
-participant "changes: TargetChanges" as Changes
-participant "set: SetTargetsCommand" as Set
-participant "settings: TargetSettings" as Settings
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "setTargetsParser:SetTargetsParser" as SParser
+participant "changes:TargetChanges" as Changes
+participant "set:SetTargetsCommand" as Set
+participant "settings:TargetSettings" as Settings
 
 User -> App : set-targets cal/2000 p/none
 App -> Parser : parseCommand(input)
 activate Parser
+create SParser
+Parser -> SParser : new SetTargetsParser()
+activate SParser
+SParser --> Parser : setTargetsParser
+deactivate SParser
 Parser -> SParser : parse("cal/2000 p/none")
 activate SParser
 alt blank, unknown or repeated prefix, or invalid value
   SParser --> Parser : throws IllegalArgumentException
+  deactivate SParser
   Parser --> App : throws MishMashException (message ends with the set-targets format)
+  deactivate Parser
   App -> User : display the error
   note over App, Settings : Parsing stops before any command exists, so the saved targets are unchanged.
 else every token is valid
-  SParser -> Changes ** : new TargetChanges(cal=Optional.of(2000), p=Optional.empty())
+  create Changes
+  SParser -> Changes : new TargetChanges(cal=Optional.of(2000), p=Optional.empty())
+  activate Changes
+  Changes --> SParser : changes
+  deactivate Changes
   SParser --> Parser : changes
   deactivate SParser
-  Parser -> Set ** : new SetTargetsCommand(changes, settings)
+  create Set
+  Parser -> Set : new SetTargetsCommand(changes, settings)
+  activate Set
+  Set --> Parser : command
+  deactivate Set
   Parser --> App : command
   deactivate Parser
   App -> Set : execute(recipeBook)
@@ -35,7 +50,7 @@ else every token is valid
   Set -> Changes : applyTo(current)
   Changes --> Set : updated targets (calories replaced, protein removed, others kept)
   Set -> Settings : set(updated)
-  Set --> App : "Daily targets saved: ..." or "All daily targets cleared."
+  Set --> App : confirmation and current-plan reminder
   deactivate Set
   App -> User : display the result
 end

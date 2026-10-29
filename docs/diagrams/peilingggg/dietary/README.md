@@ -18,12 +18,12 @@ Figure numbers outside this section are left unchanged.
 
 ## Editing and regenerating
 
-Use Java 25 and a local [PlantUML JAR](https://plantuml.com/download).
+Use Java 25 and PlantUML 1.2026.9.
 From the repository root in PowerShell:
 
 ```powershell
-java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/dietary/*.puml"
-java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/dietary "docs/diagrams/dietary/*.puml"
+java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/peilingggg/dietary/*.puml"
+java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../../images/peilingggg/dietary "docs/diagrams/peilingggg/dietary/*.puml"
 ```
 
 Output paths are relative to the source directory. Commit both source and corresponding SVG.

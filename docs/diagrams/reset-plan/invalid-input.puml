@@ -3,13 +3,13 @@
 !include ../shortfall/readable.iuml
 title Rejecting reset arguments
 actor User
-participant MishMash as App
-participant Parser
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
 User -> App : reset-plan d/1
 App -> Parser : parseCommand(input)
 Parser -> Parser : parseResetPlan("d/1")
 Parser --> App : throws MishMashException
-App --> User : error, reset usage, next prompt
+App -> User : display error, reset usage, and next prompt
 note over App, Parser
  No reset command is created.
  All session data stays unchanged.

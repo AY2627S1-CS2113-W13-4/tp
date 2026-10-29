@@ -13,7 +13,7 @@ class Parser {
 class CheckShortfallParser {
  + parse(arguments: String): NutritionTargets
 }
-interface Command
+interface Command <<interface>>
 class CheckShortfallCommand {
  + execute(recipeBook: RecipeBook): String
  - findShortfalls(day: DayPlan): List<String>

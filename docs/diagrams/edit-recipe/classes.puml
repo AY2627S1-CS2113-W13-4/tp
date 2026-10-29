@@ -8,7 +8,7 @@ skinparam ranksep 75
 skinparam nodesep 25
 hide empty members
 class Parser
-interface Command
+interface Command <<interface>>
 class EditRecipeCommand {
  - index: int
  + execute(recipeBook: RecipeBook): String

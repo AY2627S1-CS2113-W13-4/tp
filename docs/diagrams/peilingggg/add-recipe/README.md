@@ -16,12 +16,12 @@ is an unused reference; none of these sources includes it.
 
 ## Editing and regenerating
 
-Use Java 25 and a local [PlantUML JAR](https://plantuml.com/download). From the repository
+Use Java 25 and PlantUML 1.2026.9. From the repository
 root in PowerShell:
 
 ```powershell
-java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/add-recipe/*.puml"
-java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../images/add-recipe "docs/diagrams/add-recipe/*.puml"
+java -jar $env:PLANTUML_JAR -checkonly "docs/diagrams/peilingggg/add-recipe/*.puml"
+java -Djava.awt.headless=true -jar $env:PLANTUML_JAR -tsvg -o ../../../images/peilingggg/add-recipe "docs/diagrams/peilingggg/add-recipe/*.puml"
 ```
 
 The output directory is relative to each source file. The class diagram uses Smetana,

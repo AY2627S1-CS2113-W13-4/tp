@@ -3,8 +3,8 @@
 !include ../shortfall/readable.iuml
 title Rejecting an invalid edit
 actor User
-participant MishMash as App
-participant Parser
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
 User -> App : edit-recipe 1 n/Changed p/-5
 App -> Parser : parseCommand(input)
 Parser -> Parser : parseRecipeIndex("1")
@@ -14,7 +14,7 @@ Parser -> Parser : parseNutrition("-5", "Protein")
 Parser --> Parser : throws IllegalArgumentException
 Parser -> Parser : wrap with edit usage and cause
 Parser --> App : throws MishMashException
-App --> User : error, usage, next prompt
+App -> User : display error, usage, and next prompt
 note over App, Parser
  No changes record or command created.
  Even n/Changed is not applied.

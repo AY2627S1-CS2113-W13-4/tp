@@ -14,7 +14,7 @@ These sources document the `record-meal` and `view-meals` enhancement in
 
 ## Regenerating
 
-Use Java 25 and the [official PlantUML distribution](https://plantuml.com/download), or the
+Use Java 25 and PlantUML 1.2026.9, or the
 PlantUML Integration plugin in IntelliJ (save each preview as SVG with the same name as its
 source). From the repository root, with `PLANTUML_JAR` set to the renderer path:
 

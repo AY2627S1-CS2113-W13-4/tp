@@ -7,10 +7,11 @@ skinparam monochrome true
 hide footbox
 ' Solid filled call arrows and dashed return arrows follow the course notation.
 ' Keep notes beside lifelines so activation bars stay visible.
-participant "command:\nSetDietCommand" as C
-participant "planner:\nDietaryPlanner" as P
-participant "generator:\nMealPlanGenerator" as G
-[-> C : execute(...)
+participant "mishMash:MishMash" as App
+participant "command:SetDietCommand" as C
+participant "planner:DietaryPlanner" as P
+participant "generator:MealPlanGenerator" as G
+App -> C : execute(recipeBook)
 activate C
 C -> P : repair(...)
 activate P

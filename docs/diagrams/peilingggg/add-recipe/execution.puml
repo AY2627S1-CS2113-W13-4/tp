@@ -5,10 +5,11 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
-participant "add:\nAddRecipeCommand" as A
-participant "viewer:\nRecipeViewer" as V
-participant "recipeBook:\nRecipeBook" as B
-[-> A : execute(recipeBook)
+participant "mishMash:MishMash" as App
+participant "add:AddRecipeCommand" as A
+participant "viewer:RecipeViewer" as V
+participant "recipeBook:RecipeBook" as B
+App -> A : execute(recipeBook)
 activate A
 create V
 A -> V : new RecipeViewer()
@@ -24,6 +25,6 @@ A -> B : add(recipe)
 activate B
 B --> A
 deactivate B
-A -->[ : result
+A --> App : result
 deactivate A
 @enduml

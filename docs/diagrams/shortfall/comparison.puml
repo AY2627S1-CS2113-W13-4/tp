@@ -2,9 +2,9 @@
 @startuml
 !include readable.iuml
 title Comparing one planned day
-participant CheckShortfallCommand as Check
-participant DayPlan as Day
-participant NutritionTargets as Targets
+participant "check:CheckShortfallCommand" as Check
+participant "day:DayPlan" as Day
+participant "targets:NutritionTargets" as Targets
 Check -> Check : findShortfalls(day)
 Check -> Day : getTotalCalories()
 Day --> Check : plannedTotal: long

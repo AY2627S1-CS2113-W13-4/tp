@@ -3,17 +3,20 @@
 !include ../shortfall/readable.iuml
 title Executing an accepted change
 actor User
-participant MishMash
-participant "Plan-changing command" as Command
-participant ActiveMealPlan as Active
+participant "mishMash:MishMash" as MishMash
+participant "command:Command" as Command
+participant "activeMealPlan:ActiveMealPlan" as Active
 note over MishMash, Command : Starts after a question was returned.
-MishMash -> User : question (y/n)
-User --> MishMash : y or yes
-MishMash -> MishMash : trim and compare ignoring case
+MishMash -> MishMash : userConfirms(question)
+activate MishMash
+MishMash -> User : display question (y/n)
+User -> MishMash : y or yes
+MishMash --> MishMash : true
+deactivate MishMash
 MishMash -> Command : execute(recipeBook)
 ref over Command, Active : Command-specific execution
 Command --> MishMash : feedback or recoverable error
-MishMash --> User : result and next prompt
+MishMash -> User : display result and next prompt
 note over Command, Active
   Reset clears plan state.
   Successful generation replaces the plan.

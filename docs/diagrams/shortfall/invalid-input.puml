@@ -2,13 +2,16 @@
 @startuml
 !include readable.iuml
 title Rejecting a zero target
-participant MishMash as App
-participant Parser
-participant "Target parser" as TargetParser
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "targetParser:CheckShortfallParser" as TargetParser
 note over App : Input: check-shortfall cal/0
 App -> Parser : parseCommand(\ninput)
 create TargetParser
 Parser -> TargetParser : new\nCheckShortfallParser()
+activate TargetParser
+TargetParser --> Parser : targetParser
+deactivate TargetParser
 Parser -> TargetParser : parse("cal/0")
 TargetParser -> TargetParser : readTarget("cal/0", values)
 TargetParser -> TargetParser : parseTarget("0", "cal")

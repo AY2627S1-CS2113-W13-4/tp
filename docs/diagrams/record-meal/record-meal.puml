@@ -3,13 +3,12 @@
 title Recording a meal: record-meal 2
 autonumber
 
-participant "MishMash" as App
-participant "parser: Parser" as Parser
-participant "cmd:\nRecordMealCommand" as Cmd
-participant "recipeBook:\nRecipeBook" as Book
-participant "mealLog: MealLog" as Log
-participant "viewer:\nMealLogViewer" as Viewer
-participant "MacroSplit" as Split
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "cmd:RecordMealCommand" as Cmd
+participant "recipeBook:RecipeBook" as Book
+participant "mealLog:MealLog" as Log
+participant "viewer:MealLogViewer" as Viewer
 
 App -> Parser : parseCommand("record-meal 2")
 activate Parser
@@ -20,6 +19,9 @@ note over Parser
 end note
 create Cmd
 Parser -> Cmd : new RecordMealCommand(2, mealLog)
+activate Cmd
+Cmd --> Parser : cmd
+deactivate Cmd
 Parser --> App : cmd
 deactivate Parser
 
@@ -41,11 +43,12 @@ else index is valid
   Log --> Cmd : totals: NutritionTotals
   create Viewer
   Cmd -> Viewer : new MealLogViewer()
+  activate Viewer
+  Viewer --> Cmd : viewer
+  deactivate Viewer
   Cmd -> Viewer : viewRecorded(recipe, totals)
-  Viewer -> Split : of(recipe)
-  Split --> Viewer : Optional<MacroSplit>
   Viewer --> Cmd : formatted text
-  Cmd --> App : meal name, its calories, macros\nand macro split, and the running totals
+  Cmd --> App : meal name, its nutrition,\nand the running totals
 end
 deactivate Cmd
 @enduml

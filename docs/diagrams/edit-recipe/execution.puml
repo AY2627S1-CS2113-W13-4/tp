@@ -2,11 +2,11 @@
 @startuml
 !include ../shortfall/readable.iuml
 title Validating and applying an edit
-participant MishMash as App
-participant EditRecipeCommand as Edit
-participant RecipeBook as Book
-participant RecipeChanges as Changes
-participant RecipeViewer as Viewer
+participant "mishMash:MishMash" as App
+participant "edit:EditRecipeCommand" as Edit
+participant "book:RecipeBook" as Book
+participant "changes:RecipeChanges" as Changes
+participant "viewer:RecipeViewer" as Viewer
 App -> Edit : execute(book)
 Edit -> Book : size()
 Book --> Edit : recipeCount
@@ -15,11 +15,15 @@ alt empty book or index too large
 else valid index
  Edit -> Book : getRecipes()
  Book --> Edit : recipe snapshot
- Edit -> Changes : applyTo(snapshot.get(index - 1))
+ note over Edit : Select original = snapshot.get(index - 1).
+ Edit -> Changes : applyTo(original)
  ref over Edit, Changes : Immutable replacement (separate diagram)
  Changes --> Edit : edited recipe
  create Viewer
  Edit -> Viewer : new RecipeViewer()
+ activate Viewer
+ Viewer --> Edit : viewer
+ deactivate Viewer
  Edit -> Viewer : view(edited)
  Viewer --> Edit : recipe details
  Edit -> Edit : prepare complete feedback

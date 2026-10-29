@@ -5,27 +5,28 @@ skinparam defaultFontSize 17
 skinparam shadowing false
 skinparam monochrome true
 hide footbox
-participant "parser:\nParser" as P
-participant "view:\nCommand" as C
-participant "settings:\nDietarySettings" as S
-participant "profile:\nDietaryPreferences" as D
-[-> P : parseCommand("view-diet")
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as P
+participant "view:Command" as C
+participant "settings:DietarySettings" as S
+participant "profile:DietaryPreferences" as D
+App -> P : parseCommand("view-diet")
 activate P
 P -> P : requireNoDietArguments(...)
 activate P
 P --> P
 deactivate P
 create C
-P -> C : <<create>> lambda
+P -> C : create view Command lambda
 activate C
 C --> P
 deactivate C
-P -->[ : view
+P --> App : view
 deactivate P
 note over P, D
   Lambda captures settings; the current profile is read during execution.
 end note
-[-> C : execute(recipeBook)
+App -> C : execute(recipeBook)
 activate C
 C -> S : get()
 activate S
@@ -35,6 +36,6 @@ C -> D : describe()
 activate D
 D --> C : three-line description
 deactivate D
-C -->[ : three-line description
+C --> App : three-line description
 deactivate C
 @enduml

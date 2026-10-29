@@ -3,11 +3,10 @@
 title Viewing recorded meals: view-meals
 autonumber
 
-participant "MishMash" as App
-participant "cmd:\nViewMealsCommand" as Cmd
-participant "mealLog: MealLog" as Log
-participant "viewer:\nMealLogViewer" as Viewer
-participant "MacroSplit" as Split
+participant "mishMash:MishMash" as App
+participant "cmd:ViewMealsCommand" as Cmd
+participant "mealLog:MealLog" as Log
+participant "viewer:MealLogViewer" as Viewer
 
 note over App, Cmd
   Parsing mirrors record-meal: Parser accepts no arguments
@@ -25,13 +24,12 @@ else at least one meal
   Log --> Cmd : totals: NutritionTotals
   create Viewer
   Cmd -> Viewer : new MealLogViewer()
+  activate Viewer
+  Viewer --> Cmd : viewer
+  deactivate Viewer
   Cmd -> Viewer : view(meals, totals)
-  loop for each meal
-    Viewer -> Split : of(meal)
-    Split --> Viewer : Optional<MacroSplit>
-  end
   Viewer --> Cmd : formatted text
-  Cmd --> App : each meal's calories, macros\nand macro split, then the totals
+  Cmd --> App : each meal's nutrition, then the totals
 end
 deactivate Cmd
 note over App, Log

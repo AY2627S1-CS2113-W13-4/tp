@@ -3,12 +3,12 @@
 title generate-plan: combining typed and saved targets
 autonumber
 
-participant "MishMash" as App
-participant "generate: GeneratePlanCommand" as Gen
-participant "settings: TargetSettings" as Settings
-participant "saved: NutritionTargets" as Saved
-participant "planner: DietaryPlanner" as Planner
-participant "activePlan: ActiveMealPlan" as Active
+participant "mishMash:MishMash" as App
+participant "generate:GeneratePlanCommand" as Gen
+participant "settings:TargetSettings" as Settings
+participant "saved:NutritionTargets" as Saved
+participant "planner:DietaryPlanner" as Planner
+participant "activePlan:ActiveMealPlan" as Active
 
 note over App, Gen : Parsing produced request = (days, typed targets); nutrients the user left out are null.
 App -> Gen : execute(recipeBook)
@@ -22,10 +22,16 @@ else something is saved
   Saved --> Gen : merged targets (a typed value wins; a gap keeps the saved value)
   note over Gen : effective = new GeneratePlanRequest(days, merged targets)
 end
+create Planner
+Gen -> Planner : new DietaryPlanner(generator)
+activate Planner
+Planner --> Gen : planner
+deactivate Planner
 Gen -> Planner : generate(recipes, effective, dietary preferences)
 activate Planner
 alt no acceptable plan
   Planner --> Gen : throws IllegalArgumentException
+  deactivate Planner
   Gen --> App : throws MishMashException (the generator's message)
   note over Gen, Active : The previous active plan is left unchanged.
 else plan found

@@ -13,7 +13,7 @@ class Parser {
   - parseListRecipe(arguments: String): Command
   - parseRecipeIndex(arguments: String): int
 }
-interface Command {
+interface Command <<interface>> {
   + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
   + execute(recipeBook: RecipeBook): String
 }

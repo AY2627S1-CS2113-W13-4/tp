@@ -13,10 +13,12 @@ hide empty members
 class SetDietCommand
 class DietaryPlanner
 class DietarySettings
+class DietaryPreferences
 class ActiveMealPlan
 class MealPlanGenerator
 SetDietCommand --> "1" DietaryPlanner : -planner
 SetDietCommand --> "1" DietarySettings : -settings
+SetDietCommand --> "1" DietaryPreferences : -preferences
 SetDietCommand --> "1" ActiveMealPlan : -activePlan
 DietaryPlanner --> "1" MealPlanGenerator : -generator
 @enduml

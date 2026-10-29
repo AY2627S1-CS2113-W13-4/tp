@@ -2,9 +2,9 @@
 @startuml
 !include ../shortfall/readable.iuml
 title Building an immutable replacement
-participant RecipeChanges as Changes
-participant "original: Recipe" as Original
-participant "edited: Recipe" as Edited
+participant "changes:RecipeChanges" as Changes
+participant "original:Recipe" as Original
+participant "edited:Recipe" as Edited
 Changes -> Changes : applyTo(original)
 Changes -> Original : read omitted fields through getters
 Original --> Changes : original values
@@ -14,6 +14,9 @@ note over Changes, Original
 end note
 create Edited
 Changes -> Edited : new Recipe(merged fields)
+activate Edited
+Edited --> Changes : edited recipe
+deactivate Edited
 note over Changes, Edited
  Constructor validates the complete recipe.
  Original recipe is unchanged.

@@ -2,21 +2,27 @@
 @startuml
 !include ../shortfall/readable.iuml
 title Executing an agreed reset
-participant MishMash as App
-participant ResetPlanCommand as Reset
-participant ActiveMealPlan as Active
+participant "mishMash:MishMash" as App
+participant "reset:ResetPlanCommand" as Reset
+participant "activePlan:ActiveMealPlan" as Active
 note over App, Reset
  Starts after agreement, or with no state to clear.
 end note
 App -> Reset : execute(recipeBook)
-Reset -> Active : get(); getGroceryList()
-Active --> Reset : previous presence
+Reset -> Active : get()
+Active --> Reset : previous plan
+Reset -> Active : getGroceryList()
+Active --> Reset : previous groceries
 Reset -> Active : clear()
 alt clear throws RuntimeException
  Reset --> App : throws MishMashException
 else clear returns
- Reset -> Active : get(); getRequest(); getGroceryList()
- Active --> Reset : remaining state
+ Reset -> Active : get()
+ Active --> Reset : remaining plan
+ Reset -> Active : getRequest()
+ Active --> Reset : remaining request
+ Reset -> Active : getGroceryList()
+ Active --> Reset : remaining groceries
  alt any state remains
   Reset --> App : throws MishMashException
  else all state cleared

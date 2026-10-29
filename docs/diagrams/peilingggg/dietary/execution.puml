@@ -7,11 +7,14 @@ skinparam monochrome true
 hide footbox
 ' Constructor creation reaches the object box; its activation starts below the box.
 ' Solid filled call arrows and dashed returns follow the course notation.
-participant "command:\nSetDietCommand" as C
-participant "groceries:\nGroceryListGenerator" as G
-participant "activePlan:\nActiveMealPlan" as A
-participant "settings:\nDietarySettings" as S
+participant "mishMash:MishMash" as App
+participant "command:SetDietCommand" as C
+participant "groceries:GroceryListGenerator" as G
+participant "activePlan:ActiveMealPlan" as A
+participant "settings:DietarySettings" as S
+App -> C : execute(recipeBook)
 activate C
+ref over C : Repair returns updatedPlan (Figure 7)
 C -> A : getGroceryList()
 activate A
 A --> C : snapshot present
@@ -33,6 +36,6 @@ C -> S : set(preferences)
 activate S
 S --> C
 deactivate S
-C -->[ : result
+C --> App : result
 deactivate C
 @enduml

@@ -4,9 +4,9 @@ title Execution: confirm with the user, then delete
 autonumber
 
 actor "User" as User
-participant "MishMash" as App
-participant "delete: DeleteRecipeCommand" as Delete
-participant "book: RecipeBook" as Book
+participant "mishMash:MishMash" as App
+participant "delete:DeleteRecipeCommand" as Delete
+participant "book:RecipeBook" as Book
 
 note over App, Delete : Parsing has produced a delete command for index 2; dispatch and index validation are condensed.
 App -> Delete : confirmationPrompt(book)
@@ -22,11 +22,15 @@ else the recipe at index exists
   Delete --> App : Optional of "Are you sure you want to delete recipe 2: name? (y/n)"
   deactivate Delete
   App -> User : display the question
-  User --> App : next input line
+  User -> App : next input line
   alt answer is "y" or "yes", in any letter case
     App -> Delete : execute(book)
     activate Delete
     note over Delete, Book : findTarget repeats the size and index checks, because execute can also be called without a prompt.
+    Delete -> Book : size()
+    Book --> Delete : recipeCount
+    Delete -> Book : getRecipes()
+    Book --> Delete : recipes (read-only copy)
     Delete -> Book : remove(index - 1)
     Book --> Delete : deleted recipe
     Delete --> App : "Recipe deleted!", the name, and "Recipes remaining: n"

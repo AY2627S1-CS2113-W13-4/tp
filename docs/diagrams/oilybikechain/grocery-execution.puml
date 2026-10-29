@@ -2,16 +2,19 @@
 !include ../shortfall/style.iuml
 title generate-list: parsing, aggregation, and snapshot publication
 autonumber
-participant "<u>MishMash</u>" as App
-participant "parser: Parser" as Parser
-participant "active: ActiveMealPlan" as Active
+participant "mishMash:MishMash" as App
+participant "parser:Parser" as Parser
+participant "active:ActiveMealPlan" as Active
 
 App -> Parser : parseCommand("generate-list")
 activate Parser
 Parser -> Parser : parseGenerateList("")
 note right of Parser : Dispatch is condensed. Nonblank arguments throw\nMishMashException before a command is created.
-create participant "command: GenerateListCommand" as Cmd
+create participant "command:GenerateListCommand" as Cmd
 Parser -> Cmd : new GenerateListCommand(active)
+activate Cmd
+Cmd --> Parser : command
+deactivate Cmd
 Parser --> App : command
 deactivate Parser
 note over App, Cmd : The inherited confirmationPrompt(book) returns Optional.empty(); no confirmation is requested.
@@ -23,9 +26,9 @@ alt plan is absent
   note right of Cmd : Log WARNING; no snapshot is published.
   Cmd --> App : "No active meal plan. Use 'generate-plan' first."
 else plan is present
-  participant "plan: MealPlan" as Plan
-  participant "day: DayPlan" as Day
-  participant "meal: Recipe" as Meal
+  participant "plan:MealPlan" as Plan
+  participant "day:DayPlan" as Day
+  participant "meal:Recipe" as Meal
   Cmd -> Plan : getDays()
   Plan --> Cmd : days
   loop each day
@@ -37,8 +40,11 @@ else plan is present
       note right of Cmd : Append ingredients to a local list.
     end
   end
-  create participant "generator: GroceryListGenerator" as Generator
+  create participant "generator:GroceryListGenerator" as Generator
   Cmd -> Generator : new GroceryListGenerator()
+  activate Generator
+  Generator --> Cmd : generator
+  deactivate Generator
   Cmd -> Generator : generate(ingredients)
   activate Generator
   note right of Generator

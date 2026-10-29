@@ -2,9 +2,9 @@
 @startuml
 !include ../shortfall/readable.iuml
 title Parsing an edit request
-participant Parser
-participant RecipeChanges as Changes
-participant EditRecipeCommand as Edit
+participant "parser:Parser" as Parser
+participant "changes:RecipeChanges" as Changes
+participant "edit:EditRecipeCommand" as Edit
 Parser -> Parser : parseEditRecipe(arguments)
 Parser -> Parser : parseRecipeIndex("2")
 Parser -> Parser : collectRecipeArguments(...)
@@ -17,10 +17,14 @@ note over Parser
 end note
 create Changes
 Parser -> Changes : new RecipeChanges(\nnull, null, 55, null, null,\ningredients, null)
+activate Changes
 Changes --> Parser : validated changes
+deactivate Changes
 create Edit
 Parser -> Edit : new EditRecipeCommand(2, changes)
+activate Edit
 Edit --> Parser : command
+deactivate Edit
 note over Parser, Edit : No recipe-book lookup while parsing.
 
 @enduml

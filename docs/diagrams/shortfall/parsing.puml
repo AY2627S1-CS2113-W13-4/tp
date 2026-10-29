@@ -2,12 +2,15 @@
 @startuml
 !include readable.iuml
 title Parsing a shortfall check
-participant Parser
-participant "Target parser" as TargetsParser
-participant "Targets" as Targets
-participant "Check command" as Check
+participant "parser:Parser" as Parser
+participant "targetParser:CheckShortfallParser" as TargetsParser
+participant "targets:NutritionTargets" as Targets
+participant "check:CheckShortfallCommand" as Check
 create TargetsParser
 Parser -> TargetsParser : new CheckShortfallParser()
+activate TargetsParser
+TargetsParser --> Parser : targetParser
+deactivate TargetsParser
 Parser -> TargetsParser : parse(arguments)
 loop each supplied token
  TargetsParser -> TargetsParser : readTarget(token, values)
@@ -15,12 +18,17 @@ loop each supplied token
 end
 create Targets
 TargetsParser -> Targets : new NutritionTargets(\n2000, 100, null, null)
+activate Targets
+Targets --> TargetsParser : targets
+deactivate Targets
 TargetsParser --> Parser : targets
 create Check
 Parser -> Check : new CheckShortfallCommand(\nactiveMealPlan, targets)
+activate Check
 Check -> Targets : hasAnyTarget()
 Targets --> Check : true
 Check --> Parser : command
+deactivate Check
 
 @enduml
 '@@author

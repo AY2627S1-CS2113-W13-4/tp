@@ -9,14 +9,14 @@ skinparam ranksep 85
 hide empty members
 
 class MishMash {
-  - {static} executeCommand(input: String, scanner: Scanner, ...): void
-  - {static} userConfirms(scanner: Scanner, question: String): boolean
+  - executeCommand(input: String): void
+  - userConfirms(question: String): boolean
 }
 class Parser {
   + parseCommand(input: String): Command
   - parseDeleteRecipe(arguments: String): Command
 }
-interface Command {
+interface Command <<interface>> {
   + confirmationPrompt(recipeBook: RecipeBook): Optional<String>
   + execute(recipeBook: RecipeBook): String
 }
@@ -36,7 +36,7 @@ class Recipe {
   + getName(): String
 }
 
-MishMash ..> Parser : asks for a Command
+MishMash --> "1" Parser : -parser
 MishMash ..> Command : asks, then executes
 Parser ..> DeleteRecipeCommand : creates
 DeleteRecipeCommand .up.|> Command

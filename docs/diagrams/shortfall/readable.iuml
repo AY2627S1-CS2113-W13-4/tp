@@ -21,5 +21,6 @@ skinparam noteBorderColor #C4AC70
 skinparam maxMessageSize 190
 skinparam sequenceGroupFontSize 15
 skinparam sequenceMessageAlign center
+hide circle
 hide footbox
 '@@author

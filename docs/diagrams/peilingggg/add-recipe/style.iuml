@@ -18,4 +18,5 @@ skinparam sequenceGroupBorderColor #94A3B8
 skinparam noteBackgroundColor #FFF9E8
 skinparam noteBorderColor #C4AC70
 skinparam maxMessageSize 240
+hide circle
 hide footbox

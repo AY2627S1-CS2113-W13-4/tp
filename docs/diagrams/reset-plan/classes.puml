@@ -8,13 +8,15 @@ skinparam ranksep 75
 skinparam nodesep 35
 hide empty members
 class Parser
-interface Command
+interface Command <<interface>>
 class ResetPlanCommand {
  + execute(recipeBook: RecipeBook): String
  + confirmationPrompt(\nrecipeBook: RecipeBook): Optional<String>
 }
 class ActiveMealPlan {
  + get(): Optional<MealPlan>
+ + getRequest(): Optional<GeneratePlanRequest>
+ + getGroceryList(): Optional<List<GroceryItem>>
  + clear(): void
 }
 Parser ..> ResetPlanCommand : creates

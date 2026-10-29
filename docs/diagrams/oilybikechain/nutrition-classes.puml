@@ -12,10 +12,10 @@ class ViewPlanCommand {
   - dayNumber: Integer [0..1]
   + execute(recipeBook: RecipeBook): String
 }
-interface "Supplier<List<List<MealSummary>>>" as MealsSource {
+interface "Supplier<List<List<MealSummary>>>" as MealsSource <<interface>> {
   + get(): List<List<MealSummary>>
 }
-interface "Supplier<NutritionTargets>" as TargetsSource {
+interface "Supplier<NutritionTargets>" as TargetsSource <<interface>> {
   + get(): NutritionTargets
 }
 class ActiveMealPlan {
@@ -39,8 +39,8 @@ class NutritionTotals <<record>> {
   - fats: long
 }
 class MealPlanViewer {
-  + view(mealsByDay, targets): String
-  + view(mealsByDay, dayNumber, targets): String
+  + view(mealsByDay: List<List<MealSummary>>, targets: NutritionTargets): String
+  + view(mealsByDay: List<List<MealSummary>>, dayNumber: int, targets: NutritionTargets): String
 }
 class "MealPlanViewer.MealSummary" as MealSummary <<record>>
 class DayPlan {
