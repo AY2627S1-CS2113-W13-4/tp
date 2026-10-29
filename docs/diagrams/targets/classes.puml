@@ -1,6 +1,6 @@
 @startuml
 !pragma layout smetana
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 
 title Daily targets: selected classes and relationships
 top to bottom direction

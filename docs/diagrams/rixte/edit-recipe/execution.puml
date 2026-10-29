@@ -1,0 +1,43 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Preparing an edit before replacement
+participant ":MishMash" as App
+participant ":EditRecipeCommand" as Edit
+participant ":RecipeBook" as Book
+participant ":RecipeChanges" as Changes
+participant ":RecipeViewer" as Viewer
+App -> Edit : execute(book)
+activate Edit
+Edit -> Book : size()
+activate Book
+Book --> Edit : recipeCount
+deactivate Book
+note right of Edit : Continue only for a valid index.
+Edit -> Book : getRecipes()
+activate Book
+Book --> Edit : recipe snapshot
+deactivate Book
+Edit -> Changes : applyTo(original)
+activate Changes
+note right of Changes
+  Create a new Recipe;
+  keep omitted fields.
+end note
+Changes --> Edit : edited recipe
+deactivate Changes
+Edit -> Viewer : view(edited)
+activate Viewer
+Viewer --> Edit : recipe details
+deactivate Viewer
+note right of Edit : Prepare complete feedback.
+Edit -> Book : replace(index - 1, edited)
+activate Book
+Book --> Edit : return
+deactivate Book
+Edit --> App : feedback
+deactivate Edit
+
+@enduml
+'@@author

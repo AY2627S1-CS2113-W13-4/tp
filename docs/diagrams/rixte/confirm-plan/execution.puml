@@ -1,0 +1,40 @@
+'@@author Rixte
+@startuml
+!include ../shortfall/readable.iuml
+
+title Confirming a plan change
+participant ":MishMash" as App
+participant ":Parser" as Parser
+participant "command:Command" as Cmd
+activate App
+App -> Parser : parseCommand(input)
+activate Parser
+Parser --> App : command
+deactivate Parser
+App -> Cmd : confirmationPrompt(book)
+activate Cmd
+Cmd --> App : optional question
+deactivate Cmd
+opt question present
+  App -> App : userConfirms(question)
+  activate App
+  note left of App
+    Read one answer.
+    Only y / yes accepts;
+    other input or EOF rejects.
+  end note
+  App --> App : accepted
+  deactivate App
+end
+alt no question or answer accepted
+  App -> Cmd : execute(book)
+  activate Cmd
+  Cmd --> App : feedback
+  deactivate Cmd
+else answer rejected or EOF
+  note left of App : Print cancellation; skip execute.
+end
+deactivate App
+
+@enduml
+'@@author

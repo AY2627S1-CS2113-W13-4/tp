@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title Invalid generate-plan arguments: preserve the cause and recover
 autonumber
 actor User

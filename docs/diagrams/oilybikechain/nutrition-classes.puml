@@ -1,6 +1,6 @@
 @startuml
 !pragma layout smetana
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title Nutrition totals and excess warnings: selected relationships
 top to bottom direction
 skinparam nodesep 45

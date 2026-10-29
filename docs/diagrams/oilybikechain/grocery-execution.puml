@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title generate-list: parsing, aggregation, and snapshot publication
 autonumber
 participant "<u>MishMash</u>" as App

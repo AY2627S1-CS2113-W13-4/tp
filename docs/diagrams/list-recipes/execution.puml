@@ -1,5 +1,5 @@
 @startuml
-!include ../shortfall/style.iuml
+!include ../rixte/shortfall/style.iuml
 title Parsing and executing list-recipes 2
 autonumber
 
