@@ -49,7 +49,7 @@ MishMash is a command-line meal prep planner for people who prepare meals in adv
 
      Keep the quotes if the filename contains spaces. Run this command instead of double-clicking the JAR so you can enter commands and read errors in the terminal.
 
-4. **Enter your name** when MishMash asks `What is your name?`, then press Enter. The first line you type is your name, rather than an application command.
+4. **Enter your name** when MishMash asks `Who's cooking today?`, then press Enter. The first line you type is your name, rather than an application command.
 5. **Enter one command per line** and press Enter to run it. Enter `bye` to exit.
 <!-- @@author -->
 
@@ -68,6 +68,13 @@ bye
 ```
 
 > **Session Data:** Closing or restarting the current application clears the recipes, saved daily targets, meal plan, grocery list, and recorded meals. There is no save or load command.
+
+The opening screen includes a quick-command card for `help`, `list-recipes`, `generate-plan d/3`, and
+`view-plan`. These are examples you can enter directly after the `mishmash >` prompt.
+
+MishMash uses color throughout the interface: green marks completed actions, yellow highlights notes and
+warnings, red identifies errors and confirmations, cyan highlights commands, and magenta separates sections.
+ANSI styling is always enabled, including when output is redirected to a file.
 
 ### The Meal Prep Workflow
 
@@ -126,8 +133,9 @@ Type `help` to see every supported command, its purpose, and its syntax. This in
 `check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `set-targets`, `view-targets`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
-A divider and an input prompt appear when the command session starts and after every
-command, including invalid commands and cancelled actions. Type `bye` to exit.
+The compact `mishmash >` prompt appears when the command session starts and after every command, including
+invalid commands and cancelled actions. The manual groups commands by recipes, meal planning, shopping,
+diet and targets, meal tracking, and general actions. Type `bye` to exit.
 
 <!-- @@author -->
 
@@ -153,7 +161,7 @@ add-recipe n/Chicken and Rice cal/650 p/50 c/70 f/15 i/Chicken Breast:200g i/Whi
 **Result:**
 
 ```text
-New recipe added!
+[DONE] New recipe added!
 Chicken and Rice
 650 kcal | Protein: 50g | Carbs: 70g | Fats: 15g
 Ingredients:

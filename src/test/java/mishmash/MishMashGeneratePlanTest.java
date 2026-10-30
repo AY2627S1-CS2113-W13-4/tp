@@ -81,7 +81,7 @@ class MishMashGeneratePlanTest {
         assertTrue(output.contains(GeneratePlanParser.USAGE), output);
         assertFalse(output.contains(Parser.ADD_RECIPE_USAGE), output);
         assertEquals(2, countOccurrences(output,
-                "Enter a command, or type 'help' for all commands or 'bye' to exit."), output);
+                "mishmash >"), output);
         assertEquals(1, output.split("Error: ", -1).length - 1, output);
         assertTrue(output.endsWith("Goodbye!" + System.lineSeparator()), output);
     }

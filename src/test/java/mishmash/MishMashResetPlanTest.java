@@ -115,7 +115,7 @@ class MishMashResetPlanTest {
             assertFalse(output.contains("Are you sure"), output);
             assertFalse(output.contains("Goodbye!"), output);
             assertEquals(2, countOccurrences(output,
-                    "Enter a command, or type 'help' for all commands or 'bye' to exit."));
+                    "mishmash >"));
         }));
     }
 

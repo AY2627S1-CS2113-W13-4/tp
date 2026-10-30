@@ -14,6 +14,7 @@ import mishmash.command.Command;
 import mishmash.exception.MishMashException;
 import mishmash.model.RecipeBook;
 import mishmash.parser.Parser;
+import mishmash.ui.CliFormatter;
 
 /**
  * Runs the MishMash command-line application.
@@ -38,26 +39,6 @@ public class MishMash {
      * Limits the number of rotating log files retained across sessions.
      */
     private static final int LOG_FILE_COUNT = 3;
-
-    /** Separates command output from the next input prompt. */
-    private static final String DIVIDER = "------------------------------------------------------------";
-
-    private static final String WELCOME_BANNER = """
-              __  __ _     _     __  __           _
-             |  \\/  (_)___| |__ |  \\/  | __ _ ___| |__
-             | |\\/| | / __| '_ \\| |\\/| |/ _` / __| '_ \\
-             | |  | | \\__ \\ | | | |  | | (_| \\__ \\ | | |
-             |_|  |_|_|___/_| |_|_|  |_|\\__,_|___/_| |_|
-
-                          .-~~~~~~~~~-.
-                       .-' . .. .. . '-.
-                      / . .. .. .. .. . \\
-                     /___________________\\
-                     \\                   /
-                      \\                 /
-                       \\_______________/
-                            \\_____/
-            """;
 
     /** Borrowed console input; the caller remains responsible for closing it. */
     private final Scanner scanner;
@@ -121,8 +102,7 @@ public class MishMash {
         try {
             LOGGER.info("MishMash started");
             greet();
-            output.println("Welcome to MishMash!");
-            output.println("Type 'help' to view all commands and what they do, or 'bye' to exit.");
+            output.println(CliFormatter.welcome());
             readCommands();
         } catch (RuntimeException | AssertionError e) {
             // Log unexpected failures once at the application boundary before ending the session.
@@ -166,7 +146,7 @@ public class MishMash {
             String input = scanner.nextLine().trim();
             if (input.equals("bye")) {
                 LOGGER.fine("Exit requested with bye");
-                output.println("Goodbye!");
+                output.println(CliFormatter.goodbye());
                 return;
             }
             executeCommand(input);
@@ -196,7 +176,7 @@ public class MishMash {
             }
             if (question.isPresent() && !userConfirms(question.get())) {
                 LOGGER.fine(() -> "Cancelled " + command.getClass().getSimpleName());
-                output.println("Cancelled. Nothing was changed.");
+                output.println(CliFormatter.cancellation());
                 return;
             }
             LOGGER.fine(() -> "Executing " + command.getClass().getSimpleName());
@@ -204,7 +184,7 @@ public class MishMash {
             if (feedback == null) {
                 throw new MishMashException("The command did not return feedback.");
             }
-            output.println(feedback);
+            output.println(CliFormatter.feedback(command, feedback));
             LOGGER.fine(() -> "Completed " + command.getClass().getSimpleName());
         } catch (MishMashException e) {
             LOGGER.log(Level.FINE, "Command rejected", e);
@@ -218,16 +198,16 @@ public class MishMash {
      * @param exception The recoverable command error.
      */
     private void displayError(MishMashException exception) {
-        output.println("Error: " + exception.getExplanation());
-        output.println(exception.getUsage().orElse(Parser.COMMAND_USAGE));
+        output.println(CliFormatter.error(exception.getExplanation()));
+        output.println(CliFormatter.usage(exception.getUsage().orElse(Parser.COMMAND_USAGE)));
     }
 
     /**
      * Displays a consistent prompt after every command, including errors and cancellations.
      */
     private void displayCommandPrompt() {
-        output.println(DIVIDER);
-        output.println("Enter a command, or type 'help' for all commands or 'bye' to exit.");
+        output.println(CliFormatter.commandPrompt());
+        output.flush();
     }
 
     /**
@@ -239,7 +219,7 @@ public class MishMash {
      * @return True if the user agreed.
      */
     private boolean userConfirms(String question) {
-        output.println(question);
+        output.println(CliFormatter.confirmation(question));
         if (!scanner.hasNextLine()) {
             return false;
         }
@@ -251,10 +231,10 @@ public class MishMash {
      * Displays the banner and reads the user's name using this session's input and output.
      */
     private void greet() {
-        output.println(WELCOME_BANNER);
-        output.println("What is your name?");
+        output.println(CliFormatter.banner());
+        output.println(CliFormatter.namePrompt());
         if (scanner.hasNextLine()) {
-            output.println("Hello " + scanner.nextLine());
+            output.println(CliFormatter.greeting(scanner.nextLine()));
         }
     }
 }
