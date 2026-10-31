@@ -210,4 +210,64 @@ class DietaryPlannerTest {
             }
         });
     }
+
+    @Test
+    void repair_allDaysConflict_replacesEveryDayWithoutChangingOriginal() {
+        List<Recipe> recipes = createSuitableRecipes();
+        DayPlan conflicting = new DayPlan(List.of(createRecipe("Milk", 600, "milk")));
+        MealPlan original = new MealPlan(List.of(conflicting, conflicting));
+        NutritionTargets targets = new NutritionTargets(1800, 30, 60, 15);
+
+        MealPlan repaired = planner.repair(recipes, original, new GeneratePlanRequest(2, targets), vegan);
+
+        assertEquals(2, repaired.getNumberOfDays());
+        assertTrue(planner.isCompatible(repaired, vegan));
+        assertTrue(repaired.getDays().stream().allMatch(targets::isSatisfiedBy));
+        for (DayPlan day : repaired.getDays()) {
+            assertEquals(Set.copyOf(recipes), Set.copyOf(day.getMeals()));
+        }
+        assertSame(conflicting, original.getDays().get(0));
+        assertSame(conflicting, original.getDays().get(1));
+    }
+
+    @Test
+    void repair_compatibleCustomizedDay_preservesPortionsAndIngredients() {
+        DayPlan customized = new DayPlan(createSuitableRecipes()).withAdjustedPortion(0, 2)
+                .withCustomizedIngredients(0, List.of(new GroceryItem("Pepper", BigDecimal.ONE, "g")));
+        DayPlan conflicting = new DayPlan(List.of(createRecipe("Egg", 600, "egg")));
+        MealPlan original = new MealPlan(List.of(conflicting, customized));
+        MealPlan repaired = planner.repair(createSuitableRecipes(), original,
+                new GeneratePlanRequest(2, NutritionTargets.none()), vegan);
+
+        assertSame(customized, repaired.getDays().get(1));
+        assertEquals(2400, repaired.getDays().get(1).getTotalCalories());
+        assertEquals("Pepper", repaired.getDays().get(1).getPlannedMeals().get(0).getIngredients().get(0).getName());
+        assertTrue(planner.isCompatible(repaired, vegan));
+    }
+
+    @Test
+    void generate_noCompatibleRecipes_reportsZeroWithoutChangingPool() {
+        List<Recipe> recipes = List.of(createRecipe("Milk", 600, "milk"),
+                createRecipe("Unknown", 600, null));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> planner.generate(recipes, new GeneratePlanRequest(1, NutritionTargets.none()), vegan));
+        assertTrue(error.getMessage().contains("found 0"));
+        assertEquals(List.of("Milk", "Unknown"), recipes.stream().map(Recipe::getName).toList());
+    }
+
+    @Test
+    void repair_ingredientExclusion_replacesCustomizedConflict() {
+        List<Recipe> recipes = createSuitableRecipes();
+        DayPlan customized = new DayPlan(recipes).withCustomizedIngredients(0,
+                List.of(new GroceryItem("Salt", BigDecimal.ONE, "g")));
+        MealPlan original = new MealPlan(List.of(customized));
+        DietaryPreferences noSalt = new DietaryPreferences(Diet.NONE, Set.of(), Set.of("salt"));
+
+        MealPlan repaired = planner.repair(recipes, original,
+                new GeneratePlanRequest(1, NutritionTargets.none()), noSalt);
+
+        assertTrue(planner.isCompatible(repaired, noSalt));
+        assertFalse(planner.isCompatible(original, noSalt));
+        assertSame(customized, original.getDays().get(0));
+    }
 }
