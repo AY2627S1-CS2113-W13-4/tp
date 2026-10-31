@@ -133,7 +133,8 @@ To track what you actually eat, use this separate sequence at any time after add
 Type `help` to see every supported command, its purpose, and its syntax. This includes
 `add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`, `adjust-portion`,
 `customize-meal`, `reset-plan`,
-`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `set-targets`, `view-targets`, `record-meal`, `view-meals`, `help`, and `bye`.
+`check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `clear-diet`, `set-targets`,
+`view-targets`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
 The compact `mishmash >` prompt appears when the command session starts and after every command, including
@@ -843,7 +844,8 @@ Dietary preferences saved. Future meal plans will use them.
 - Separate categories and ingredient exclusions with commas. Blank entries and duplicates are rejected,
   including aliases of the same tag and ingredient names equal after normalization.
 - `diet/none` removes the named diet only; any `avoid/` and `exclude/` fields in the same command still apply.
-- To clear all restrictions, use `set-diet diet/none` without `avoid/` or `exclude/`. Omitted fields are cleared.
+- To clear the complete profile explicitly, use [`clear-diet`](#clearing-dietary-preferences-and-restrictions).
+  `set-diet diet/none` without `avoid/` or `exclude/` remains supported because omitted fields are cleared.
 - Preferences and recipe classifications last only for the current session.
 
 #### Supported Diets and Food Categories
@@ -962,6 +964,42 @@ repair saves the new preferences and clears generated data**. Check `view-diet` 
 a new plan before viewing groceries again.
 
 <!-- @@author -->
+
+### Clearing Dietary Preferences and Restrictions
+
+Resets the complete dietary profile to unrestricted. Future meal generation can use recipes regardless of
+their diet classification, avoided food categories, or ingredient names.
+
+**Before You Start:** No prerequisites. The command is safe to repeat when the profile is already clear.
+
+**Format:**
+
+```text
+clear-diet
+```
+
+**Example:** After setting a diet or exclusions, enter `clear-diet`.
+
+**Example Output:**
+
+```text
+Dietary preferences and restrictions cleared.
+Recipes, meal plans, groceries, targets, and recorded meals are unchanged.
+```
+
+**Rules:**
+
+- The command clears the named diet, avoided food categories, and excluded ingredient names together.
+- It does not change recipes, the active meal plan or its portion and ingredient customizations, generated
+  groceries, saved daily targets, or recorded meals. Existing plan and grocery snapshots remain as they were;
+  regenerate them only when you want unrestricted recipe choices reflected there.
+- No confirmation is needed because clearing the profile does not remove plan or recipe data.
+- When no restrictions are active, the command reports
+  `Dietary preferences are already clear. Nothing was changed.`
+- The command accepts no arguments. For example, `clear-diet diet/none` is rejected with
+  `clear-diet does not accept arguments.` followed by `Format: clear-diet`; all session data remains unchanged.
+
+Use `view-diet` afterwards to verify that the diet and both exclusion lists display `none`.
 
 <!-- @@author peilingggg -->
 ### Viewing Dietary Preferences
@@ -1469,7 +1507,9 @@ These features are planned under the v2.0b milestone and are **not implemented i
 | Review recorded meals by date | **Coming soon (v2.0b)** | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) |
 | Correct or remove a recorded meal | **Coming soon (v2.0b)** | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) |
 
-Other v2.0b stories already have support in this checkout, including resetting a plan, confirming plan changes, and viewing dietary preferences. Their existing instructions describe that support. Persistence is not labelled Coming soon here because issue #51's intended scope still needs clarification.
+Other v2.0b stories already have support in this checkout, including resetting a plan, confirming plan changes,
+viewing dietary preferences, and clearing dietary restrictions. Their existing instructions describe that support.
+Persistence is not labelled Coming soon here because issue #51's intended scope still needs clarification.
 
 ### Exiting MishMash
 
@@ -1582,6 +1622,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [Delete a recipe](#deleting-a-recipe) | `delete-recipe INDEX` | Use an index from the latest recipe list, then confirm the deletion. |
 | [Set dietary preferences](#setting-dietary-preferences) | `set-diet diet/vegetarian avoid/peanut` | Supply at least one field; this replaces the complete profile. |
 | [View dietary preferences](#viewing-dietary-preferences) | `view-diet` | No prerequisites. |
+| [Clear dietary preferences](#clearing-dietary-preferences-and-restrictions) | `clear-diet` | Clears the complete profile while preserving other session data. |
 | [Set daily targets](#setting-daily-targets) | `set-targets cal/2000 p/150` | Supply at least one target; use `none` to remove one. |
 | [View daily targets](#viewing-daily-targets) | `view-targets` | No prerequisites. |
 | [Generate meals](#generating-a-meal-plan) | `generate-plan d/3` | Add at least three recipes; choose 1 to 7 days. |

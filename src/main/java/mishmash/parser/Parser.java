@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import mishmash.command.AddRecipeCommand;
 import mishmash.command.AdjustPortionCommand;
 import mishmash.command.CheckShortfallCommand;
+import mishmash.command.ClearDietCommand;
 import mishmash.command.Command;
 import mishmash.command.CustomizeMealCommand;
 import mishmash.command.DeleteRecipeCommand;
@@ -99,6 +100,7 @@ public class Parser {
     public static final String VIEW_LIST_USAGE = ViewListCommand.USAGE;
     public static final String GENERATE_PLAN_USAGE = GeneratePlanParser.USAGE;
     public static final String CHECK_SHORTFALL_USAGE = CheckShortfallCommand.USAGE;
+    public static final String CLEAR_DIET_USAGE = ClearDietCommand.USAGE;
     public static final String RECORD_MEAL_USAGE = RecordMealCommand.USAGE;
     public static final String VIEW_MEALS_USAGE = ViewMealsCommand.USAGE;
     //@@author neil0618
@@ -119,7 +121,8 @@ public class Parser {
             VIEW_PLAN_USAGE, ADJUST_PORTION_USAGE, CUSTOMIZE_MEAL_USAGE, RESET_PLAN_USAGE,
             CHECK_SHORTFALL_USAGE,
             GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
-            DietaryPreferencesParser.USAGE, "Format: view-diet", SET_TARGETS_USAGE, VIEW_TARGETS_USAGE,
+            DietaryPreferencesParser.USAGE, "Format: view-diet", CLEAR_DIET_USAGE,
+            SET_TARGETS_USAGE, VIEW_TARGETS_USAGE,
             RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
             "Format: help", "Format: bye");
 
@@ -323,6 +326,9 @@ public class Parser {
             requireNoDietArguments(commandWord, arguments);
             return recipeBook -> dietarySettings.get().describe();
         }
+        if (commandWord.equals(ClearDietCommand.COMMAND_WORD)) {
+            return parseClearDiet(arguments);
+        }
         //@@author neil0618
         if (commandWord.equals(SetTargetsCommand.COMMAND_WORD)) {
             return parseSetTargets(arguments);
@@ -450,6 +456,21 @@ public class Parser {
         } catch (IllegalArgumentException e) {
             throw new MishMashException(e.getMessage(), DietaryPreferencesParser.USAGE, e);
         }
+    }
+
+    /**
+     * Accepts a dietary reset without arguments and leaves mutation until command execution.
+     *
+     * @param arguments The text following {@code clear-diet}.
+     * @return A command connected only to the shared dietary settings.
+     * @throws MishMashException If any argument is supplied.
+     */
+    private Command parseClearDiet(String arguments) throws MishMashException {
+        if (!arguments.isBlank()) {
+            throw new MishMashException(ClearDietCommand.COMMAND_WORD + " does not accept arguments.",
+                    CLEAR_DIET_USAGE, null);
+        }
+        return new ClearDietCommand(dietarySettings);
     }
 
     //@@author neil0618
