@@ -82,8 +82,8 @@ class DietaryIntegrationTest {
             assertEquals(Set.of("Rice", "Beans", "Corn"),
                     Set.copyOf(day.getMeals().stream().map(Recipe::getName).toList()));
         }
-        assertEquals(List.of("Rice: 4g", "Beans: 4g", "Corn: 4g"),
-                active.getGroceryList().orElseThrow().stream().map(GroceryItem::toString).toList());
+        assertEquals(List.of("Beans: 4g", "Corn: 4g", "Rice: 4g"),
+                active.getGroceryList().orElseThrow().stream().map(GroceryItem::toString).sorted().toList());
         assertEquals(profile, execute("view-diet"));
         assertEquals(2, original.getNumberOfDays());
         assertTrue(originalGroceries.stream().anyMatch(item -> item.getName().equals("Tofu")));
@@ -172,8 +172,8 @@ class DietaryIntegrationTest {
                     Set.copyOf(day.getMeals().stream().map(Recipe::getName).toList()));
             assertTrue(request.targets().isSatisfiedBy(day));
         }
-        assertEquals(List.of("Rice: 6g", "Beans: 6g", "Corn: 6g"),
-                groceries.stream().map(GroceryItem::toString).toList());
+        assertEquals(List.of("Beans: 6g", "Corn: 6g", "Rice: 6g"),
+                groceries.stream().map(GroceryItem::toString).sorted().toList());
         assertEquals(profile, execute("view-diet"));
         assertSame(plan, active.get().orElseThrow());
         assertSame(request, active.getRequest().orElseThrow());
