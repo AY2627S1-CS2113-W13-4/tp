@@ -131,7 +131,8 @@ To track what you actually eat, use this separate sequence at any time after add
 ### Viewing available commands: `help`
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
-`add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`, `adjust-portion`, `reset-plan`,
+`add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`, `adjust-portion`,
+`customize-meal`, `reset-plan`,
 `check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `set-targets`, `view-targets`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
@@ -745,6 +746,64 @@ The same recipe on another day or at another meal number keeps its own portion c
 | Nutrition would exceed the supported numeric range | The adjustment is rejected and existing plan data is preserved. | Use a smaller portion count. |
 
 Failed adjustments preserve the plan, its original generation settings, and any grocery snapshot.
+
+### Customizing a Planned Meal's Ingredients
+
+Replaces the complete ingredient list of one planned meal occurrence without editing its source recipe.
+Other occurrences of that recipe keep their own ingredients. Quantities describe one portion and are multiplied
+by the occurrence's `adjust-portion` count when groceries are generated.
+
+**Before You Start:** Generate a plan and use `view-plan` to find its day and meal numbers.
+
+**Format:**
+
+```text
+customize-meal d/DAY m/MEAL i/INGREDIENT:QUANTITYUNIT [i/INGREDIENT:QUANTITYUNIT ...]
+```
+
+Every `i/` entry becomes part of the complete replacement list. Omitted source ingredients are removed from
+that occurrence.
+
+**Example:**
+
+```text
+customize-meal d/1 m/2 i/Brown Rice:125.5g i/Tofu:200g
+```
+
+**Example Output:**
+
+```text
+Meal 2 on Day 1 ingredients customized.
+Its source recipe and nutrition values are unchanged.
+The previous grocery list was cleared. Run 'generate-list' to update it.
+```
+
+The next `view-plan` marks the occurrence as `[custom ingredients]`. `generate-list` uses the replacement;
+`list-recipes` still shows the unchanged source recipe.
+
+**Rules:**
+
+- `d/` and `m/` are required exactly once. Repeat `i/` for every replacement ingredient.
+- Day and meal numbers start at 1. Ingredient quantities must be positive whole or decimal values followed by
+  an alphabetic unit such as `g`, `kg`, or `ml`.
+- Nutrition remains the source recipe's entered nutrition. MishMash does not recalculate nutrition from
+  ingredient names or quantities.
+- Named diets and avoided categories still use the source recipe's declared food tags. Current complete-name
+  ingredient exclusions are checked against the customized list before it is accepted.
+- Supplying ingredients equal to the source recipe restores that occurrence to the source list. Supplying its
+  current effective list changes nothing and preserves an existing grocery snapshot.
+- A successful change clears generated groceries because their quantities are stale. Run `generate-list` again.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| No active plan | `No active meal plan. Use 'generate-plan' first.` | Generate a plan, then retry. |
+| Day or meal does not exist | An error states the valid one-based range. | Run `view-plan` and select a displayed position. |
+| No `i/` field, malformed ingredient, or nonpositive quantity | A specific error followed by the command format. | Supply at least one valid replacement ingredient. |
+| Replacement contains an excluded ingredient | `Those ingredients conflict with your current dietary preferences.` | Choose permitted ingredients or update your dietary settings. |
+
+Every rejected customization preserves the plan, generation settings, and grocery snapshot.
 
 <!-- @@author peilingggg -->
 ### Setting Dietary Preferences
@@ -1407,7 +1466,6 @@ These features are planned under the v2.0b milestone and are **not implemented i
 | Feature | Status | Tracking issue |
 | --- | --- | --- |
 | Replace one planned meal with another recipe | **Coming soon (v2.0b)** | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) |
-| Change ingredients for one planned meal without changing its recipe | **Coming soon (v2.0b)** | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) |
 | Review recorded meals by date | **Coming soon (v2.0b)** | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) |
 | Correct or remove a recorded meal | **Coming soon (v2.0b)** | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) |
 
@@ -1458,7 +1516,7 @@ Not yet. There is currently no command to remove or edit a recorded meal. Restar
 
 - **Session-only data:** Recipes, dietary settings, daily targets, plans, groceries, and recorded meals are cleared on exit. There is no save, load, or data-transfer command.
 - **Meal-log limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** Recorded meals have no dates or editable serving quantities. Individual entries cannot be corrected or removed.
-- **Planning limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** There is no command to replace one planned meal or change only its ingredients. Use `adjust-portion` for whole-recipe portion counts. Edit the source recipe and regenerate the plan and groceries for other changes; existing snapshots keep their earlier values.
+- **Planning limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** There is no command to replace one planned meal. Use `adjust-portion` for whole-recipe portion counts and `customize-meal` for occurrence-specific ingredients. Edit the source recipe and regenerate the plan and groceries for other changes; existing snapshots keep their earlier values.
 - **Grocery limitations:** Units are not converted and `[ ]` markers cannot be ticked off.
 
 See [Troubleshooting](#troubleshooting) for recovery steps.
@@ -1531,6 +1589,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
 | [Adjust planned portions](#adjusting-a-planned-meals-portions) | `adjust-portion d/1 m/2 portions/2` | Use day and meal numbers from `view-plan`. |
+| [Customize planned ingredients](#customizing-a-planned-meals-ingredients) | `customize-meal d/1 m/2 i/Tofu:200g` | Supply the complete replacement list for that occurrence. |
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |

@@ -1,6 +1,5 @@
 package mishmash.parser;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +16,7 @@ import mishmash.command.AddRecipeCommand;
 import mishmash.command.AdjustPortionCommand;
 import mishmash.command.CheckShortfallCommand;
 import mishmash.command.Command;
+import mishmash.command.CustomizeMealCommand;
 import mishmash.command.DeleteRecipeCommand;
 import mishmash.command.EditRecipeCommand;
 import mishmash.command.GenerateListCommand;
@@ -39,6 +39,7 @@ import mishmash.model.DietarySettings;
 import mishmash.model.FoodInfo;
 import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
+import mishmash.model.IngredientCustomization;
 import mishmash.model.MealLog;
 import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
@@ -91,6 +92,7 @@ public class Parser {
 
     public static final String VIEW_PLAN_USAGE = ViewPlanCommand.USAGE;
     public static final String ADJUST_PORTION_USAGE = AdjustPortionParser.USAGE;
+    public static final String CUSTOMIZE_MEAL_USAGE = CustomizeMealParser.USAGE;
     //@@author Rixte
     public static final String RESET_PLAN_USAGE = ResetPlanCommand.USAGE;
     //@@author
@@ -114,7 +116,8 @@ public class Parser {
      */
     public static final String COMMAND_USAGE = String.join(System.lineSeparator(),
             ADD_RECIPE_USAGE, LIST_RECIPE_USAGE, EDIT_RECIPE_USAGE, DELETE_RECIPE_USAGE, GENERATE_PLAN_USAGE,
-            VIEW_PLAN_USAGE, ADJUST_PORTION_USAGE, RESET_PLAN_USAGE, CHECK_SHORTFALL_USAGE,
+            VIEW_PLAN_USAGE, ADJUST_PORTION_USAGE, CUSTOMIZE_MEAL_USAGE, RESET_PLAN_USAGE,
+            CHECK_SHORTFALL_USAGE,
             GENERATE_LIST_USAGE, VIEW_LIST_USAGE,
             DietaryPreferencesParser.USAGE, "Format: view-diet", SET_TARGETS_USAGE, VIEW_TARGETS_USAGE,
             RECORD_MEAL_USAGE, VIEW_MEALS_USAGE,
@@ -138,10 +141,6 @@ public class Parser {
     // Recognize unknown prefixes too, so they cannot become part of a name.
     private static final Pattern PREFIX_PATTERN =
             Pattern.compile("(?<!\\S)([^\\s/]+)/");
-
-    // Ingredient quantities may be decimal, while units contain letters.
-    private static final Pattern INGREDIENT_PATTERN =
-            Pattern.compile("([^:]+):\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)");
 
     private static final Pattern DAY_PATTERN = Pattern.compile("d/\\s*([0-9]+)");
 
@@ -350,6 +349,9 @@ public class Parser {
         if (commandWord.equals(AdjustPortionCommand.COMMAND_WORD)) {
             return parseAdjustPortion(arguments);
         }
+        if (commandWord.equals(CustomizeMealCommand.COMMAND_WORD)) {
+            return parseCustomizeMeal(arguments);
+        }
         //@@author Rixte
         if (commandWord.equals(ResetPlanCommand.COMMAND_WORD)) {
             return parseResetPlan(arguments);
@@ -414,6 +416,23 @@ public class Parser {
         } catch (IllegalArgumentException e) {
             LOGGER.fine("adjust-portion rejected: invalid arguments");
             throw new MishMashException(e.getMessage(), ADJUST_PORTION_USAGE, e);
+        }
+    }
+
+    /**
+     * Parses one complete ingredient replacement while deferring plan-position checks until execution.
+     *
+     * @param arguments The selected day and meal plus one or more replacement ingredients.
+     * @return A command connected to the latest plan and dietary settings.
+     * @throws MishMashException If syntax, a position value, or an ingredient is invalid.
+     */
+    private Command parseCustomizeMeal(String arguments) throws MishMashException {
+        try {
+            IngredientCustomization customization = new CustomizeMealParser().parse(arguments);
+            return new CustomizeMealCommand(customization, activeMealPlan, dietarySettings);
+        } catch (IllegalArgumentException e) {
+            LOGGER.fine("customize-meal rejected: invalid arguments");
+            throw new MishMashException(e.getMessage(), CUSTOMIZE_MEAL_USAGE, e);
         }
     }
 
@@ -827,7 +846,7 @@ public class Parser {
                     + " Use i/ for each ingredient; names and units must not contain '/'.");
         }
         if (prefix.equals("i")) {
-            ingredients.add(parseIngredient(value));
+            ingredients.add(new IngredientParser().parse(value));
             return;
         }
         if (prefix.equals("food")) {
@@ -865,30 +884,4 @@ public class Parser {
         }
     }
 
-    /**
-     * Parses an ingredient such as Chicken Breast:200g.
-     *
-     * @param value The ingredient name, quantity, and unit.
-     * @return The parsed ingredient.
-     */
-    private GroceryItem parseIngredient(String value) {
-        if (value.startsWith(":")) {
-            throw new IllegalArgumentException("Ingredient name must not be blank.");
-        }
-        Matcher matcher = INGREDIENT_PATTERN.matcher(value);
-        if (!matcher.matches()) {
-            throw new IllegalArgumentException(
-                    "Invalid ingredient format. Use i/INGREDIENT:QUANTITYUNIT, for example i/Chicken Breast:200g.");
-        }
-
-        BigDecimal quantity = new BigDecimal(matcher.group(2));
-        if (quantity.signum() <= 0) {
-            throw new IllegalArgumentException("Ingredient quantity must be greater than zero.");
-        }
-
-        if (matcher.group(1).isBlank()) {
-            throw new IllegalArgumentException("Ingredient name must not be blank.");
-        }
-        return new GroceryItem(matcher.group(1), quantity, matcher.group(3));
-    }
 }

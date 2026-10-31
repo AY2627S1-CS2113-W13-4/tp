@@ -62,6 +62,29 @@ public class MealPlan {
     }
 
     /**
+     * Returns a new plan with one selected planned meal's complete ingredient replacement.
+     *
+     * @param dayIndex The zero-based day position to update.
+     * @param mealIndex The zero-based meal position within that day.
+     * @param ingredients The nonempty one-portion ingredient replacement.
+     * @return A new plan, or this plan when the effective ingredients are unchanged.
+     * @throws IndexOutOfBoundsException If either position does not exist.
+     * @throws NullPointerException If the list or any ingredient is null.
+     * @throws IllegalArgumentException If the list is empty or a quantity is not positive.
+     */
+    public MealPlan withCustomizedIngredients(int dayIndex, int mealIndex, List<GroceryItem> ingredients) {
+        DayPlan currentDay = days.get(dayIndex);
+        DayPlan updatedDay = currentDay.withCustomizedIngredients(mealIndex, ingredients);
+        if (updatedDay == currentDay) {
+            return this;
+        }
+
+        List<DayPlan> updatedDays = new ArrayList<>(days);
+        updatedDays.set(dayIndex, updatedDay);
+        return new MealPlan(updatedDays);
+    }
+
+    /**
      * Converts the plan to the display data that {@link MealPlanViewer} expects.
      * The viewer is deliberately independent of how recipes and plans are stored,
      * so this method is the single place that adapts the two.
@@ -74,6 +97,7 @@ public class MealPlan {
             List<MealSummary> summaries = new ArrayList<>();
             for (PlannedMeal meal : day.getPlannedMeals()) {
                 summaries.add(new MealSummary(meal.getRecipe().getName(), meal.getPortionCount(),
+                        meal.hasCustomizedIngredients(),
                         meal.getCalories(), meal.getProtein(), meal.getCarbs(), meal.getFats()));
             }
             mealsByDay.add(summaries);

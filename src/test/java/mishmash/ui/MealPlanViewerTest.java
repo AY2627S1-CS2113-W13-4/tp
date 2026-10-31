@@ -395,6 +395,16 @@ class MealPlanViewerTest {
     }
 
     @Test
+    void view_customizedIngredients_displaysMarkerWithoutChangingNutrition() {
+        MealSummary meal = new MealSummary("Rice", 2, true, 400, 8, 90, 2);
+
+        String display = viewer.view(List.of(List.of(meal)));
+
+        assertTrue(display.contains("Meal 1: Rice [2 portions] [custom ingredients]"
+                + " (400 kcal | P: 8g, C: 90g, F: 2g)"));
+    }
+
+    @Test
     void mealSummary_nonPositivePortions_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", 0, 200, 4, 45, 1));
         assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", -1, 200, 4, 45, 1));

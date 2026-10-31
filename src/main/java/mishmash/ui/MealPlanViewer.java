@@ -121,6 +121,7 @@ public class MealPlanViewer {
             result.append(System.lineSeparator())
                     .append("Meal ").append(mealNumber).append(": ").append(meal.name())
                     .append(formatPortionCount(meal.portionCount()))
+                    .append(formatIngredientCustomization(meal.hasCustomizedIngredients()))
                     .append(" (").append(meal.calories()).append(" kcal | P: ")
                     .append(meal.protein()).append("g, C: ").append(meal.carbs())
                     .append("g, F: ").append(meal.fats()).append("g)");
@@ -139,6 +140,13 @@ public class MealPlanViewer {
             return "";
         }
         return " [" + portionCount + " portions]";
+    }
+
+    /**
+     * Marks planned occurrences whose ingredients differ from their source recipe.
+     */
+    private String formatIngredientCustomization(boolean hasCustomizedIngredients) {
+        return hasCustomizedIngredients ? " [custom ingredients]" : "";
     }
 
     /**
@@ -206,12 +214,28 @@ public class MealPlanViewer {
      *
      * @param name The meal's display name.
      * @param portionCount Number of whole recipe portions represented by this meal.
+     * @param hasCustomizedIngredients Whether ingredients differ from the source recipe.
      * @param calories Total kilocalories in the meal.
      * @param protein Total grams of protein in the meal.
      * @param carbs Total grams of carbohydrates in the meal.
      * @param fats Total grams of fat in the meal.
      */
-    public record MealSummary(String name, int portionCount, long calories, long protein, long carbs, long fats) {
+    public record MealSummary(String name, int portionCount, boolean hasCustomizedIngredients,
+            long calories, long protein, long carbs, long fats) {
+        /**
+         * Creates display data without an ingredient customization marker.
+         *
+         * @param name The meal's display name.
+         * @param portionCount Number of whole recipe portions represented by this meal.
+         * @param calories Total kilocalories in the meal.
+         * @param protein Total grams of protein in the meal.
+         * @param carbs Total grams of carbohydrates in the meal.
+         * @param fats Total grams of fat in the meal.
+         */
+        public MealSummary(String name, int portionCount, long calories, long protein, long carbs, long fats) {
+            this(name, portionCount, false, calories, protein, carbs, fats);
+        }
+
         /**
          * Creates one-portion display data for callers that do not supply an explicit portion count.
          *
@@ -222,7 +246,7 @@ public class MealPlanViewer {
          * @param fats Total grams of fat in the meal.
          */
         public MealSummary(String name, long calories, long protein, long carbs, long fats) {
-            this(name, 1, calories, protein, carbs, fats);
+            this(name, 1, false, calories, protein, carbs, fats);
         }
 
         /**
