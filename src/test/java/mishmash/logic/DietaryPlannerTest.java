@@ -138,4 +138,76 @@ class DietaryPlannerTest {
         assertThrows(AssertionError.class, () -> new DietaryPlanner(broken).generate(createSuitableRecipes(),
                 new GeneratePlanRequest(1, NutritionTargets.none()), vegan));
     }
+
+    @Test
+    void generate_unrestrictedProfile_keepsUnclassifiedRecipes() {
+        List<Recipe> recipes = List.of(createRecipe("Unknown", 600, null),
+                createRecipe("Milk", 600, "milk"), createRecipe("Egg", 600, "egg"));
+        MealPlan plan = planner.generate(recipes, new GeneratePlanRequest(1, NutritionTargets.none()),
+                DietaryPreferences.createUnrestricted());
+        assertEquals(Set.copyOf(recipes), Set.copyOf(plan.getDays().get(0).getMeals()));
+    }
+
+    @Test
+    void repair_nullArguments_validateEachDependencyIndependently() {
+        List<Recipe> recipes = createSuitableRecipes();
+        MealPlan current = new MealPlan(List.of(new DayPlan(recipes)));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        assertThrows(NullPointerException.class, () -> planner.repair(null, current, request, vegan));
+        assertThrows(NullPointerException.class, () -> planner.repair(recipes, null, request, vegan));
+        assertThrows(NullPointerException.class, () -> planner.repair(recipes, current, null, vegan));
+        assertThrows(NullPointerException.class, () -> planner.repair(recipes, current, request, null));
+    }
+
+    @Test
+    void repair_failedReplacement_preservesOriginalPlan() {
+        List<Recipe> recipes = createSuitableRecipes();
+        DayPlan conflicting = new DayPlan(List.of(createRecipe("Egg", 600, "egg")));
+        MealPlan current = new MealPlan(List.of(conflicting));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        assertThrows(IllegalArgumentException.class,
+                () -> planner.repair(recipes.subList(0, 2), current, request, vegan));
+        assertSame(conflicting, current.getDays().get(0));
+        assertEquals("Egg", current.getDays().get(0).getMeals().get(0).getName());
+    }
+
+    @Test
+    void isCompatible_customizedIngredients_checksEffectiveMealContents() {
+        DayPlan original = new DayPlan(createSuitableRecipes());
+        DayPlan customized = original.withCustomizedIngredients(0,
+                List.of(new GroceryItem("Salt", BigDecimal.ONE, "g")));
+        DietaryPreferences noSalt = new DietaryPreferences(Diet.NONE, Set.of(), Set.of("salt"));
+        assertTrue(planner.isCompatible(new MealPlan(List.of(original)), noSalt));
+        assertFalse(planner.isCompatible(new MealPlan(List.of(customized)), noSalt));
+    }
+
+    @Test
+    void generate_wrongLength_assertsRequestInvariant() {
+        MealPlan wrongLength = new MealPlan(List.of(new DayPlan(createSuitableRecipes())));
+        AssertionError error = assertThrows(AssertionError.class,
+                () -> plannerReturning(wrongLength).generate(createSuitableRecipes(),
+                        new GeneratePlanRequest(2, NutritionTargets.none()), vegan));
+        assertEquals("Generated plan length must match the request", error.getMessage());
+    }
+
+    @Test
+    void generate_insufficientNutrition_assertsTargetInvariant() {
+        MealPlan underTarget = new MealPlan(List.of(new DayPlan(createSuitableRecipes())));
+        AssertionError error = assertThrows(AssertionError.class,
+                () -> plannerReturning(underTarget).generate(createSuitableRecipes(),
+                        new GeneratePlanRequest(1, new NutritionTargets(5000, null, null, null)), vegan));
+        assertEquals("Generated days must satisfy the original nutrition targets", error.getMessage());
+    }
+
+    /**
+     * Supplies a deliberately invalid generator result to exercise internal assertions.
+     */
+    private DietaryPlanner plannerReturning(MealPlan result) {
+        return new DietaryPlanner(new MealPlanGenerator(new Random(1)) {
+            @Override
+            public MealPlan generate(List<Recipe> recipes, int days, NutritionTargets targets) {
+                return result;
+            }
+        });
+    }
 }
