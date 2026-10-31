@@ -1,8 +1,10 @@
 package mishmash.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,5 +47,48 @@ class PlannedMealTest {
         assertSame(recipe, changed.getRecipe());
         assertEquals(2, changed.getPortionCount());
         assertEquals(1, original.getPortionCount());
+    }
+
+    @Test
+    void withIngredients_replacementIsOccurrenceOnlyAndScalesWithPortions() {
+        PlannedMeal original = new PlannedMeal(recipe, 2);
+        GroceryItem tofu = new GroceryItem("Tofu", new BigDecimal("75.5"), "g");
+
+        PlannedMeal customized = original.withIngredients(List.of(tofu));
+
+        assertTrue(customized.hasCustomizedIngredients());
+        assertEquals(List.of(tofu), customized.getIngredients());
+        assertEquals(new BigDecimal("151.0"), customized.getScaledIngredients().get(0).getQuantity());
+        assertEquals(recipe.getIngredients(), original.getIngredients());
+        assertFalse(original.hasCustomizedIngredients());
+        assertEquals(original.getCalories(), customized.getCalories());
+        PlannedMeal resized = customized.withPortionCount(3);
+        assertTrue(resized.hasCustomizedIngredients());
+        assertEquals(new BigDecimal("226.5"), resized.getScaledIngredients().get(0).getQuantity());
+    }
+
+    @Test
+    void withIngredients_equalValuesIsNoOpAndSourceValuesRestoreCustomization() {
+        GroceryItem numericallyEqualRice = new GroceryItem("Rice", new BigDecimal("125.50"), "g");
+        PlannedMeal original = PlannedMeal.onePortionOf(recipe);
+        assertSame(original, original.withIngredients(List.of(numericallyEqualRice)));
+        PlannedMeal customized = original.withIngredients(
+                List.of(new GroceryItem("Tofu", BigDecimal.ONE, "g")));
+
+        PlannedMeal restored = customized.withIngredients(List.of(numericallyEqualRice));
+
+        assertFalse(restored.hasCustomizedIngredients());
+        assertEquals(recipe.getIngredients(), restored.getIngredients());
+    }
+
+    @Test
+    void withIngredients_invalidReplacement_rejectsWithoutChangingMeal() {
+        PlannedMeal meal = PlannedMeal.onePortionOf(recipe);
+        GroceryItem zero = new GroceryItem("Water", BigDecimal.ZERO, "ml");
+
+        assertThrows(NullPointerException.class, () -> meal.withIngredients(null));
+        assertThrows(IllegalArgumentException.class, () -> meal.withIngredients(List.of()));
+        assertThrows(IllegalArgumentException.class, () -> meal.withIngredients(List.of(zero)));
+        assertFalse(meal.hasCustomizedIngredients());
     }
 }

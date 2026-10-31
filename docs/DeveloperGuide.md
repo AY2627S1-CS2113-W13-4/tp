@@ -71,6 +71,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `reset-plan` | Clear the current plan, its generation request, and derived groceries; preserve other session data. |
 | `view-plan` | Display the active meal plan or one selected day. |
 | `adjust-portion` | Change one planned meal's positive whole-recipe portion count. |
+| `customize-meal` | Replace one planned meal occurrence's ingredients without editing its recipe. |
 | `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
@@ -91,6 +92,7 @@ Commands validate their arguments and relevant application state. Requests that 
 | `GroceryItem` | An ingredient name, decimal quantity, and unit. |
 | `PlannedMeal` | One recipe occurrence and its positive whole-recipe portion count. |
 | `PortionAdjustment` | Validated one-based day and meal positions with the requested portion count. |
+| `IngredientCustomization` | Validated positions and a complete immutable replacement ingredient list. |
 | `DayPlan` | The meals selected for one day and their nutrition totals. |
 | `MealPlan` | The ordered days of a generated plan. |
 | `NutritionTargets` | Optional daily calorie, protein, carbohydrate, and fat targets. |
@@ -658,6 +660,35 @@ scaled daily totals through `DayPlan`, and `GroceryListGenerator.generateForPlan
 `PlannedMealTest`, `AdjustPortionParserTest`, `AdjustPortionCommandTest`, and
 `AdjustPortionIntegrationTest` cover scaling, validation, atomic state changes, viewing, shortfalls, and grocery
 generation. Existing model, viewer, and grocery tests provide regression coverage.
+
+<!-- @@author -->
+
+### Customizing planned meal ingredients
+
+`customize-meal d/DAY m/MEAL i/INGREDIENT:QUANTITYUNIT [...]` replaces the effective one-portion ingredients
+of one occurrence. It does not edit `RecipeBook`, the source `Recipe`, nutrition, or other occurrences.
+`IngredientParser` centralizes the established recipe ingredient grammar so recipe and customization commands
+cannot drift apart.
+
+`CustomizeMealParser` accepts `d/` and `m/` once and repeated `i/` fields in any order. It creates an immutable
+`IngredientCustomization`; active-plan bounds remain execution-time checks. `CustomizeMealCommand` constructs
+the entire replacement plan before publishing it through `ActiveMealPlan.update`, which preserves the original
+generation request and invalidates stale groceries only after success.
+
+`PlannedMeal` stores an optional copied override and exposes effective ingredients independently of its source
+recipe. `withIngredients` treats numerically equal `BigDecimal` quantities as equal, returns the same object for
+a no-op, and removes the override when values match the source recipe again. Portion changes retain overrides,
+and grocery generation multiplies effective quantities by the portion count. Nutrition continues to use the
+recipe values because the application has no ingredient-to-nutrition database.
+
+Dietary category checks continue to use the source recipe's declared `FoodInfo`. Ingredient-name exclusions
+use the effective planned-meal ingredients. The command rejects a conflicting replacement before state changes,
+and later `set-diet` compatibility checks also inspect effective ingredients.
+
+`CustomizeMealParserTest`, `IngredientCustomizationTest`, `CustomizeMealCommandTest`, and
+`CustomizeMealIntegrationTest` cover syntax, defensive copying, atomic failure, dietary conflicts, source
+recipe isolation, portion composition, display markers, and grocery quantities. Existing recipe parsing tests
+protect the shared `IngredientParser` behavior.
 
 <!-- @@author -->
 
@@ -1679,7 +1710,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 
 **Value proposition:** MishMash connects recipe management, meal selection, and grocery preparation in one workflow. It generates plans from user-entered recipes and combines ingredient quantities for the selected meals.
 
-**Current boundaries:** Data lasts for one session. Nutrition is entered by the user rather than calculated from an ingredient database. Plans support positive whole-recipe portion counts, not fractional servings. Ingredient names and units are matched exactly; automatic unit conversion and grocery-item ticking are not supported.
+**Current boundaries:** Data lasts for one session. Nutrition is entered by the user rather than calculated from an ingredient database, including after occurrence-specific ingredient customization. Plans support positive whole-recipe portion counts, not fractional servings. Ingredient names and units are matched exactly; automatic unit conversion and grocery-item ticking are not supported.
 
 ## Appendix B: User Stories
 
@@ -1721,7 +1752,7 @@ This is a source-checkout audit against the [v2.0b milestone](https://github.com
 | `**` | Meal prep user | Understand unsuccessful generation | Know which recipes or settings to change | [#59](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/59) | Existing diagnostics and dietary-repair recovery; check issue acceptance before closing. |
 | `**` | Meal prep user | Replace an individual planned meal | Adapt a plan to what I want to eat | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) | Coming soon (v2.0b); no individual replacement command. |
 | `**` | Meal prep user | Adjust a planned meal's portion | Match nutrition and grocery quantities to my serving | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) | Implemented: `adjust-portion`; whole-recipe portions only. |
-| `**` | Meal prep user | Customise one planned meal's ingredients | Adapt that meal without editing the original recipe | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) | Coming soon (v2.0b); recipe editing does not change existing plan snapshots. |
+| `**` | Meal prep user | Customise one planned meal's ingredients | Adapt that meal without editing the original recipe | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) | Implemented: `customize-meal`; source recipes remain unchanged. |
 | `**` | User tracking intake | Review recorded meals by date | Understand my intake for a selected day | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) | Coming soon (v2.0b); records have no dates. |
 | `**` | User tracking intake | Correct or remove a recorded meal | Keep my intake records accurate | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) | Coming soon (v2.0b); no correction or removal command. |
 

@@ -83,7 +83,7 @@ public final class DietaryPlanner {
      * @return True if every recipe in the day is permitted.
      */
     private boolean isCompatible(DayPlan day, DietaryPreferences preferences) {
-        return day.getMeals().stream().allMatch(preferences::isAllowed);
+        return day.getPlannedMeals().stream().allMatch(preferences::isPlannedMealAllowed);
     }
 
     /**

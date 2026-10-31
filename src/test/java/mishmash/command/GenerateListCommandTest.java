@@ -119,6 +119,20 @@ class GenerateListCommandTest {
     }
 
     @Test
+    void execute_customizedIngredients_usesOverrideWithoutChangingRecipe() {
+        Recipe meal = recipe(new GroceryItem("Rice", new BigDecimal("100"), "g"));
+        PlannedMeal customized = new PlannedMeal(meal, 2).withIngredients(
+                List.of(new GroceryItem("Tofu", new BigDecimal("75.5"), "g")));
+        activePlan.set(new MealPlan(List.of(DayPlan.fromPlannedMeals(List.of(customized)))));
+
+        command.execute(book);
+
+        assertEquals("Tofu", activePlan.getGroceryList().orElseThrow().get(0).getName());
+        assertEquals(new BigDecimal("151.0"), activePlan.getGroceryList().orElseThrow().get(0).getQuantity());
+        assertEquals("Rice", meal.getIngredients().get(0).getName());
+    }
+
+    @Test
     void constructor_nullPlanHolder_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new GenerateListCommand(null));
     }

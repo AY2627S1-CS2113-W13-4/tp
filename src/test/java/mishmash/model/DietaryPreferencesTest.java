@@ -107,6 +107,19 @@ class DietaryPreferencesTest {
     }
 
     @Test
+    void isPlannedMealAllowed_usesEffectiveIngredientsAndSourceClassification() {
+        Recipe recipe = createRecipe("Rice", FoodInfo.parseField("none"));
+        PlannedMeal customized = PlannedMeal.onePortionOf(recipe).withIngredients(
+                List.of(new GroceryItem("Peanut", BigDecimal.ONE, "g")));
+        DietaryPreferences preferences = new DietaryPreferences(Diet.NONE, Set.of(), Set.of("peanut"));
+
+        assertTrue(preferences.isAllowed(recipe));
+        assertFalse(preferences.isPlannedMealAllowed(customized));
+        assertTrue(DietaryPreferences.createUnrestricted().isPlannedMealAllowed(customized));
+        assertThrows(NullPointerException.class, () -> preferences.isPlannedMealAllowed(null));
+    }
+
+    @Test
     void constructor_mutableCollections_makesReadOnlyCopies() {
         Set<FoodTag> tags = new HashSet<>(Set.of(FoodTag.MILK));
         Set<String> ingredients = new HashSet<>(Set.of("Salt"));

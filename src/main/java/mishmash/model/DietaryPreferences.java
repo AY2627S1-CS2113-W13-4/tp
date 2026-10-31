@@ -73,6 +73,25 @@ public record DietaryPreferences(Diet diet, Set<FoodTag> avoidedTags, Set<String
      */
     public boolean isAllowed(Recipe recipe) {
         Objects.requireNonNull(recipe, "recipe");
+        return matchesRestrictions(recipe, recipe.getIngredients());
+    }
+
+    /**
+     * Checks a planned meal using its source recipe's category declaration and its effective ingredients.
+     *
+     * @param meal The planned meal to evaluate without modifying it.
+     * @return True if its source classification and effective ingredients satisfy the complete profile.
+     * @throws NullPointerException If the meal is null.
+     */
+    public boolean isPlannedMealAllowed(PlannedMeal meal) {
+        Objects.requireNonNull(meal, "meal");
+        return matchesRestrictions(meal.getRecipe(), meal.getIngredients());
+    }
+
+    /**
+     * Checks source classification together with the ingredients effective for one occurrence.
+     */
+    private boolean matchesRestrictions(Recipe recipe, Collection<GroceryItem> ingredients) {
         if (!isRestricted()) {
             return true;
         }
@@ -85,7 +104,7 @@ public record DietaryPreferences(Diet diet, Set<FoodTag> avoidedTags, Set<String
                 return false;
             }
         }
-        return recipe.getIngredients().stream()
+        return ingredients.stream()
                 .noneMatch(item -> excludedIngredients.contains(normalizeIngredient(item.getName())));
     }
 

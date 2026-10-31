@@ -81,6 +81,28 @@ public class DayPlan {
     }
 
     /**
+     * Returns a new day plan with one selected meal's complete ingredient replacement.
+     *
+     * @param mealIndex The zero-based meal position to update.
+     * @param ingredients The nonempty one-portion ingredient replacement.
+     * @return A new day plan, or this day when the effective ingredients are unchanged.
+     * @throws IndexOutOfBoundsException If the meal index does not exist.
+     * @throws NullPointerException If the list or any ingredient is null.
+     * @throws IllegalArgumentException If the list is empty or a quantity is not positive.
+     */
+    public DayPlan withCustomizedIngredients(int mealIndex, List<GroceryItem> ingredients) {
+        PlannedMeal currentMeal = plannedMeals.get(mealIndex);
+        PlannedMeal updatedMeal = currentMeal.withIngredients(ingredients);
+        if (updatedMeal == currentMeal) {
+            return this;
+        }
+
+        List<PlannedMeal> updatedMeals = new ArrayList<>(plannedMeals);
+        updatedMeals.set(mealIndex, updatedMeal);
+        return DayPlan.fromPlannedMeals(updatedMeals);
+    }
+
+    /**
      * Calculates the nutrition totals for every meal occurrence in this day, including repeated recipes.
      * Returns zero for each nutrient when the day has no meals.
      *

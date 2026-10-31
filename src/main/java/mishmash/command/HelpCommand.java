@@ -42,6 +42,11 @@ public class HelpCommand implements Command {
                 Parser.ADJUST_PORTION_USAGE,
                 "Day and meal numbers come from view-plan. Updated portions clear generated groceries.",
                 "",
+                CustomizeMealCommand.COMMAND_WORD
+                        + " - Replace the ingredients of one planned meal occurrence.",
+                Parser.CUSTOMIZE_MEAL_USAGE,
+                "Quantities describe one portion. Source recipes and nutrition values are unchanged.",
+                "",
                 //@@author Rixte
                 ResetPlanCommand.COMMAND_WORD + " - Clear the current meal plan and its grocery list.",
                 ResetPlanCommand.USAGE,
