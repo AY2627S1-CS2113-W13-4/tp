@@ -18,6 +18,9 @@ import org.junit.jupiter.api.TestFactory;
  * Tests command labels, aliases and malformed food-category lists directly.
  */
 class FoodTagTest {
+    /**
+     * Exercises every canonical category spelling.
+     */
     @TestFactory
     Stream<DynamicTest> parse_canonicalLabels_roundTripEveryCategory() {
         return Arrays.stream(FoodTag.values()).map(tag -> DynamicTest.dynamicTest(tag.getLabel(), () -> {
@@ -27,6 +30,9 @@ class FoodTagTest {
         }));
     }
 
+    /**
+     * Checks each supported alias against its explicit expected category.
+     */
     @TestFactory
     Stream<DynamicTest> parse_aliases_resolveToCanonicalCategories() {
         return Map.of("dairy", FoodTag.MILK, "soya", FoodTag.SOY, "sulfite", FoodTag.SULPHITE,
@@ -36,6 +42,9 @@ class FoodTagTest {
                         assertEquals(entry.getValue(), FoodTag.parse(" " + entry.getKey() + " "))));
     }
 
+    /**
+     * Rejects empty entries and duplicates after alias normalization.
+     */
     @TestFactory
     Stream<DynamicTest> parseCsv_blankOrRepeatedEntries_rejectMalformedLists() {
         return Stream.of("", " ", ",milk", "milk,", "milk,,egg", "milk, \t,egg",
