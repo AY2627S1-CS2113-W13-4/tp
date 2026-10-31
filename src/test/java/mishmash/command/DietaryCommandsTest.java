@@ -274,4 +274,79 @@ class DietaryCommandsTest {
                 new GeneratePlanRequest(1, NutritionTargets.none()), generator, active, null));
         assertEquals(preferences, settings.get());
     }
+
+    @Test
+    void setDiet_ingredientExclusion_repairsPlanAndRemovesExcludedGroceries() throws MishMashException {
+        List<Recipe> suitable = addSuitableRecipes();
+        Recipe salt = createRecipe("Salt", 600, "none");
+        DayPlan conflicting = new DayPlan(List.of(suitable.get(0), suitable.get(1), salt));
+        MealPlan original = new MealPlan(List.of(conflicting));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        active.setGenerated(original, request,
+                Optional.of(new GroceryListGenerator().generateForPlan(original)));
+
+        assertTrue(execute("set-diet exclude/ SALT ").contains("Conflicting days were replaced."));
+
+        assertEquals(Set.copyOf(suitable), Set.copyOf(active.get().orElseThrow().getDays().get(0).getMeals()));
+        assertFalse(active.getGroceryList().orElseThrow().stream().anyMatch(item -> item.getName().equals("Salt")));
+        assertTrue(execute("view-diet").contains("Excluded ingredients: salt"));
+        assertSame(request, active.getRequest().orElseThrow());
+        assertSame(conflicting, original.getDays().get(0));
+    }
+
+    @Test
+    void setDiet_invalidAliasDuplicates_preservesEveryStateField() throws MishMashException {
+        addSuitableRecipes();
+        execute("set-diet diet/vegan");
+        execute("generate-plan d/1");
+        execute("generate-list");
+        MealPlan plan = active.get().orElseThrow();
+        GeneratePlanRequest request = active.getRequest().orElseThrow();
+        List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
+        String profile = execute("view-diet");
+
+        for (String input : List.of("set-diet avoid/milk,dairy", "set-diet avoid/soy,soya",
+                "set-diet exclude/Salt, SALT", "set-diet avoid/egg,")) {
+            assertThrows(MishMashException.class, () -> execute(input));
+            assertEquals(profile, execute("view-diet"));
+            assertSame(plan, active.get().orElseThrow());
+            assertSame(request, active.getRequest().orElseThrow());
+            assertSame(groceries, active.getGroceryList().orElseThrow());
+        }
+    }
+
+    @Test
+    void setDiet_pendingCommand_evaluatesPlanAtExecution() throws MishMashException {
+        List<Recipe> suitable = addSuitableRecipes();
+        Command pending = parser.parseCommand("set-diet diet/vegan");
+        Recipe milk = createRecipe("Milk", 600, "milk");
+        MealPlan original = new MealPlan(List.of(new DayPlan(List.of(suitable.get(0), suitable.get(1), milk))));
+        active.setGenerated(original, new GeneratePlanRequest(1, NutritionTargets.none()), Optional.empty());
+
+        assertTrue(pending.confirmationPrompt(book).isPresent());
+        assertSame(original, active.get().orElseThrow());
+        assertTrue(execute("view-diet").contains("Diet: none"));
+        assertTrue(pending.execute(book).contains("Conflicting days were replaced."));
+        assertNotSame(original, active.get().orElseThrow());
+        assertTrue(execute("view-diet").contains("Diet: vegan"));
+    }
+
+    @Test
+    void setDiet_relaxedProfile_preservesExistingPlanAndGroceries() throws MishMashException {
+        addSuitableRecipes();
+        execute("set-diet diet/vegan avoid/milk exclude/salt");
+        execute("generate-plan d/1");
+        execute("generate-list");
+        MealPlan plan = active.get().orElseThrow();
+        GeneratePlanRequest request = active.getRequest().orElseThrow();
+        List<GroceryItem> groceries = active.getGroceryList().orElseThrow();
+
+        assertTrue(execute("set-diet diet/none").contains("already matches"));
+
+        assertEquals(String.join(System.lineSeparator(), "Diet: none",
+                "Avoided food categories: none", "Excluded ingredients: none"), execute("view-diet"));
+        assertSame(plan, active.get().orElseThrow());
+        assertSame(request, active.getRequest().orElseThrow());
+        assertSame(groceries, active.getGroceryList().orElseThrow());
+    }
 }
