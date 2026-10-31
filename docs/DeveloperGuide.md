@@ -70,6 +70,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. Saved targets fill in nutrients that the command leaves out. |
 | `reset-plan` | Clear the current plan, its generation request, and derived groceries; preserve other session data. |
 | `view-plan` | Display the active meal plan or one selected day. |
+| `adjust-portion` | Change one planned meal's positive whole-recipe portion count. |
 | `check-shortfall` | Compare each planned day's nutrition with explicit daily targets and report deficits. |
 | `generate-list` | Generate groceries for the active meal plan. |
 | `view-list` | Display the generated grocery list. |
@@ -88,6 +89,8 @@ Commands validate their arguments and relevant application state. Requests that 
 | `RecipeBook` | The session's ordered collection of recipes. |
 | `RecipeChanges` | Validated optional edits, applied to the current recipe during execution. |
 | `GroceryItem` | An ingredient name, decimal quantity, and unit. |
+| `PlannedMeal` | One recipe occurrence and its positive whole-recipe portion count. |
+| `PortionAdjustment` | Validated one-based day and meal positions with the requested portion count. |
 | `DayPlan` | The meals selected for one day and their nutrition totals. |
 | `MealPlan` | The ordered days of a generated plan. |
 | `NutritionTargets` | Optional daily calorie, protein, carbohydrate, and fat targets. |
@@ -437,7 +440,8 @@ insignificant trailing zeros, for example `Oil: 0.3ml`.
 record containing the ingredient name and unit. Each occurrence is merged with `BigDecimal::add`.
 Exact decimal addition avoids floating-point rounding, and insertion order preserves the first
 appearance of each key. `Rice:200g` and `Rice:100g` combine; `Rice:1kg`, `rice:100g`, and
-`Rice:1cups` remain separate. No unit conversion, spelling normalization, or portion scaling occurs.
+`Rice:1cups` remain separate. No unit conversion or spelling normalization occurs. When groceries are
+generated from a plan, `PlannedMeal` first scales each ingredient by its exact `BigDecimal` portion count.
 
 The method rejects a null list or item, returns an empty list for empty input, and publishes an
 unmodifiable result with `List.copyOf`. Inputs remain unchanged, and successive calls do not reuse
@@ -453,8 +457,8 @@ or modifying the plan.
 
 ![Sequence diagram of parsing generate-list without reading plan state.](images/oilybikechain/grocery-parsing.svg)
 
-During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getMeals()`, and each recipe's
-ingredients. Every meal occurrence contributes its quantities. The existing `GroceryListGenerator`
+During execution, the command traverses `MealPlan.getDays()`, `DayPlan.getPlannedMeals()`, and each planned
+meal's scaled ingredients. Every meal occurrence contributes its portion-adjusted quantities. `GroceryListGenerator`
 combines exact name/unit matches with `BigDecimal` arithmetic, preserving first-appearance order and
 keeping incompatible units separate.
 
@@ -625,6 +629,35 @@ owning terminal output.
 missing plans, current-state lookup, large totals, and unchanged groceries and recipes.
 Manually generate two days, run `view-plan d/2`, then reset and run the view again;
 the second view should report missing data.
+
+<!-- @@author -->
+
+### Adjusting planned meal portions
+
+`adjust-portion d/DAY m/MEAL portions/COUNT` changes one recipe occurrence without editing the recipe book.
+`AdjustPortionParser` accepts the three required prefixes in any order, rejects duplicates and unknown fields,
+and creates an immutable `PortionAdjustment`. Bounds against the current plan are deferred until
+`AdjustPortionCommand.execute`, so parsing does not read or mutate session state.
+
+`PlannedMeal` owns a `Recipe` reference and a positive integer portion count. It supplies scaled nutrition as
+`long` values and new scaled `GroceryItem` values using `BigDecimal`. `DayPlan` retains its original
+recipe-oriented constructor and `getMeals()` compatibility API, while `getPlannedMeals()` exposes portion-aware
+data. New generated recipes are wrapped as one-portion planned meals.
+
+The update path is copy-on-write: `MealPlan.withAdjustedPortion` replaces only the selected `DayPlan`, and
+`DayPlan.withAdjustedPortion` replaces only the selected `PlannedMeal`. Exact addition rejects nutrition
+overflow before publication. `ActiveMealPlan.update` then preserves the original `GeneratePlanRequest` and
+clears the grocery snapshot. Validation finishes before field assignment, so a failed adjustment preserves
+the plan, request, and groceries. Requesting the current count returns the original objects and does not clear
+groceries.
+
+`MealPlan.toMealSummaries` supplies the portion count and scaled nutrition to `MealPlanViewer`. Counts above
+one appear as `[N portions]`; one-portion output stays backward compatible. `CheckShortfallCommand` receives
+scaled daily totals through `DayPlan`, and `GroceryListGenerator.generateForPlan` aggregates scaled ingredients.
+
+`PlannedMealTest`, `AdjustPortionParserTest`, `AdjustPortionCommandTest`, and
+`AdjustPortionIntegrationTest` cover scaling, validation, atomic state changes, viewing, shortfalls, and grocery
+generation. Existing model, viewer, and grocery tests provide regression coverage.
 
 <!-- @@author -->
 
@@ -1082,7 +1115,8 @@ The recoverable errors reuse the existing path: `Parser` or the command throws `
 * All meals form one list. A later version could add `d/DATE` to record meals against a day and show
   daily totals, or compare the totals with the targets given to `check-shortfall`.
 * There is no command to remove or correct a recorded meal yet.
-* Each meal counts as one whole recipe; portion sizes are not supported, as for meal plans.
+* Each recorded meal counts as one whole recipe; recorded-meal portion sizes are not supported. Planned meals
+  have independent whole-recipe portion counts through `adjust-portion`.
 
 #### Verification
 
@@ -1645,7 +1679,7 @@ The Gradle build packages the application as `build/libs/MishMash.jar`. Release 
 
 **Value proposition:** MishMash connects recipe management, meal selection, and grocery preparation in one workflow. It generates plans from user-entered recipes and combines ingredient quantities for the selected meals.
 
-**Current boundaries:** Data lasts for one session. Nutrition is entered by the user rather than calculated from an ingredient database. Plans use whole recipes without portion scaling. Ingredient names and units are matched exactly; automatic unit conversion and grocery-item ticking are not supported.
+**Current boundaries:** Data lasts for one session. Nutrition is entered by the user rather than calculated from an ingredient database. Plans support positive whole-recipe portion counts, not fractional servings. Ingredient names and units are matched exactly; automatic unit conversion and grocery-item ticking are not supported.
 
 ## Appendix B: User Stories
 
@@ -1686,7 +1720,7 @@ This is a source-checkout audit against the [v2.0b milestone](https://github.com
 | `**` | User with dietary requirements | Clear my dietary restrictions | Generate meals without restrictions | [#72](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/72) | Available through `set-diet diet/none`; issue remains open. |
 | `**` | Meal prep user | Understand unsuccessful generation | Know which recipes or settings to change | [#59](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/59) | Existing diagnostics and dietary-repair recovery; check issue acceptance before closing. |
 | `**` | Meal prep user | Replace an individual planned meal | Adapt a plan to what I want to eat | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) | Coming soon (v2.0b); no individual replacement command. |
-| `**` | Meal prep user | Adjust a planned meal's portion | Match nutrition and grocery quantities to my serving | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) | Coming soon (v2.0b); whole-recipe portions only. |
+| `**` | Meal prep user | Adjust a planned meal's portion | Match nutrition and grocery quantities to my serving | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) | Implemented: `adjust-portion`; whole-recipe portions only. |
 | `**` | Meal prep user | Customise one planned meal's ingredients | Adapt that meal without editing the original recipe | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) | Coming soon (v2.0b); recipe editing does not change existing plan snapshots. |
 | `**` | User tracking intake | Review recorded meals by date | Understand my intake for a selected day | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) | Coming soon (v2.0b); records have no dates. |
 | `**` | User tracking intake | Correct or remove a recorded meal | Keep my intake records accurate | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) | Coming soon (v2.0b); no correction or removal command. |

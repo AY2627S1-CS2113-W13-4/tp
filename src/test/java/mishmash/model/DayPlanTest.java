@@ -1,7 +1,9 @@
 package mishmash.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -75,5 +77,28 @@ class DayPlanTest {
         assertEquals(firstTotals, firstDay.calculateDailyNutritionTotals());
         assertEquals(firstMeals, firstDay.getMeals());
         assertEquals(secondMeals, secondDay.getMeals());
+    }
+
+    @Test
+    void withAdjustedPortion_validChange_scalesOnlySelectedMealAndPreservesOriginal() {
+        DayPlan original = new DayPlan(List.of(OATMEAL, CHICKEN, SALMON));
+
+        DayPlan adjusted = original.withAdjustedPortion(1, 2);
+
+        assertEquals(new NutritionTotals(2300, 177, 220, 70), adjusted.calculateDailyNutritionTotals());
+        assertEquals(new NutritionTotals(1650, 127, 150, 55), original.calculateDailyNutritionTotals());
+        assertEquals(2, adjusted.getPlannedMeals().get(1).getPortionCount());
+        assertEquals(List.of(OATMEAL, CHICKEN, SALMON), adjusted.getMeals());
+    }
+
+    @Test
+    void fromPlannedMeals_nullElementAndOverflow_rejectsInvalidDay() {
+        assertThrows(NullPointerException.class,
+                () -> DayPlan.fromPlannedMeals(Arrays.asList(PlannedMeal.onePortionOf(OATMEAL), null)));
+        PlannedMeal huge = new PlannedMeal(
+                TestRecipes.recipe("Huge", Integer.MAX_VALUE, 0, 0, 0), Integer.MAX_VALUE);
+
+        assertThrows(ArithmeticException.class,
+                () -> DayPlan.fromPlannedMeals(List.of(huge, huge, huge)));
     }
 }

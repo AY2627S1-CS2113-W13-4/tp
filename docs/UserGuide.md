@@ -114,7 +114,9 @@ To track what you actually eat, use this separate sequence at any time after add
 | Prefix or Abbreviation | Meaning |
 | --- | --- |
 | `n/` | Recipe name. |
-| `d/` | Number of days for `generate-plan`; a day number for `view-plan`. |
+| `d/` | Number of days for `generate-plan`; a day number for `view-plan` or `adjust-portion`. |
+| `m/` | Meal number within a selected day for `adjust-portion`. |
+| `portions/` | Positive whole-recipe portion count for `adjust-portion`. |
 | `cal/`, `kcal` | Calories, measured in kilocalories. |
 | `p/`, `P` | Protein, measured in grams. |
 | `c/`, `C` | Carbohydrates, measured in grams. |
@@ -129,7 +131,7 @@ To track what you actually eat, use this separate sequence at any time after add
 ### Viewing available commands: `help`
 
 Type `help` to see every supported command, its purpose, and its syntax. This includes
-`add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`, `reset-plan`,
+`add-recipe`, `list-recipes`, `edit-recipe`, `delete-recipe`, `generate-plan`, `view-plan`, `adjust-portion`, `reset-plan`,
 `check-shortfall`, `generate-list`, `view-list`, `set-diet`, `view-diet`, `set-targets`, `view-targets`, `record-meal`, `view-meals`, `help`, and `bye`.
 The `help` command takes no arguments.
 
@@ -692,6 +694,57 @@ warnings use the repaired meals and the original generation targets; if it clear
 There is no separate excess-checking command: use `view-plan` or `view-plan d/DAY_NUMBER` after
 generating a plan with targets. Generating without targets produces daily totals without warnings.
 <!-- @@author -->
+
+### Adjusting a Planned Meal's Portions
+
+Changes one meal occurrence in the active plan to a positive whole number of recipe portions. The recipe
+in the recipe book remains unchanged. Nutrition shown by `view-plan`, nutrition checked by
+`check-shortfall`, and quantities produced by the next `generate-list` are all multiplied by the new count.
+
+**Before You Start:** Generate a plan and use `view-plan` to find its day and meal numbers.
+
+**Format:**
+
+```text
+adjust-portion d/DAY m/MEAL portions/COUNT
+```
+
+**Example:**
+
+```text
+adjust-portion d/1 m/2 portions/2
+```
+
+**Example Output:**
+
+```text
+Meal 2 on Day 1 updated to 2 portions.
+The previous grocery list was cleared. Run 'generate-list' to update it.
+```
+
+The next `view-plan d/1` marks that occurrence as `[2 portions]` and displays doubled nutrition for it.
+The same recipe on another day or at another meal number keeps its own portion count.
+
+**Rules:**
+
+- Day, meal, and portion values are positive whole numbers. Day and meal numbering starts at 1.
+- Prefixes may appear in any order but each of `d/`, `m/`, and `portions/` is required exactly once.
+- Adjusting a portion does not re-run target-based generation. Target excess warnings and shortfall results
+  use the adjusted totals.
+- A successful change clears any generated grocery list because its quantities are stale. Run
+  `generate-list` again before shopping.
+- Entering the portion count already assigned to the meal changes nothing and preserves the grocery list.
+
+**Errors and Recovery:**
+
+| Situation | Response | What to Do |
+| --- | --- | --- |
+| No active plan | `No active meal plan. Use 'generate-plan' first.` | Generate a plan, then retry. |
+| Day or meal does not exist | An error states the valid one-based range. | Run `view-plan` and choose a displayed position. |
+| Missing, repeated, unknown, zero, negative, decimal, or overflowing value | A specific error followed by the command format. | Supply each required prefix once with a positive whole number. |
+| Nutrition would exceed the supported numeric range | The adjustment is rejected and existing plan data is preserved. | Use a smaller portion count. |
+
+Failed adjustments preserve the plan, its original generation settings, and any grocery snapshot.
 
 <!-- @@author peilingggg -->
 ### Setting Dietary Preferences
@@ -1354,7 +1407,6 @@ These features are planned under the v2.0b milestone and are **not implemented i
 | Feature | Status | Tracking issue |
 | --- | --- | --- |
 | Replace one planned meal with another recipe | **Coming soon (v2.0b)** | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) |
-| Adjust the portion of one planned meal | **Coming soon (v2.0b)** | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) |
 | Change ingredients for one planned meal without changing its recipe | **Coming soon (v2.0b)** | [#60](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/60) |
 | Review recorded meals by date | **Coming soon (v2.0b)** | [#62](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/62) |
 | Correct or remove a recorded meal | **Coming soon (v2.0b)** | [#63](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/63) |
@@ -1406,7 +1458,7 @@ Not yet. There is currently no command to remove or edit a recorded meal. Restar
 
 - **Session-only data:** Recipes, dietary settings, daily targets, plans, groceries, and recorded meals are cleared on exit. There is no save, load, or data-transfer command.
 - **Meal-log limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** Recorded meals have no dates or editable serving quantities. Individual entries cannot be corrected or removed.
-- **Planning limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** There is no command to replace one planned meal, scale its portion, or change only its ingredients. Edit the source recipe and regenerate the plan and groceries when needed; existing snapshots keep their earlier values.
+- **Planning limitations ([Coming soon in v2.0b](#upcoming-v20b-features-coming-soon)):** There is no command to replace one planned meal or change only its ingredients. Use `adjust-portion` for whole-recipe portion counts. Edit the source recipe and regenerate the plan and groceries for other changes; existing snapshots keep their earlier values.
 - **Grocery limitations:** Units are not converted and `[ ]` markers cannot be ticked off.
 
 See [Troubleshooting](#troubleshooting) for recovery steps.
@@ -1478,6 +1530,7 @@ Click a task to jump directly to its instructions. The commands below are suppor
 | [Reset my meal plan](#resetting-a-meal-plan) | `reset-plan` | Clears the current plan and groceries; keeps your other session data. |
 | [View every day](#viewing-a-meal-plan) | `view-plan` | Generate a meal plan first. |
 | [View one day](#viewing-a-meal-plan) | `view-plan d/1` | Choose a day in the active plan. |
+| [Adjust planned portions](#adjusting-a-planned-meals-portions) | `adjust-portion d/1 m/2 portions/2` | Use day and meal numbers from `view-plan`. |
 | [Check nutrition shortfalls](#checking-nutrition-shortfalls) | `check-shortfall cal/2000 p/100` | Generate a plan first; supply at least one daily target. |
 | [Generate groceries](#generating-a-grocery-list) | `generate-list` | Generate a meal plan first. |
 | [View groceries](#viewing-a-grocery-list) | `view-list` | Generate a grocery list first. |

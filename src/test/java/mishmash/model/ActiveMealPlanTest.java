@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,5 +51,50 @@ class ActiveMealPlanTest {
 
         assertTrue(activePlan.getGroceryList().isEmpty());
         assertEquals(List.of(rice), snapshot);
+    }
+
+    @Test
+    void update_validReplacement_preservesRequestAndClearsGroceries() {
+        MealPlan original = new MealPlan(List.of(new DayPlan(List.of(recipe()))));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        activePlan.setGenerated(original, request, Optional.of(List.of(rice)));
+        MealPlan replacement = original.withAdjustedPortion(0, 0, 2);
+
+        activePlan.update(replacement);
+
+        assertEquals(replacement, activePlan.get().orElseThrow());
+        assertEquals(request, activePlan.getRequest().orElseThrow());
+        assertTrue(activePlan.getGroceryList().isEmpty());
+    }
+
+    @Test
+    void update_invalidReplacement_preservesAllState() {
+        MealPlan original = new MealPlan(List.of(new DayPlan(List.of(recipe()))));
+        GeneratePlanRequest request = new GeneratePlanRequest(1, NutritionTargets.none());
+        activePlan.setGenerated(original, request, Optional.of(List.of(rice)));
+
+        assertThrows(NullPointerException.class, () -> activePlan.update(null));
+        assertThrows(IllegalArgumentException.class, () -> activePlan.update(new MealPlan(List.of())));
+        assertEquals(original, activePlan.get().orElseThrow());
+        assertEquals(request, activePlan.getRequest().orElseThrow());
+        assertEquals(List.of(rice), activePlan.getGroceryList().orElseThrow());
+    }
+
+    @Test
+    void update_samePlan_preservesExistingGroceries() {
+        MealPlan plan = new MealPlan(List.of(new DayPlan(List.of(recipe()))));
+        activePlan.set(plan);
+        activePlan.setGroceryList(List.of(rice));
+
+        activePlan.update(plan);
+
+        assertEquals(List.of(rice), activePlan.getGroceryList().orElseThrow());
+    }
+
+    /**
+     * Creates a minimal recipe using the shared grocery item.
+     */
+    private Recipe recipe() {
+        return new Recipe("Rice", 100, 2, 20, 1, List.of(rice));
     }
 }

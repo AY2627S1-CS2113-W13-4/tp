@@ -2,6 +2,7 @@ package mishmash.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -382,4 +383,28 @@ class MealPlanViewerTest {
         assertEquals(expected, viewer.view(List.of(List.of(meal))));
     }
     //@@author
+
+    @Test
+    void view_adjustedPortion_displaysCountAndScaledLongNutrition() {
+        MealSummary meal = new MealSummary("Rice", 3, 600L, 12L, 135L, 3L);
+
+        String display = viewer.view(List.of(List.of(meal)));
+
+        assertTrue(display.contains("Meal 1: Rice [3 portions] (600 kcal | P: 12g, C: 135g, F: 3g)"));
+        assertTrue(display.contains("Daily Totals: 600 kcal | Protein: 12g | Carbs: 135g | Fats: 3g"));
+    }
+
+    @Test
+    void mealSummary_nonPositivePortions_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", 0, 200, 4, 45, 1));
+        assertThrows(IllegalArgumentException.class, () -> new MealSummary("Rice", -1, 200, 4, 45, 1));
+    }
+
+    @Test
+    void view_totalsBeyondLongRange_throwsInsteadOfWrappingNegative() {
+        MealSummary huge = new MealSummary("Huge", Long.MAX_VALUE, 0, 0, 0);
+        MealSummary extra = new MealSummary("Extra", 1, 0, 0, 0);
+
+        assertThrows(ArithmeticException.class, () -> viewer.view(List.of(List.of(huge, extra))));
+    }
 }
