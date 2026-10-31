@@ -18,6 +18,7 @@ import mishmash.model.GeneratePlanRequest;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
 import mishmash.model.NutritionTargets;
+import mishmash.model.PlannedMeal;
 import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 import mishmash.testutil.LogCapture;
@@ -103,6 +104,18 @@ class GenerateListCommandTest {
         command.execute(book);
 
         assertEquals("Beans", activePlan.getGroceryList().orElseThrow().get(0).getName());
+    }
+
+    @Test
+    void execute_adjustedPortions_scalesBeforeCombiningIngredients() {
+        Recipe meal = recipe(new GroceryItem("Rice", new BigDecimal("12.5"), "g"));
+        DayPlan day = DayPlan.fromPlannedMeals(List.of(new PlannedMeal(meal, 4)));
+        activePlan.set(new MealPlan(List.of(day)));
+
+        command.execute(book);
+
+        assertEquals(new BigDecimal("50.0"), activePlan.getGroceryList().orElseThrow().get(0).getQuantity());
+        assertEquals(new BigDecimal("12.5"), meal.getIngredients().get(0).getQuantity());
     }
 
     @Test

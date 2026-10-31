@@ -33,6 +33,36 @@ public class ActiveMealPlan {
     }
 
     /**
+     * Replaces the current plan after a local edit while retaining its generation settings.
+     * Clears groceries because they were derived from the previous plan contents.
+     *
+     * <p>Validation completes before any field changes, so a rejected replacement preserves all state.
+     *
+     * @param replacement The edited plan with the same number of days as the active plan.
+     * @throws NullPointerException If the replacement is null.
+     * @throws IllegalStateException If no plan is active.
+     * @throws IllegalArgumentException If the replacement changes the plan length.
+     */
+    public void update(MealPlan replacement) {
+        Objects.requireNonNull(replacement, "replacement");
+        if (plan == null) {
+            throw new IllegalStateException("An active meal plan is required before it can be updated.");
+        }
+        if (replacement.getNumberOfDays() != plan.getNumberOfDays()) {
+            throw new IllegalArgumentException("An in-place plan update must preserve the number of days.");
+        }
+        if (request.isPresent() && replacement.getNumberOfDays() != request.get().days()) {
+            throw new IllegalArgumentException("Updated plan length must match its generation request.");
+        }
+        if (replacement == plan) {
+            return;
+        }
+
+        plan = replacement;
+        groceryList = Optional.empty();
+    }
+
+    /**
      * Returns the original settings retained for dietary plan repair.
      *
      * @return The generation request, or an empty Optional for no plan or a legacy supplied plan.

@@ -1,6 +1,5 @@
 package mishmash.command;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -8,10 +7,8 @@ import java.util.logging.Logger;
 
 import mishmash.logic.GroceryListGenerator;
 import mishmash.model.ActiveMealPlan;
-import mishmash.model.DayPlan;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
-import mishmash.model.Recipe;
 import mishmash.model.RecipeBook;
 
 /**
@@ -51,18 +48,10 @@ public class GenerateListCommand implements Command {
             return "No active meal plan. Use 'generate-plan' first.";
         }
 
-        List<GroceryItem> ingredients = new ArrayList<>();
-        for (DayPlan day : plan.get().getDays()) {
-            for (Recipe meal : day.getMeals()) {
-                ingredients.addAll(meal.getIngredients());
-            }
-        }
-
         // The generator combines exact name/unit matches without converting incompatible units.
-        List<GroceryItem> groceries = new GroceryListGenerator().generate(ingredients);
+        List<GroceryItem> groceries = new GroceryListGenerator().generateForPlan(plan.get());
         activeMealPlan.setGroceryList(groceries);
-        LOGGER.info(() -> "Generated grocery list from " + ingredients.size()
-                + " ingredient occurrences into " + groceries.size() + " items");
+        LOGGER.info(() -> "Generated grocery list containing " + groceries.size() + " combined items");
         return "Grocery list generated. Use 'view-list' to view it.";
     }
 }

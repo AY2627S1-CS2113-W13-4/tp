@@ -39,6 +39,29 @@ public class MealPlan {
     }
 
     /**
+     * Returns a new plan with one selected planned meal's portion count changed.
+     *
+     * @param dayIndex The zero-based day position to update.
+     * @param mealIndex The zero-based meal position within that day.
+     * @param portionCount The new positive whole-recipe portion count.
+     * @return A new plan, or this plan when the requested count is already set.
+     * @throws IndexOutOfBoundsException If either position does not exist.
+     * @throws IllegalArgumentException If the portion count is not positive.
+     * @throws ArithmeticException If the changed daily nutrition cannot be represented as long values.
+     */
+    public MealPlan withAdjustedPortion(int dayIndex, int mealIndex, int portionCount) {
+        DayPlan currentDay = days.get(dayIndex);
+        DayPlan updatedDay = currentDay.withAdjustedPortion(mealIndex, portionCount);
+        if (updatedDay == currentDay) {
+            return this;
+        }
+
+        List<DayPlan> updatedDays = new ArrayList<>(days);
+        updatedDays.set(dayIndex, updatedDay);
+        return new MealPlan(updatedDays);
+    }
+
+    /**
      * Converts the plan to the display data that {@link MealPlanViewer} expects.
      * The viewer is deliberately independent of how recipes and plans are stored,
      * so this method is the single place that adapts the two.
@@ -49,9 +72,9 @@ public class MealPlan {
         List<List<MealSummary>> mealsByDay = new ArrayList<>();
         for (DayPlan day : days) {
             List<MealSummary> summaries = new ArrayList<>();
-            for (Recipe meal : day.getMeals()) {
-                summaries.add(new MealSummary(meal.getName(), meal.getCalories(),
-                        meal.getProtein(), meal.getCarbs(), meal.getFats()));
+            for (PlannedMeal meal : day.getPlannedMeals()) {
+                summaries.add(new MealSummary(meal.getRecipe().getName(), meal.getPortionCount(),
+                        meal.getCalories(), meal.getProtein(), meal.getCarbs(), meal.getFats()));
             }
             mealsByDay.add(summaries);
         }

@@ -26,7 +26,8 @@ public final class CliFormatter {
 
     /** Commands whose ordinary feedback describes a completed state-changing action. */
     private static final Set<String> SUCCESS_COMMANDS = Set.of(
-            "AddRecipeCommand", "DeleteRecipeCommand", "EditRecipeCommand", "GenerateListCommand",
+            "AddRecipeCommand", "AdjustPortionCommand", "DeleteRecipeCommand", "EditRecipeCommand",
+            "GenerateListCommand",
             "GeneratePlanCommand", "RecordMealCommand", "ResetPlanCommand", "SetDietCommand",
             "SetTargetsCommand");
 

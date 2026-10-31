@@ -10,7 +10,7 @@ import java.util.Objects;
 import mishmash.model.DayPlan;
 import mishmash.model.GroceryItem;
 import mishmash.model.MealPlan;
-import mishmash.model.Recipe;
+import mishmash.model.PlannedMeal;
 
 //@@author oilybikechain
 /**
@@ -33,8 +33,8 @@ public class GroceryListGenerator {
         Objects.requireNonNull(plan, "plan");
         List<GroceryItem> ingredients = new ArrayList<>();
         for (DayPlan day : plan.getDays()) {
-            for (Recipe recipe : day.getMeals()) {
-                ingredients.addAll(recipe.getIngredients());
+            for (PlannedMeal meal : day.getPlannedMeals()) {
+                ingredients.addAll(meal.getScaledIngredients());
             }
         }
         return generate(ingredients);

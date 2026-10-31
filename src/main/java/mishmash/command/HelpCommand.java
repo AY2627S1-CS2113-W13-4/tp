@@ -37,6 +37,11 @@ public class HelpCommand implements Command {
                 "view-plan - View the active meal plan, or one day.",
                 Parser.VIEW_PLAN_USAGE,
                 "",
+                AdjustPortionCommand.COMMAND_WORD
+                        + " - Change the whole-recipe portion count of one planned meal.",
+                Parser.ADJUST_PORTION_USAGE,
+                "Day and meal numbers come from view-plan. Updated portions clear generated groceries.",
+                "",
                 //@@author Rixte
                 ResetPlanCommand.COMMAND_WORD + " - Clear the current meal plan and its grocery list.",
                 ResetPlanCommand.USAGE,

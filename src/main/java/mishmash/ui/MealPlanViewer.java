@@ -2,6 +2,7 @@ package mishmash.ui;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.ToLongFunction;
 
 import mishmash.model.NutritionTargets;
 import mishmash.model.NutritionTotals;
@@ -119,6 +120,7 @@ public class MealPlanViewer {
             Objects.requireNonNull(meal, "meal");
             result.append(System.lineSeparator())
                     .append("Meal ").append(mealNumber).append(": ").append(meal.name())
+                    .append(formatPortionCount(meal.portionCount()))
                     .append(" (").append(meal.calories()).append(" kcal | P: ")
                     .append(meal.protein()).append("g, C: ").append(meal.carbs())
                     .append("g, F: ").append(meal.fats()).append("g)");
@@ -130,6 +132,16 @@ public class MealPlanViewer {
     //@@author
 
     /**
+     * Formats adjusted portions while leaving the original one-portion display unchanged.
+     */
+    private String formatPortionCount(int portionCount) {
+        if (portionCount == 1) {
+            return "";
+        }
+        return " [" + portionCount + " portions]";
+    }
+
+    /**
      * Sums a day's nutrition and formats the footer, including zero totals for an empty day.
      *
      * @param meals The meals already checked while formatting their display lines.
@@ -137,11 +149,10 @@ public class MealPlanViewer {
      * @return The daily totals and separators, preceded by a line separator.
      */
     private String formatDailyTotals(List<MealSummary> meals, NutritionTargets targets) {
-        // Sum as long values so several valid integer values cannot overflow an int.
-        long calories = meals.stream().mapToLong(MealSummary::calories).sum();
-        long protein = meals.stream().mapToLong(MealSummary::protein).sum();
-        long carbs = meals.stream().mapToLong(MealSummary::carbs).sum();
-        long fats = meals.stream().mapToLong(MealSummary::fats).sum();
+        long calories = sumNutrition(meals, MealSummary::calories);
+        long protein = sumNutrition(meals, MealSummary::protein);
+        long carbs = sumNutrition(meals, MealSummary::carbs);
+        long fats = sumNutrition(meals, MealSummary::fats);
 
         StringBuilder result = new StringBuilder(System.lineSeparator());
         result.append("--------------------------------------")
@@ -153,6 +164,17 @@ public class MealPlanViewer {
                 .append(System.lineSeparator())
                 .append("======================================");
         return result.toString();
+    }
+
+    /**
+     * Adds one displayed nutrition value exactly so invalid oversized input cannot wrap around.
+     */
+    private long sumNutrition(List<MealSummary> meals, ToLongFunction<MealSummary> valueSource) {
+        long total = 0;
+        for (MealSummary meal : meals) {
+            total = Math.addExact(total, valueSource.applyAsLong(meal));
+        }
+        return total;
     }
 
     /**
@@ -183,12 +205,26 @@ public class MealPlanViewer {
      * A record supplies read-only accessors such as {@code name()} and {@code calories()}.
      *
      * @param name The meal's display name.
+     * @param portionCount Number of whole recipe portions represented by this meal.
      * @param calories Total kilocalories in the meal.
      * @param protein Total grams of protein in the meal.
      * @param carbs Total grams of carbohydrates in the meal.
      * @param fats Total grams of fat in the meal.
      */
-    public record MealSummary(String name, int calories, int protein, int carbs, int fats) {
+    public record MealSummary(String name, int portionCount, long calories, long protein, long carbs, long fats) {
+        /**
+         * Creates one-portion display data for callers that do not supply an explicit portion count.
+         *
+         * @param name The meal's display name.
+         * @param calories Total kilocalories in the meal.
+         * @param protein Total grams of protein in the meal.
+         * @param carbs Total grams of carbohydrates in the meal.
+         * @param fats Total grams of fat in the meal.
+         */
+        public MealSummary(String name, long calories, long protein, long carbs, long fats) {
+            this(name, 1, calories, protein, carbs, fats);
+        }
+
         /**
          * Creates display data with a non-blank name and non-negative nutrition values.
          *
@@ -199,6 +235,9 @@ public class MealPlanViewer {
             Objects.requireNonNull(name, "name");
             if (name.isBlank()) {
                 throw new IllegalArgumentException("Meal name must not be blank.");
+            }
+            if (portionCount < 1) {
+                throw new IllegalArgumentException("Meal portion count must be at least 1.");
             }
             if (calories < 0 || protein < 0 || carbs < 0 || fats < 0) {
                 throw new IllegalArgumentException("Nutrition values must not be negative.");
