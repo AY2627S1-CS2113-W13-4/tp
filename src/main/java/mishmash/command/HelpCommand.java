@@ -78,6 +78,10 @@ public class HelpCommand implements Command {
                 "view-diet - View current dietary preferences.",
                 "Format: view-diet",
                 "",
+                ClearDietCommand.COMMAND_WORD + " - Remove all dietary preferences and restrictions.",
+                Parser.CLEAR_DIET_USAGE,
+                "Recipes, plans, groceries, targets, and recorded meals are unchanged.",
+                "",
                 //@@author neil0618
                 SetTargetsCommand.COMMAND_WORD
                         + " - Save daily calorie and macronutrient targets for future meal plans.",

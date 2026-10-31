@@ -65,6 +65,7 @@ The logic covers command parsing, application actions, and generation. It suppor
 | `delete-recipe` | Remove a recipe by its displayed index after confirmation. |
 | `set-diet` | Replace the session dietary profile and repair or clear conflicting planned days. |
 | `view-diet` | Display the session dietary profile. |
+| `clear-diet` | Reset the dietary profile while preserving all other session data. |
 | `set-targets` | Save, replace, or remove daily calorie, protein, carbohydrate, and fat targets for later plans. |
 | `view-targets` | Display the saved daily targets. |
 | `generate-plan` | Generate one to seven days of meals, optionally using daily nutrition targets. Saved targets fill in nutrients that the command leaves out. |
@@ -100,7 +101,7 @@ Commands validate their arguments and relevant application state. Requests that 
 | `TargetChanges` | Validated changes to the saved targets: a new value, or removal, for each nutrient mentioned. |
 | `TargetSettings` | The daily targets saved with `set-targets`, shared by the commands that use them during the session. |
 | `GeneratePlanRequest` | The requested number of days and nutrition targets. |
-| `DietarySettings` | The shared session dietary profile. |
+| `DietarySettings` | The shared session dietary profile, including its unrestricted reset operation. |
 | `DietaryPreferences` | An immutable named diet, avoided tags, and normalized excluded ingredient names. |
 | `Diet`, `FoodTag`, `FoodInfo` | Named-diet rules, supported categories, and declared recipe classification. |
 | `ActiveMealPlan` | The current meal plan and its generated grocery list, if available. |
@@ -691,6 +692,25 @@ recipe isolation, portion composition, display markers, and grocery quantities. 
 protect the shared `IngredientParser` behavior.
 
 <!-- @@author -->
+
+### Clearing dietary preferences and restrictions
+
+`clear-diet` accepts no arguments. `Parser` constructs `ClearDietCommand` without changing
+state, and execution calls `DietarySettings.clear` to install a fresh unrestricted profile.
+The command deliberately retains only a `DietarySettings` reference, so it cannot mutate the
+recipe book, active plan, customized ingredients, portion counts, groceries, saved targets,
+or meal log. It also validates the command execution context before clearing, which keeps a
+failed invocation atomic.
+
+Clearing an already unrestricted profile is idempotent and reports that nothing changed.
+Unlike a restrictive `set-diet` update, clearing cannot make a planned recipe incompatible,
+so it does not request confirmation or repair the existing plan. Future generation reads the
+new unrestricted profile.
+
+`DietarySettingsTest` and `ClearDietCommandTest` cover complete reset, repeated clearing,
+and null boundaries. `ClearDietIntegrationTest` covers deferred parser execution, invalid
+arguments, help text, future unrestricted generation, and identity-preservation of unrelated
+planning state.
 
 <!-- @@author peilingggg -->
 ### Applying dietary restrictions
@@ -1748,7 +1768,7 @@ This is a source-checkout audit against the [v2.0b milestone](https://github.com
 | `**` | Returning user | Reset my active plan and groceries | Start planning again while keeping recipes, settings, and intake records | [#53](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/53) | Implemented: `reset-plan`. |
 | `**` | Returning user | Confirm plan removal or replacement | Avoid losing a plan accidentally | [#61](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/61) | Implemented for the documented plan-changing commands. |
 | `**` | User with dietary requirements | View my dietary settings | Check which restrictions apply to generation | [#71](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/71) | Implemented: `view-diet`. |
-| `**` | User with dietary requirements | Clear my dietary restrictions | Generate meals without restrictions | [#72](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/72) | Available through `set-diet diet/none`; issue remains open. |
+| `**` | User with dietary requirements | Clear my dietary restrictions | Generate meals without restrictions | [#72](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/72) | Implemented: `clear-diet`. |
 | `**` | Meal prep user | Understand unsuccessful generation | Know which recipes or settings to change | [#59](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/59) | Existing diagnostics and dietary-repair recovery; check issue acceptance before closing. |
 | `**` | Meal prep user | Replace an individual planned meal | Adapt a plan to what I want to eat | [#57](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/57) | Coming soon (v2.0b); no individual replacement command. |
 | `**` | Meal prep user | Adjust a planned meal's portion | Match nutrition and grocery quantities to my serving | [#58](https://github.com/AY2627S1-CS2113-W13-4/tp/issues/58) | Implemented: `adjust-portion`; whole-recipe portions only. |
@@ -2017,7 +2037,21 @@ Viewing never changes the profile or generated data.
 
 <!-- @@author -->
 
-#### UC17 Edit a recipe
+#### UC17 Clear dietary preferences
+
+**MSS**
+
+1. The user enters `clear-diet` without arguments.
+2. MishMash resets the complete dietary profile to unrestricted and displays confirmation.
+3. MishMash preserves recipes, the active plan and its customizations, groceries, saved targets,
+   and recorded meals.
+
+**Extensions**
+
+- 1a. Arguments are supplied: display an error and `Format: clear-diet`; preserve all data.
+- 2a. The profile is already unrestricted: report that nothing changed and preserve all data.
+
+#### UC18 Edit a recipe
 
 **MSS**
 
@@ -2340,8 +2374,11 @@ need no answer. Use [Confirming plan changes](#confirming-plan-changes) for canc
 1. In a fresh session after entering a name, enter `view-diet`. Expect `none` for the diet and both exclusion lists.
 2. Enter `set-diet diet/vegetarian avoid/peanut exclude/Olive Oil`, then `view-diet`. Check that all three restrictions appear.
 3. Enter `set-diet diet/invalid`. Expect an error listing supported diets; `view-diet` must still show the previous profile.
-4. Enter `set-diet diet/none`, then `view-diet`. Check that all restrictions are cleared, including the omitted category and ingredient exclusions.
-5. Test plan repair and grocery refresh using the separate classified recipes below. The general sample recipes above are unclassified and cannot exercise successful dietary repair.
+4. Enter `clear-diet`, then `view-diet`. Check that the diet and both exclusion lists display `none`.
+5. Enter `clear-diet` again. Expect `Dietary preferences are already clear. Nothing was changed.`
+6. Enter `clear-diet diet/none`. Expect an argument error and `Format: clear-diet`; `view-diet`
+   must still show the unrestricted profile.
+7. Test plan repair and grocery refresh using the separate classified recipes below. The general sample recipes above are unclassified and cannot exercise successful dietary repair.
 
 #### Successful repair and grocery refresh
 
@@ -2381,6 +2418,11 @@ view-list
 ```
 
 Expect confirmation that conflicting days were replaced and the grocery list was updated. Both days now contain Rice Bowl, Potato Bowl, and Oat Bowl, in any order. The refreshed groceries contain Rice 200g, Potato 400g, and Oats 100g, with no Chicken entry. Do not run `generate-list` again here: `view-list` must demonstrate that dietary repair refreshed the existing groceries automatically.
+
+Now enter `clear-diet`, followed by `view-diet`, `view-plan`, and `view-list`. The profile must
+be unrestricted, while both vegetarian plan days and their grocery quantities remain exactly
+as displayed before clearing. This verifies that clearing affects future eligibility without
+silently regenerating or deleting existing snapshots.
 
 Generating the original plan before adding the vegetarian recipes makes the conflict certain; having exactly three compatible recipes makes the repaired contents predictable despite random meal ordering.
 

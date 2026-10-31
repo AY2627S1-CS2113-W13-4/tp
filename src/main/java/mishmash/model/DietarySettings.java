@@ -27,4 +27,15 @@ public final class DietarySettings {
     public void set(DietaryPreferences preferences) {
         this.preferences = Objects.requireNonNull(preferences, "preferences");
     }
+
+    /**
+     * Resets the profile to unrestricted and reports whether any restriction was removed.
+     *
+     * @return True if the previous profile contained a diet, avoided category, or excluded ingredient.
+     */
+    public boolean clear() {
+        boolean hadRestrictions = preferences.isRestricted();
+        preferences = DietaryPreferences.createUnrestricted();
+        return hadRestrictions;
+    }
 }
